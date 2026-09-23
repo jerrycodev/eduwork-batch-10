@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tugas Sesi 5 - Jerryco</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://unpkg.com/lucide@1.47.0/dist/umd/lucide.min.js"></script>
+    <style>
+      body {
+        font-family: "Open Sans", sans-serif;
+        font-optical-sizing: auto;
+        font-weight: 500;
+        font-style: normal;
+      }
+    </style>
+  </head>
+  <body class="bg-[#F5F5F5]">
+    <!-- Header -->
+    <header class="flex justify-between p-4 max-w-[1000px] mx-auto">
+      <button type="button" class="rounded-full bg-white p-2">
+        <i class="w-4 h-4" data-lucide="menu"></i>
+      </button>
+      <h1>TUGAS SESI 5 - ECOMMERCE</h1>
+      <button type="button" class="rounded-full bg-white p-2">
+        <i class="w-4 h-4" data-lucide="shopping-cart"></i>
+      </button>
+    </header>
+
+    <!-- Filter -->
+    <div
+      class="flex flex-col sm:flex-row sm:items-center gap-4 px-4 max-w-[1000px] mx-auto"
+    >
+      <input
+        type="search"
+        id="search-input"
+        class="bg-white p-2 rounded-lg"
+        placeholder="Cari Produk"
+      />
+      <select id="categories" class="bg-white p-2 rounded-lg">
+        <option value="">Kategori</option>
+      </select>
+    </div>
+
+    <!-- Products -->
+    <main class="p-4 max-w-[1000px] mx-auto">
+      <section
+        id="list-product"
+        class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3"
+      ></section>
+    </main>
+
+    <script src="products.js"></script>
+    <script src="helpers.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>
