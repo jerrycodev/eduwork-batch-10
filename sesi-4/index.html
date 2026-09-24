@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tugas Sesi 4 — Jerryco</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Design Tokens -->
+  <link rel="stylesheet" href="./style.css" />
+
+  <!-- Bootstrap 5.3 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+
+  <style>
+    :root {
+      --pf-border: var(--ct-neutral-200);
+      --pf-black: var(--ct-neutral-950);
+      --pf-gray: var(--ct-neutral-500);
+      --pf-radius: 12px;
+    }
+
+    * { font-family: var(--ct-font-family-primary); }
+
+    body {
+      background: #fff;
+      color: var(--ct-neutral-900);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    a {
+      text-decoration: none;
+    }
+
+    .page-shell {
+      max-width: 1046px;
+      margin: 0 auto;
+      padding: 40px 20px 0;
+    }
+
+    /* ---------- Section labels ---------- */
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ct-neutral-900);
+      margin-bottom: 14px;
+    }
+
+    /* ---------- Cards ---------- */
+    .pf-card {
+      background: #fff;
+      border: 1px solid var(--pf-border);
+      border-radius: var(--pf-radius);
+    }
+
+    /* ---------- Sidebar ---------- */
+    .sidebar { position: sticky; top: 24px; }
+
+    .profile-photo {
+      width: 100%;
+      aspect-ratio: 4 / 4;
+      object-fit: cover;
+      border-radius: 10px;
+      display: block;
+      background: var(--ct-neutral-100);
+    }
+
+    .profile-name {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.25;
+      margin: 16px 0 8px;
+    }
+
+    .profile-role {
+      font-size: 13px;
+      color: var(--ct-neutral-700);
+      margin-bottom: 14px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--ct-green-600);
+      background: var(--ct-green-50);
+      border: 1px solid var(--ct-green-200);
+      border-radius: 999px;
+      padding: 5px 12px;
+      margin-bottom: 4px;
+    }
+
+    .status-badge .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--ct-green-500);
+    }
+
+    .btn-dark-pf {
+      background: var(--pf-black);
+      border: 1px solid var(--pf-black);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 8px;
+      padding: 10px 14px;
+      transition: opacity .15s ease;
+    }
+
+    .btn-dark-pf:hover { background: #262626; color: #fff; opacity: .95; }
+
+    .btn-outline-pf {
+      background: #fff;
+      border: 1px solid var(--pf-border);
+      color: var(--ct-neutral-900);
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 8px;
+      padding: 10px 14px;
+      transition: background .15s ease;
+    }
+
+    .btn-outline-pf:hover { background: var(--ct-neutral-50); color: var(--ct-neutral-900); }
+
+    .icon-square {
+      width: 42px;
+      height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      border: 1px solid var(--pf-border);
+      background: #fff;
+      color: var(--ct-neutral-900);
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .icon-square:hover { background: var(--ct-neutral-50); color: var(--ct-neutral-900); }
+
+    .social-label {
+      font-size: 13px;
+      font-weight: 600;
+      margin: 16px 0 10px;
+    }
+
+    .social-icons { display: flex; gap: 10px; }
+
+    .social-icons a {
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--pf-border);
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--ct-neutral-900);
+      font-size: 16px;
+      text-decoration: none;
+      background: #fff;
+    }
+
+    .social-icons a:hover { background: var(--ct-neutral-50); }
+
+    /* ---------- About ---------- */
+    .about-text {
+      font-size: 14px;
+      color: var(--ct-neutral-800);
+      max-width: 720px;
+    }
+
+    .about-text p + p { margin-top: 14px; }
+
+    /* ---------- Tags ---------- */
+    .tag-box {
+      display: inline-block;
+      border: 1px solid var(--pf-border);
+      border-radius: 8px;
+      padding: 9px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      background: #fff;
+      color: var(--ct-neutral-900);
+    }
+
+    /* ---------- Education ---------- */
+    .edu-card { padding: 18px 20px; }
+
+    .edu-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    .edu-title { font-size: 15px; font-weight: 700; line-height: 1.4; }
+    .edu-school { font-size: 14px; font-weight: 600; color: var(--ct-neutral-800); }
+    .edu-date { font-size: 13px; color: var(--ct-neutral-500); white-space: nowrap; }
+    .edu-desc { font-size: 13px; color: var(--ct-neutral-700); margin-top: 12px; margin-bottom: 0; }
+
+    /* ---------- Stats ---------- */
+    .stat-card {
+      padding: 16px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      min-height: 86px;
+    }
+
+    .stat-number { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+    .stat-label { font-size: 12.5px; color: var(--ct-neutral-500); margin-top: 2px; }
+    .stat-icon { color: var(--ct-neutral-400); font-size: 18px; }
+
+    /* ---------- Experience accordion ---------- */
+    .exp-card { overflow: hidden; }
+
+    .exp-toggle {
+      width: 100%;
+      background: #fff;
+      border: 0;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 18px;
+      text-align: left;
+    }
+
+    .exp-toggle:hover { background: var(--ct-neutral-50); }
+
+    .exp-thumb {
+      width: 52px;
+      height: 52px;
+      border-radius: 8px;
+      object-fit: cover;
+      flex-shrink: 0;
+      background:
+        linear-gradient(135deg, #f97316 0%, #f97316 25%, #22c55e 25%, #22c55e 50%, #3b82f6 50%, #3b82f6 75%, #eab308 75%);
+    }
+
+    .exp-body { flex: 1; min-width: 0; }
+    .exp-org { font-size: 14px; font-weight: 700; }
+    .exp-role { font-size: 13px; font-weight: 500; color: var(--ct-neutral-800); }
+    .exp-date { font-size: 12.5px; color: var(--ct-neutral-500); }
+
+    .exp-chevron { color: var(--ct-neutral-500); font-size: 18px; transition: transform .2s ease; }
+    .exp-toggle[aria-expanded="true"] .exp-chevron { transform: rotate(180deg); }
+
+    .exp-details {
+      padding: 0 18px 18px 84px;
+      font-size: 13px;
+      color: var(--ct-neutral-700);
+    }
+
+    .exp-details ul { margin: 0; padding-left: 18px; }
+    .exp-details li + li { margin-top: 6px; }
+
+    /* ---------- Projects ---------- */
+    .project-card { overflow: hidden; display: flex; flex-direction: column; }
+
+    .project-img {
+      width: 100%;
+      aspect-ratio: 16 / 11;
+      object-fit: cover;
+      display: block;
+      background: var(--ct-neutral-100);
+    }
+
+    .project-body { padding: 16px; display: flex; flex-direction: column; flex: 1; }
+    .project-title { font-size: 14.5px; font-weight: 700; margin-bottom: 6px; }
+
+    .project-desc {
+      font-size: 12.5px;
+      color: var(--ct-neutral-600);
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      margin-bottom: 14px;
+      flex: 1;
+    }
+
+    .project-actions { display: flex; gap: 8px; }
+    .project-actions .btn-dark-pf { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+
+    /* ---------- Skills tabs ---------- */
+    .skills-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--pf-border);
+      margin-bottom: 28px;
+    }
+
+    .skills-tab {
+      flex: 1;
+      text-align: center;
+      padding: 12px 8px;
+      font-size: 12.5px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ct-neutral-400);
+      background: none;
+      border: 0;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+    }
+
+    .skills-tab.active {
+      color: var(--ct-neutral-900);
+      border-bottom-color: var(--ct-neutral-900);
+    }
+
+    .skill-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 28px 20px;
+      justify-items: center;
+      padding: 8px 0 12px;
+    }
+
+    .skill-grid img {
+      width: 48px;
+      height: 48px;
+      object-fit: contain;
+      transition: transform .15s ease;
+    }
+
+    .skill-grid img:hover { transform: scale(1.1); }
+
+    /* ---------- Contact form ---------- */
+    .form-label-pf {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--ct-neutral-900);
+    }
+
+    .form-control-pf {
+      border: 1px solid var(--pf-border);
+      border-radius: 8px;
+      padding: 11px 14px;
+      font-size: 13.5px;
+      color: var(--ct-neutral-900);
+      background: #fff;
+      width: 100%;
+    }
+
+    .form-control-pf::placeholder { color: var(--ct-neutral-400); }
+    .form-control-pf:focus {
+      outline: none;
+      border-color: var(--ct-neutral-900);
+      box-shadow: none;
+    }
+
+    textarea.form-control-pf { min-height: 110px; resize: vertical; }
+
+    .btn-send {
+      width: 100%;
+      background: var(--pf-black);
+      border: 1px solid var(--pf-black);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 8px;
+      padding: 13px 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-send:hover { background: #262626; color: #fff; }
+
+    /* ---------- Footer ---------- */
+    .pf-footer {
+      border-top: 1px solid var(--pf-border);
+      margin-top: 48px;
+      padding: 22px 0 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      color: var(--ct-neutral-600);
+    }
+
+    .pf-footer strong { color: var(--ct-neutral-900); font-weight: 600; }
+
+    /* ---------- Sections spacing ---------- */
+    .content-section { margin-bottom: 34px; }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 991.98px) {
+      .sidebar { position: static; margin-bottom: 34px; }
+      .skill-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+
+    @media (max-width: 575.98px) {
+      .page-shell { padding: 20px 16px 0; }
+      .profile-name { font-size: 20px; }
+      .skill-grid { grid-template-columns: repeat(4, 1fr); gap: 22px 12px; }
+      .skill-grid img { width: 42px; height: 42px; }
+      .exp-details { padding-left: 18px; }
+      .edu-head { flex-direction: column; gap: 4px; }
+      .pf-footer { flex-direction: column; gap: 6px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <div class="row g-4">
+
+      <!-- ============ SIDEBAR ============ -->
+      <aside class="col-12 col-lg-3">
+        <div class="sidebar">
+          <!-- Profile card -->
+          <div class="pf-card p-3">
+            <img src="./images/alex_morgan.jpg" alt="Alex Morgan" class="profile-photo" />
+            <h1 class="profile-name">Hello I&rsquo;m Alex Morgan</h1>
+            <p class="profile-role">Web Designer, Content Creator &amp; writer.</p>
+            <span class="status-badge"><span class="dot"></span> Available for work</span>
+          </div>
+
+          <!-- Actions card -->
+          <div class="pf-card p-3 mt-3">
+            <div class="d-flex gap-2 mb-2">
+              <a href="#" class="icon-square" aria-label="GitHub" title="GitHub">
+                <i class="bi bi-github"></i>
+              </a>
+              <a href="#" class="btn-outline-pf flex-fill d-inline-flex align-items-center justify-content-center gap-2">
+                <i class="bi bi-download"></i> Download CV
+              </a>
+            </div>
+            <a href="#contact" class="btn-dark-pf w-100 d-inline-flex align-items-center justify-content-center gap-2">
+              <i class="bi bi-envelope"></i> Contact Me
+            </a>
+
+            <p class="social-label">Social Media :</p>
+            <div class="social-icons">
+              <a href="#" aria-label="LinkedIn"><i class="bi bi-linkedin"></i></a>
+              <a href="#" aria-label="WhatsApp"><i class="bi bi-whatsapp"></i></a>
+              <a href="#" aria-label="Instagram"><i class="bi bi-instagram"></i></a>
+              <a href="#" aria-label="TikTok"><i class="bi bi-tiktok"></i></a>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- ============ MAIN CONTENT ============ -->
+      <main class="col-12 col-lg-9">
+
+        <!-- ABOUT -->
+        <section class="content-section" id="about">
+          <div class="section-label">About</div>
+          <div class="about-text">
+            <p>I am Alex Morgan, a passionate Web Designer &amp; Developer residing in the dynamic city of Berlin, Germany. My expertise lies at the intersection of visual design and technical implementation.</p>
+            <p>With over 5 years of experience in creating visually stunning and user-centric websites, I&rsquo;ve honed my skills in both front-end and back-end development.</p>
+          </div>
+        </section>
+
+        <!-- WHAT I DO -->
+        <section class="content-section" id="what-i-do">
+          <div class="section-label">What I Do</div>
+          <div class="d-flex flex-wrap gap-2">
+            <span class="tag-box">Software Engineer</span>
+            <span class="tag-box">Web Designer</span>
+            <span class="tag-box">Project Manager</span>
+          </div>
+        </section>
+
+        <!-- EDUCATION -->
+        <section class="content-section" id="education">
+          <div class="section-label">Education</div>
+          <div class="pf-card edu-card">
+            <div class="edu-head">
+              <div>
+                <div class="edu-title">Bachelor of Computer Science</div>
+                <div class="edu-school">Universitas Indonesia</div>
+              </div>
+              <div class="edu-date">2023 - Present</div>
+            </div>
+            <p class="edu-desc">Computer Science undergraduate student with focus on Software Engineering. GPA: 3.48/4.0</p>
+          </div>
+        </section>
+
+        <!-- STATS -->
+        <section class="content-section" id="stats">
+          <div class="section-label">Stats</div>
+          <div class="row g-3">
+            <div class="col-12 col-sm-6">
+              <div class="pf-card stat-card">
+                <div>
+                  <div class="stat-number">15+</div>
+                  <div class="stat-label">Projects Completed</div>
+                </div>
+                <i class="bi bi-folder2-open stat-icon"></i>
+              </div>
+            </div>
+            <div class="col-12 col-sm-6">
+              <div class="pf-card stat-card">
+                <div>
+                  <div class="stat-number">2+</div>
+                  <div class="stat-label">Achievements</div>
+                </div>
+                <i class="bi bi-award stat-icon"></i>
+              </div>
+            </div>
+            <div class="col-12 col-sm-6">
+              <div class="pf-card stat-card">
+                <div>
+                  <div class="stat-number">4+</div>
+                  <div class="stat-label">Organizations</div>
+                </div>
+                <i class="bi bi-people stat-icon"></i>
+              </div>
+            </div>
+            <div class="col-12 col-sm-6">
+              <div class="pf-card stat-card">
+                <div>
+                  <div class="stat-number">3+</div>
+                  <div class="stat-label">Years Learning</div>
+                </div>
+                <i class="bi bi-mortarboard stat-icon"></i>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- EXPERIENCE -->
+        <section class="content-section" id="experience">
+          <div class="section-label">Experience</div>
+
+          <div class="pf-card exp-card mb-3">
+            <button class="exp-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#exp1" aria-expanded="true" aria-controls="exp1">
+              <span class="exp-thumb"></span>
+              <span class="exp-body">
+                <span class="exp-org d-block">COMPFEEST 17 Fasilkom UI</span>
+                <span class="exp-role d-block">Vice Manager of IT-Development Field</span>
+                <span class="exp-date d-block">Jan 2025 - Present</span>
+              </span>
+              <i class="bi bi-chevron-down exp-chevron"></i>
+            </button>
+            <div class="collapse show" id="exp1">
+              <div class="exp-details">
+                <ul>
+                  <li>Led two divisions, Software Engineering and UI/UX, managing a total of 24 members.</li>
+                  <li>Created and monitored development timelines using Scrum methodology.</li>
+                  <li>Collaborated directly with product owners to understand and refine product requirement documents.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="pf-card exp-card mb-3">
+            <button class="exp-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#exp2" aria-expanded="false" aria-controls="exp2">
+              <span class="exp-thumb"></span>
+              <span class="exp-body">
+                <span class="exp-org d-block">COMPFEEST 17 Fasilkom UI</span>
+                <span class="exp-role d-block">Vice Manager of IT-Development Field</span>
+                <span class="exp-date d-block">Jan 2025 - Present</span>
+              </span>
+              <i class="bi bi-chevron-down exp-chevron"></i>
+            </button>
+            <div class="collapse" id="exp2">
+              <div class="exp-details">
+                <ul>
+                  <li>Led two divisions, Software Engineering and UI/UX, managing a total of 24 members.</li>
+                  <li>Created and monitored development timelines using Scrum methodology.</li>
+                  <li>Collaborated directly with product owners to understand and refine product requirement documents.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="pf-card exp-card">
+            <button class="exp-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#exp3" aria-expanded="false" aria-controls="exp3">
+              <span class="exp-thumb"></span>
+              <span class="exp-body">
+                <span class="exp-org d-block">COMPFEEST 17 Fasilkom UI</span>
+                <span class="exp-role d-block">Vice Manager of IT-Development Field</span>
+                <span class="exp-date d-block">Jan 2025 - Present</span>
+              </span>
+              <i class="bi bi-chevron-down exp-chevron"></i>
+            </button>
+            <div class="collapse" id="exp3">
+              <div class="exp-details">
+                <ul>
+                  <li>Led two divisions, Software Engineering and UI/UX, managing a total of 24 members.</li>
+                  <li>Created and monitored development timelines using Scrum methodology.</li>
+                  <li>Collaborated directly with product owners to understand and refine product requirement documents.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- PROJECT -->
+        <section class="content-section" id="project">
+          <div class="section-label">Project</div>
+          <div class="row g-3">
+
+            <!-- Card 1 -->
+            <div class="col-12 col-sm-6">
+              <article class="pf-card project-card h-100">
+                <svg class="project-img" viewBox="0 0 640 440" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="COMPFEEST project">
+                  <rect width="640" height="440" fill="#e8e4dc"/>
+                  <rect x="60" y="70" width="180" height="240" rx="6" fill="#f97316" transform="rotate(-8 150 190)"/>
+                  <rect x="230" y="50" width="180" height="250" rx="6" fill="#22c55e" transform="rotate(4 320 175)"/>
+                  <rect x="400" y="80" width="170" height="230" rx="6" fill="#3b82f6" transform="rotate(-5 485 195)"/>
+                  <rect x="120" y="180" width="160" height="200" rx="6" fill="#eab308" transform="rotate(10 200 280)"/>
+                  <rect x="320" y="200" width="170" height="190" rx="6" fill="#ec4899" transform="rotate(-7 405 295)"/>
+                  <text x="320" y="420" text-anchor="middle" font-family="Inter, sans-serif" font-size="28" font-weight="800" fill="#171717">COMPFEEST 17</text>
+                </svg>
+                <div class="project-body">
+                  <h3 class="project-title">COMPFEEST 17 Fasilkom UI</h3>
+                  <p class="project-desc">Compfest is the biggest student-held IT event in Indonesia. Served as Vice IT Development Manager, leading a cross-functional team to ship event platforms.</p>
+                  <div class="project-actions">
+                    <a href="#" class="icon-square" aria-label="GitHub repository"><i class="bi bi-github"></i></a>
+                    <a href="#" class="btn-dark-pf"><i class="bi bi-box-arrow-up-right"></i> Live Demo</a>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            <!-- Card 2 -->
+            <div class="col-12 col-sm-6">
+              <article class="pf-card project-card h-100">
+                <svg class="project-img" viewBox="0 0 640 440" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="COMPFEEST project">
+                  <rect width="640" height="440" fill="#e8e4dc"/>
+                  <rect x="70" y="60" width="175" height="245" rx="6" fill="#a855f7" transform="rotate(6 157 182)"/>
+                  <rect x="240" y="70" width="175" height="240" rx="6" fill="#f97316" transform="rotate(-6 327 190)"/>
+                  <rect x="410" y="55" width="165" height="235" rx="6" fill="#22c55e" transform="rotate(8 492 172)"/>
+                  <rect x="140" y="190" width="165" height="195" rx="6" fill="#3b82f6" transform="rotate(-9 222 287)"/>
+                  <rect x="330" y="210" width="170" height="185" rx="6" fill="#eab308" transform="rotate(5 415 302)"/>
+                  <text x="320" y="420" text-anchor="middle" font-family="Inter, sans-serif" font-size="28" font-weight="800" fill="#171717">COMPFEEST 17</text>
+                </svg>
+                <div class="project-body">
+                  <h3 class="project-title">COMPFEEST 17 Fasilkom UI</h3>
+                  <p class="project-desc">Compfest is the biggest student-held IT event in Indonesia. Served as Vice IT Development Manager, leading a cross-functional team to ship event platforms.</p>
+                  <div class="project-actions">
+                    <a href="#" class="icon-square" aria-label="GitHub repository"><i class="bi bi-github"></i></a>
+                    <a href="#" class="btn-dark-pf"><i class="bi bi-box-arrow-up-right"></i> Live Demo</a>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            <!-- Card 3 -->
+            <div class="col-12 col-sm-6">
+              <article class="pf-card project-card h-100">
+                <svg class="project-img" viewBox="0 0 640 440" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="COMPFEEST project">
+                  <rect width="640" height="440" fill="#e8e4dc"/>
+                  <rect x="55" y="75" width="185" height="235" rx="6" fill="#22c55e" transform="rotate(-5 147 192)"/>
+                  <rect x="225" y="55" width="180" height="250" rx="6" fill="#ec4899" transform="rotate(7 315 180)"/>
+                  <rect x="405" y="75" width="170" height="235" rx="6" fill="#eab308" transform="rotate(-4 490 192)"/>
+                  <rect x="130" y="195" width="170" height="190" rx="6" fill="#f97316" transform="rotate(9 215 290)"/>
+                  <rect x="325" y="205" width="175" height="190" rx="6" fill="#3b82f6" transform="rotate(-8 412 300)"/>
+                  <text x="320" y="420" text-anchor="middle" font-family="Inter, sans-serif" font-size="28" font-weight="800" fill="#171717">COMPFEEST 17</text>
+                </svg>
+                <div class="project-body">
+                  <h3 class="project-title">COMPFEEST 17 Fasilkom UI</h3>
+                  <p class="project-desc">Compfest is the biggest student-held IT event in Indonesia. Served as Vice IT Development Manager, leading a cross-functional team to ship event platforms.</p>
+                  <div class="project-actions">
+                    <a href="#" class="icon-square" aria-label="GitHub repository"><i class="bi bi-github"></i></a>
+                    <a href="#" class="btn-dark-pf"><i class="bi bi-box-arrow-up-right"></i> Live Demo</a>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            <!-- Card 4 -->
+            <div class="col-12 col-sm-6">
+              <article class="pf-card project-card h-100">
+                <svg class="project-img" viewBox="0 0 640 440" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="COMPFEEST project">
+                  <rect width="640" height="440" fill="#e8e4dc"/>
+                  <rect x="65" y="65" width="180" height="245" rx="6" fill="#3b82f6" transform="rotate(7 155 187)"/>
+                  <rect x="235" y="60" width="178" height="245" rx="6" fill="#eab308" transform="rotate(-6 324 182)"/>
+                  <rect x="405" y="70" width="172" height="235" rx="6" fill="#f97316" transform="rotate(5 491 187)"/>
+                  <rect x="135" y="185" width="168" height="200" rx="6" fill="#ec4899" transform="rotate(-10 219 285)"/>
+                  <rect x="328" y="200" width="172" height="195" rx="6" fill="#22c55e" transform="rotate(6 414 297)"/>
+                  <text x="320" y="420" text-anchor="middle" font-family="Inter, sans-serif" font-size="28" font-weight="800" fill="#171717">COMPFEEST 17</text>
+                </svg>
+                <div class="project-body">
+                  <h3 class="project-title">COMPFEEST 17 Fasilkom UI</h3>
+                  <p class="project-desc">Compfest is the biggest student-held IT event in Indonesia. Served as Vice IT Development Manager, leading a cross-functional team to ship event platforms.</p>
+                  <div class="project-actions">
+                    <a href="#" class="icon-square" aria-label="GitHub repository"><i class="bi bi-github"></i></a>
+                    <a href="#" class="btn-dark-pf"><i class="bi bi-box-arrow-up-right"></i> Live Demo</a>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- SKILLS & TECHNOLOGIES -->
+        <section class="content-section" id="skills">
+          <div class="section-label">Skills &amp; Technologies</div>
+
+          <div class="skills-tabs" role="tablist">
+            <button class="skills-tab active" id="tab-frontend" data-bs-toggle="tab" data-bs-target="#pane-frontend" type="button" role="tab" aria-controls="pane-frontend" aria-selected="true">Frontend</button>
+            <button class="skills-tab" id="tab-backend" data-bs-toggle="tab" data-bs-target="#pane-backend" type="button" role="tab" aria-controls="pane-backend" aria-selected="false">Backend</button>
+          </div>
+
+          <div class="tab-content">
+            <div class="tab-pane fade show active" id="pane-frontend" role="tabpanel" aria-labelledby="tab-frontend" tabindex="0">
+              <div class="skill-grid">
+                <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/react/react-original.svg" alt="React" title="React" />
+                <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/redux/redux-original.svg" alt="Redux" title="Redux" />
+                <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/nextjs/nextjs-original.svg" alt="Next.js" title="Next.js" />
+                <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/flutter/flutter-original.svg" alt="Flutter" title="Flutter" />
+                <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/vuejs/vuejs-original.svg" alt="Vue.js" title="Vue.js" />
+                <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/typescript/typescript-original.svg" alt="TypeScript" title="TypeScript" />
+                <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/tailwindcss/tailwindcss-original.svg" alt="Tailwind CSS" title="Tailwind CSS" />
+                <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/sass/sass-original.svg" alt="Sass" title="Sass" />
+              </div>
+            </div>
+
+            <div class="tab-pane fade" id="pane-backend" role="tabpanel" aria-labelledby="tab-backend" tabindex="0">
+              <div class="skill-grid">
+                <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/nodejs/nodejs-original.svg" alt="Node.js" title="Node.js" />
+                <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/express/express-original.svg" alt="Express" title="Express" />
+                <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg" alt="Python" title="Python" />
+                <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/laravel/laravel-original.svg" alt="Laravel" title="Laravel" />
+                <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/postgresql/postgresql-original.svg" alt="PostgreSQL" title="PostgreSQL" />
+                <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/mysql/mysql-original.svg" alt="MySQL" title="MySQL" />
+                <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/mongodb/mongodb-original.svg" alt="MongoDB" title="MongoDB" />
+                <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/redis/redis-original.svg" alt="Redis" title="Redis" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- CONTACT ME -->
+        <section class="content-section" id="contact">
+          <div class="section-label">Contact Me</div>
+          <form id="contact-form" style="max-width: 720px;">
+            <div class="mb-3">
+              <label for="name" class="form-label-pf d-block">Name</label>
+              <input type="text" class="form-control-pf" id="name" name="name" placeholder="Your name" required />
+            </div>
+            <div class="mb-3">
+              <label for="email" class="form-label-pf d-block">Email</label>
+              <input type="email" class="form-control-pf" id="email" name="email" placeholder="Example : yourname@mail.com" required />
+            </div>
+            <div class="mb-4">
+              <label for="message" class="form-label-pf d-block">Message</label>
+              <textarea class="form-control-pf" id="message" name="message" placeholder="Tell me about your project or just say hello!" required></textarea>
+            </div>
+            <button type="submit" class="btn-send">
+              Send Message <i class="bi bi-send"></i>
+            </button>
+          </form>
+        </section>
+
+        <!-- FOOTER -->
+        <footer class="pf-footer">
+          <strong>Portofolio</strong>
+          <span>&copy;2026 Alex Morgan.</span>
+        </footer>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Active state untuk tabs kustom (mengikuti class .skills-tab)
+    const tabEls = document.querySelectorAll('#skills [data-bs-toggle="tab"]');
+    tabEls.forEach((tabEl) => {
+      tabEl.addEventListener('shown.bs.tab', () => {
+        tabEls.forEach((t) => t.classList.remove('active'));
+        tabEl.classList.add('active');
+      });
+    });
+
+    // Contoh submit handler
+    document.getElementById('contact-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      alert('Thanks for your message!');
+      e.target.reset();
+    });
+  </script>
+</body>
+</html>

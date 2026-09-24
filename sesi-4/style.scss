@@ -1,0 +1,255 @@
+@use "sass:string";
+// 1. Buat Map Warna (Sass Map)
+$ct-colors: (
+  "ct-red-50": #fef2f2,
+  "ct-red-100": #fee2e2,
+  "ct-red-200": #fecaca,
+  "ct-red-300": #fca5a5,
+  "ct-red-400": #f87171,
+  "ct-red-500": #ef4444,
+  "ct-red-600": #dc2626,
+  "ct-red-700": #b91c1c,
+  "ct-red-800": #991b1b,
+  "ct-red-900": #7f1d1d,
+  "ct-red-950": #450a0a,
+
+  "ct-green-50": #f0fdf4,
+  "ct-green-100": #dcfce7,
+  "ct-green-200": #bbf7d0,
+  "ct-green-300": #86efac,
+  "ct-green-400": #4ade80,
+  "ct-green-500": #22c55e,
+  "ct-green-600": #16a34a,
+  "ct-green-700": #15803d,
+  "ct-green-800": #166534,
+  "ct-green-900": #14532d,
+  "ct-green-950": #052e16,
+
+  "ct-blue-50": #eff6ff,
+  "ct-blue-100": #dbeafe,
+  "ct-blue-200": #bfdbfe,
+  "ct-blue-300": #93c5fd,
+  "ct-blue-400": #60a5fa,
+  "ct-blue-500": #3b82f6,
+  "ct-blue-600": #2563eb,
+  "ct-blue-700": #1d4ed8,
+  "ct-blue-800": #1e40af,
+  "ct-blue-900": #1e3a8a,
+  "ct-blue-950": #172554,
+
+  "ct-purple-50": #faf5ff,
+  "ct-purple-100": #f3e8ff,
+  "ct-purple-200": #e9d5ff,
+  "ct-purple-300": #d8b4fe,
+  "ct-purple-400": #c084fc,
+  "ct-purple-500": #a855f7,
+  "ct-purple-600": #9333ea,
+  "ct-purple-700": #7e22ce,
+  "ct-purple-800": #6b21a8,
+  "ct-purple-900": #581c87,
+  "ct-purple-950": #3b0764,
+
+  "ct-pink-50": #fdf2f8,
+  "ct-pink-100": #fce7f3,
+  "ct-pink-200": #fbcfe8,
+  "ct-pink-300": #f9a8d4,
+  "ct-pink-400": #f472b6,
+  "ct-pink-500": #ec4899,
+  "ct-pink-600": #db2777,
+  "ct-pink-700": #be185d,
+  "ct-pink-800": #9d174d,
+  "ct-pink-900": #831843,
+  "ct-pink-950": #500724,
+
+  "ct-neutral-50": #fafafa,
+  "ct-neutral-100": #f5f5f5,
+  "ct-neutral-200": #e5e5e5,
+  "ct-neutral-300": #d4d4d4,
+  "ct-neutral-400": #a3a3a3,
+  "ct-neutral-500": #737373,
+  "ct-neutral-600": #525252,
+  "ct-neutral-700": #404040,
+  "ct-neutral-800": #262626,
+  "ct-neutral-900": #171717,
+  "ct-neutral-950": #0a0a0a,
+
+  "ct-yellow-50": #fefce8,
+  "ct-yellow-100": #fef9c3,
+  "ct-yellow-200": #fef08a,
+  "ct-yellow-300": #fde047,
+  "ct-yellow-400": #facc15,
+  "ct-yellow-500": #eab308,
+  "ct-yellow-600": #ca8a04,
+  "ct-yellow-700": #a16207,
+  "ct-yellow-800": #854d0e,
+  "ct-yellow-900": #713f12,
+  "ct-yellow-950": #422006,
+);
+
+$ct-typography: (
+  "ct-font-weight-thin": 100,
+  "ct-font-weight-extralight": 200,
+  "ct-font-weight-light": 300,
+  "ct-font-weight-regular": 400,
+  "ct-font-weight-medium": 500,
+  "ct-font-weight-semibold": 600,
+  "ct-font-weight-bold": 700,
+  "ct-font-weight-extrabold": 800,
+  "ct-font-weight-black": 900,
+
+  "ct-title1-font-size": 72px,
+  "ct-title1-line-height": 90px,
+  "ct-title1-letter-spacing": -2.25px,
+  "ct-title1-font-weight": 700,
+
+  "ct-title2-font-size": 60px,
+  "ct-title2-line-height": 72px,
+  "ct-title2-letter-spacing": -1.5px,
+  "ct-title2-font-weight": 700,
+
+  "ct-title3-font-size": 48px,
+  "ct-title3-line-height": 60px,
+  "ct-title3-letter-spacing": 0px,
+
+  "ct-h1-font-size": 40px,
+  "ct-h1-line-height": 48px,
+  "ct-h1-letter-spacing": -1px,
+
+  "ct-h2-font-size": 36px,
+  "ct-h2-line-height": 44px,
+  "ct-h2-letter-spacing": -0.75px,
+  "ct-h2-font-weight": 700,
+
+  "ct-h3-font-size": 32px,
+  "ct-h3-line-height": 40px,
+  "ct-h3-letter-spacing": 0px,
+
+  "ct-h4-font-size": 28px,
+  "ct-h4-line-height": 36px,
+  "ct-h4-letter-spacing": 0px,
+
+  "ct-h5-font-size": 24px,
+  "ct-h5-line-height": 32px,
+  "ct-h5-letter-spacing": 0px,
+
+  "ct-h6-font-size": 20px,
+  "ct-h6-line-height": 28px,
+  "ct-h6-letter-spacing": 0px,
+
+  "ct-label1-font-size": 18px,
+  "ct-label1-line-height": 24px,
+  "ct-label1-letter-spacing": 0.25px,
+
+  "ct-label2-font-size": 16px,
+  "ct-label2-line-height": 20px,
+  "ct-label2-letter-spacing": 0.25px,
+
+  "ct-label3-font-size": 14px,
+  "ct-label3-line-height": 18px,
+  "ct-label3-letter-spacing": 0.25px,
+
+  "ct-body1-font-size": 16px,
+  "ct-body1-line-height": 24px,
+  "ct-body1-letter-spacing": 0.5px,
+
+  "ct-body2-font-size": 14px,
+  "ct-body2-line-height": 20px,
+  "ct-body2-letter-spacing": 0.25px,
+
+  "ct-body3-font-size": 12px,
+  "ct-body3-line-height": 16px,
+  "ct-body3-letter-spacing": 0.4px,
+
+  "ct-body4-font-size": 10px,
+  "ct-body4-line-height": 14px,
+  "ct-body4-letter-spacing": 0.4px,
+
+  "ct-caption1-font-size": 14px,
+  "ct-caption1-line-height": 18px,
+  "ct-caption1-letter-spacing": 0.25px,
+
+  "ct-caption2-font-size": 12px,
+  "ct-caption2-line-height": 16px,
+  "ct-caption2-letter-spacing": 0px,
+);
+
+$ct-weights: (
+  "ct-font-weight-thin": 100,
+  "ct-font-weight-extralight": 200,
+  "ct-font-weight-light": 300,
+  "ct-font-weight-regular": 400,
+  "ct-font-weight-medium": 500,
+  "ct-font-weight-semibold": 600,
+  "ct-font-weight-bold": 700,
+  "ct-font-weight-extrabold": 800,
+  "ct-font-weight-black": 900,
+);
+
+:root {
+  --ct-font-family-primary: "Inter", sans-serif;
+
+  @each $name, $value in $ct-colors {
+    --#{$name}: #{$value};
+  }
+  @each $name, $value in $ct-typography {
+    --#{$name}: #{$value};
+  }
+}
+
+$font-styles: (
+  "title-1": "title1",
+  "title-2": "title2",
+  "title-3": "title3",
+  "h-1": "h1",
+  "h-2": "h2",
+  "h-3": "h3",
+  "h-4": "h4",
+  "h-5": "h5",
+  "h-6": "h6",
+  "label-1": "label1",
+  "label-2": "label2",
+  "label-3": "label3",
+  "body-1": "body1",
+  "body-2": "body2",
+  "body-3": "body3",
+  "body-4": "body4",
+  "caption-1": "caption1",
+  "caption-2": "caption2",
+);
+
+$font-weights: (
+  "thin",
+  "extralight",
+  "light",
+  "regular",
+  "medium",
+  "semibold",
+  "bold",
+  "extrabold",
+  "black"
+);
+
+@each $class-name, $var-name in $font-styles {
+  @each $weight in $font-weights {
+    .ct-#{$class-name}-#{$weight} {
+      font-family: var(--ct-font-family-primary);
+      font-size: var(--ct-#{$var-name}-font-size);
+      line-height: var(--ct-#{$var-name}-line-height);
+      letter-spacing: var(--ct-#{$var-name}-letter-spacing);
+      font-weight: var(--ct-font-weight-#{$weight});
+    }
+  }
+}
+
+@each $name, $value in $ct-colors {
+  $short-name: string.slice($name, 4);
+  .ct-bg-#{$short-name} {
+    background-color: var(--#{$name});
+  }
+  .ct-text-#{$short-name} {
+    color: var(--#{$name});
+  }
+  .ct-border-#{$short-name} {
+    border-color: var(--#{$name});
+  }
+}
