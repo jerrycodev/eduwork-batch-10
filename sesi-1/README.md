@@ -21,5 +21,7 @@ Buka file `index.html` di browser.
 ## Struktur File
 
 ```
-└── index.html      # Halaman utama
+├── index.html      # Halaman utama
+├── thumbnail.png   # Gambar thumbnail
+└── README.md       # Deskripsi
 ```
