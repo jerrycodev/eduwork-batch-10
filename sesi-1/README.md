@@ -1,4 +1,4 @@
-# Tugas Sesi 1 - HTML
+# Tugas Sesi 1 : HTML
 
 ![Thumbnail](thumbnail.png)
 
