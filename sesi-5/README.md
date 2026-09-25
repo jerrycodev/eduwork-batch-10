@@ -1,4 +1,4 @@
-# Tugas Sesi 5 - E-Commerce Product Listing
+# Tugas Sesi 5 : E-Commerce Product Listing
 
 ![Thumbnail](thumbnail.png)
 
