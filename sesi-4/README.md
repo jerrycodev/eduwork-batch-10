@@ -1,4 +1,4 @@
-# Tugas Sesi 4 - Bootstrap 5
+# Tugas Sesi 4 : Bootstrap 5
 
 ![Thumbnail](thumbnail.png)
 
