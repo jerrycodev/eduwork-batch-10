@@ -1,4 +1,4 @@
-# Tugas Sesi 6 - Database MySQL (CRUD)
+# Tugas Sesi 6 : Database MySQL (CRUD)
 
 ![Thumbnail](thumbnail.png)
 
