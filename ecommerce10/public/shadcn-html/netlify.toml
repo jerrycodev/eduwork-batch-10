@@ -1,0 +1,60 @@
+[build]
+  publish = "dist/"
+  command = "echo 'No build step needed'"
+
+# Production: auto-deploy on push to main
+[context.production]
+  publish = "dist/"
+
+# Deploy Previews: auto-generated for every PR
+[context.deploy-preview]
+  publish = "dist/"
+
+# Branch deploys: auto-deploy the dev branch
+[context.branch-deploy]
+  publish = "dist/"
+
+# Serve .md files as plain text so fetch() can read them
+[[headers]]
+  for = "/*.md"
+  [headers.values]
+    Content-Type = "text/plain; charset=utf-8"
+    Access-Control-Allow-Origin = "*"
+
+[[headers]]
+  for = "/components/*/*.md"
+  [headers.values]
+    Content-Type = "text/plain; charset=utf-8"
+    Access-Control-Allow-Origin = "*"
+
+# Security headers for all pages
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "SAMEORIGIN"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+# Cache fonts aggressively (immutable, 1 year)
+[[headers]]
+  for = "/documentation/fonts/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Cache CSS and JS (1 day)
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+
+# Cache SVG favicon (1 week)
+[[headers]]
+  for = "/*.svg"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
