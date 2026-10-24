@@ -1,8 +1,8 @@
-# E-Commerce Laravel : Tugas Sesi 10 - 14
+# E-Commerce Laravel : Tugas Sesi 10 - 15
 
 ## Deskripsi
 
-Folder `ecommerce10` berisi proyek e-commerce berbasis Laravel yang dibangun secara bertahap mulai dari sesi 10 sampai sesi 14. Proyek dimulai dari pembuatan proyek Laravel dan route dasar, kemudian dilanjutkan dengan controller, halaman Blade, komponen tampilan, migration dan seeder data dummy, hingga relasi model dan pagination data produk.
+Folder `ecommerce10` berisi proyek e-commerce berbasis Laravel yang dibangun secara bertahap mulai dari sesi 10 sampai sesi 15. Proyek dimulai dari pembuatan proyek Laravel dan route dasar, kemudian dilanjutkan dengan controller, halaman Blade, komponen tampilan, migration dan seeder data dummy, relasi model dan pagination data produk, hingga penambahan fitur autentikasi menggunakan Laravel Breeze.
 
 README ini disusun per sesi agar riwayat pengerjaan mudah dibaca dan dapat diperbarui ketika ada tugas sesi berikutnya.
 
@@ -15,6 +15,7 @@ README ini disusun per sesi agar riwayat pengerjaan mudah dibaca dan dapat diper
 | 12 | Dynamic Page Creation | Halaman Blade dinamis dan komponen navbar/footer |
 | 13 | Database Migration & Dummy Data Using AI | Migration tabel dan seeder data dummy |
 | 14 | Eloquent Relationship & Pagination | Relasi model Product/ProductCategory, data produk dari database, dan pagination |
+| 15 | Authentication with Laravel Breeze | Instalasi Laravel Breeze, login, registrasi, dan kustomisasi tampilan bawaan |
 
 ## Tugas Sesi 10 : Laravel Basics & Project Introduction with AI
 
@@ -156,12 +157,12 @@ database/seeders/
 
 ## Tugas Sesi 14 : Eloquent Relationship & Pagination
 
-![Thumbnail](thumbnail_tugas_sesi_14_home.png)
-![Thumbnail](thumbnail_tugas_sesi_14_product_detail.png)
+![Thumbnail](.thumbnails/tugas_sesi_14_home.png)
+![Thumbnail](.thumbnails/tugas_sesi_14_product_detail.png)
 
 ### Deskripsi
 
-Menghubungkan model menggunakan relasi Eloquent, lalu menampilkan data produk dari database menggunakan controller dan Blade. Daftar produk dibatasi dengan pagination agar data yang tampil dalam satu halaman tetap rapi.
+Menghubungkan model menggunakan relasi Eloquent, lalu menampilkan data produk dari database menggunakan controller dan Blade. Daftar produk dibatasi dengan pagination agar data yang tampil dalam satu halaman tetap rapi. Mulai sesi 14, proyek menggunakan database MySQL.
 
 ### Fitur
 
@@ -177,6 +178,7 @@ Menghubungkan model menggunakan relasi Eloquent, lalu menampilkan data produk da
 ### Dibangun Menggunakan
 
 - Eloquent ORM
+- MySQL
 - Route Model Binding
 - Laravel Pagination
 - Laravel Blade
@@ -202,15 +204,91 @@ database/seeders/ProductSeeder.php
 routes/web.php
 ```
 
+## Tugas Sesi 15 : Authentication with Laravel Breeze
+
+![Thumbnail](.thumbnails/tugas_sesi_15_dashboard.png)
+![Thumbnail](.thumbnails/tugas_sesi_15_login.png)
+![Thumbnail](.thumbnails/tugas_sesi_15_register.png)
+
+### Deskripsi
+
+Menginstal Laravel Breeze untuk menambahkan fitur autentikasi seperti login dan registrasi, kemudian menyesuaikan file Blade bawaan Breeze agar sesuai dengan identitas aplikasi e-commerce ini. Fitur autentikasi ini menggunakan database MySQL yang sama dengan tugas sesi 14.
+
+### Fitur
+
+- Instalasi Laravel Breeze dengan stack Blade untuk fitur autentikasi.
+- Halaman login, registrasi, lupa password, reset password, verifikasi email, dan konfirmasi password.
+- Fitur logout, dashboard untuk pengguna yang sudah login, serta pengelolaan profil (ubah data profil, ubah password, dan hapus akun).
+- Route autentikasi dipisahkan pada `routes/auth.php`, sedangkan route dashboard dan profil dilindungi middleware `auth` dan `verified`.
+- Kustomisasi tampilan bawaan Breeze: logo aplikasi diganti ikon toko (Lucide `store`) dan nama situs menggunakan `config('app.name')` dengan nilai `Ecommerce`.
+- Penyesuaian halaman `welcome`, layout guest, navigation bar, serta komponen Blade bawaan Breeze agar selaras dengan tema aplikasi.
+- Dependency frontend Breeze: Alpine.js dan `@tailwindcss/forms`.
+- Test fitur autentikasi dan profil dari Breeze.
+
+### Dibangun Menggunakan
+
+- Laravel Breeze 2
+- Laravel Blade
+- Alpine.js
+- Tailwind CSS 4
+- `@tailwindcss/forms`
+- MySQL
+- Vite
+
+### File Terkait
+
+```text
+app/Http/Controllers/Auth/
+app/Http/Controllers/ProfileController.php
+app/Http/Requests/Auth/LoginRequest.php
+app/Http/Requests/ProfileUpdateRequest.php
+app/View/Components/AppLayout.php
+app/View/Components/GuestLayout.php
+app/Models/User.php
+routes/auth.php
+routes/web.php
+resources/views/auth/
+resources/views/layouts/
+resources/views/profile/
+resources/views/components/application-logo.blade.php
+resources/views/dashboard.blade.php
+resources/views/welcome.blade.php
+resources/css/app.css
+resources/js/app.js
+tests/Feature/Auth/
+tests/Feature/ProfileTest.php
+```
+
 ## Cara Menjalankan
 
-Pastikan PHP 8.3+, Composer, Node.js, dan npm sudah terpasang. Secara default proyek menggunakan database SQLite.
+Pastikan PHP 8.3+, Composer, Node.js, npm, dan MySQL sudah terpasang. Sejak tugas sesi 14, proyek menggunakan database MySQL.
+
+Buat database MySQL terlebih dahulu:
+
+```bash
+mysql -u root -p -e "CREATE DATABASE ecommerce10;"
+```
 
 ```bash
 composer install
 cp .env.example .env
 php artisan key:generate
-touch database/database.sqlite
+```
+
+Sesuaikan konfigurasi database pada file `.env` (`.env.example` masih menggunakan SQLite):
+
+```dotenv
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=ecommerce10
+DB_USERNAME=root
+DB_PASSWORD=
+```
+
+Setelah konfigurasi database benar, jalankan migration dan frontend:
+
+```bash
 php artisan migrate --seed
 npm install
 npm run dev
@@ -222,9 +300,7 @@ Jalankan server Laravel pada terminal terpisah:
 php artisan serve
 ```
 
-Kemudian buka `http://127.0.0.1:8000` di browser.
-
-Jika menggunakan MySQL, sesuaikan konfigurasi `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, dan `DB_PASSWORD` pada file `.env` sebelum menjalankan migration.
+Kemudian buka `http://127.0.0.1:8000` di browser. Halaman login tersedia di `/login`, registrasi di `/register`, dan dashboard pengguna di `/dashboard`.
 
 Untuk menjalankan ulang seeder:
 
@@ -237,9 +313,10 @@ php artisan db:seed
 ```text
 ecommerce10/
 ├── app/
-│   ├── Http/Controllers/       # Controller halaman, produk, cart, dan order
+│   ├── Http/Controllers/       # Controller halaman, produk, cart, order, auth, dan profil
+│   ├── Http/Requests/          # Form request validasi auth dan profil
 │   ├── Models/                 # Model Eloquent beserta relasinya
-│   └── View/Components/        # Class komponen Blade
+│   └── View/Components/        # Class komponen Blade (termasuk layout Breeze)
 ├── database/
 │   ├── migrations/             # Struktur tabel database
 │   └── seeders/                # Data dummy produk dan kategori
@@ -251,8 +328,12 @@ ecommerce10/
 │       ├── home/               # Halaman utama dan daftar produk (dengan filter & pagination)
 │       ├── product/            # Halaman detail produk
 │       ├── cart/               # Halaman keranjang
+│       ├── auth/               # Halaman login, registrasi, dan reset password
+│       ├── layouts/            # Layout aplikasi dan guest dari Breeze
+│       ├── profile/            # Halaman pengelolaan profil
 │       └── vendor/pagination/  # Template pagination Tailwind
-├── routes/web.php              # Definisi route
+├── routes/web.php              # Definisi route utama
+├── routes/auth.php             # Definisi route autentikasi
 ├── composer.json               # Dependency PHP
 ├── package.json                # Dependency frontend
 ├── vite.config.js              # Konfigurasi Vite
