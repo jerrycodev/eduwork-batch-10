@@ -7,7 +7,7 @@
             <!-- Gambar Utama -->
             <div class="overflow-hidden rounded-lg bg-muted/50 aspect-square">
                 <img src="{{ $product->image ?? 'https://placehold.co/600x600' }}"
-                    alt="{{ $product->title ?? 'Gambar Produk' }}" class="w-full h-full object-cover object-center">
+                    alt="{{ $product->name ?? 'Gambar Produk' }}" class="w-full h-full object-cover object-center">
             </div>
 
             <!-- Thumbnail Placeholder (Jika ada multi-gambar) -->
@@ -25,7 +25,7 @@
         <!-- Kanan: Detail Produk -->
         <div class="flex flex-col">
             <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-2">
-                {{ $product->title ?? 'Nama Produk Berkualitas Tinggi' }}
+                {{ $product->name ?? 'Nama Produk Berkualitas Tinggi' }}
             </h1>
 
             <!-- Harga & Badge -->

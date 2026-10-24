@@ -36,7 +36,16 @@ class ProductController extends Controller
      */
     public function show(Product $product)
     {
-        //
+        $category = $product->category;
+
+        $links = [
+            ['Home', route('home')],
+            ['Shop', route('shop')],
+            [$category->name, route('shop', ['category' => $category->slug])],
+            [$product->name, route('product-detail', $product)],
+        ];
+
+        return view('product.description', compact('product', 'links'));
     }
 
     /**

@@ -3,28 +3,25 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
-use Illuminate\Http\Request;
+use App\Models\ProductCategory;
+use Illuminate\Database\Eloquent\Builder;
 
 class HomeController extends Controller
 {
-    public function index() {
-        $productModel = new Product();
-        $products = $productModel->findAll();
-        return view('home.index', compact('products'));
-    }
+    public function index()
+    {
+        $categorySlug = request('category');
 
-    public function productDetail(int $id) {
-        $productModel = new Product();
-        $product = $productModel->findById($id);
-        $links = [
-            ['Home', '/'],
-            ['Shop', '/shop'],
-            [$product->title, $product->link],
-        ];
-        return view('product.description', compact('product', 'links'));
-    }
+        $products = Product::query()
+            ->when($categorySlug, fn (Builder $query, string $slug) => $query->whereHas(
+                'category',
+                fn (Builder $query) => $query->where('slug', $slug),
+            ))
+            ->paginate(8)
+            ->withQueryString();
 
-    public function cart() {
-        return view('cart.index');
+        $categories = ProductCategory::withCount('products')->get();
+
+        return view('home.index', compact('products', 'categories'));
     }
 }
