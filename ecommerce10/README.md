@@ -1,8 +1,8 @@
-# E-Commerce Laravel : Tugas Sesi 10 - 13
+# E-Commerce Laravel : Tugas Sesi 10 - 14
 
 ## Deskripsi
 
-Folder `ecommerce10` berisi proyek e-commerce berbasis Laravel yang dibangun secara bertahap mulai dari sesi 10 sampai sesi 13. Proyek dimulai dari pembuatan proyek Laravel dan route dasar, kemudian dilanjutkan dengan controller, halaman Blade, komponen tampilan, hingga migration dan seeder data dummy.
+Folder `ecommerce10` berisi proyek e-commerce berbasis Laravel yang dibangun secara bertahap mulai dari sesi 10 sampai sesi 14. Proyek dimulai dari pembuatan proyek Laravel dan route dasar, kemudian dilanjutkan dengan controller, halaman Blade, komponen tampilan, migration dan seeder data dummy, hingga relasi model dan pagination data produk.
 
 README ini disusun per sesi agar riwayat pengerjaan mudah dibaca dan dapat diperbarui ketika ada tugas sesi berikutnya.
 
@@ -14,6 +14,7 @@ README ini disusun per sesi agar riwayat pengerjaan mudah dibaca dan dapat diper
 | 11 | Blade Templating & Controller Essentials | Controller untuk mengelola produk dan halaman |
 | 12 | Dynamic Page Creation | Halaman Blade dinamis dan komponen navbar/footer |
 | 13 | Database Migration & Dummy Data Using AI | Migration tabel dan seeder data dummy |
+| 14 | Eloquent Relationship & Pagination | Relasi model Product/ProductCategory, data produk dari database, dan pagination |
 
 ## Tugas Sesi 10 : Laravel Basics & Project Introduction with AI
 
@@ -153,6 +154,54 @@ database/seeders/
 └── ProductSeeder.php
 ```
 
+## Tugas Sesi 14 : Eloquent Relationship & Pagination
+
+![Thumbnail](thumbnail_tugas_sesi_14_home.png)
+![Thumbnail](thumbnail_tugas_sesi_14_product_detail.png)
+
+### Deskripsi
+
+Menghubungkan model menggunakan relasi Eloquent, lalu menampilkan data produk dari database menggunakan controller dan Blade. Daftar produk dibatasi dengan pagination agar data yang tampil dalam satu halaman tetap rapi.
+
+### Fitur
+
+- Model `Product` dengan relasi `category()`, `carts()`, dan `orderItems()`, serta model `ProductCategory` dengan relasi `products()`.
+- Relasi pendukung antar model: `Cart` ke `User`/`Product`/`Order`, `Order` ke `User`/`Cart`/`OrderItem`, `OrderItem` ke `Order`/`Product`, dan `User` ke `Cart`/`Order`.
+- `HomeController@index` mengambil produk dari database dengan `paginate(8)` dan `withQueryString()`, mendukung filter kategori lewat query `?category=slug`, serta mengirim daftar kategori dengan jumlah produknya (`withCount('products')`).
+- `ProductController@show` menampilkan detail produk berdasarkan route model binding beserta breadcrumb kategori.
+- Halaman home menampilkan daftar kategori yang dapat diklik dan grid produk dengan komponen `product-card`.
+- Pagination Tailwind pada halaman daftar produk.
+- Data dummy hardcoded pada model `Product` dihapus dan diganti data dari database hasil seeder.
+- Seeder produk menggunakan gambar berbeda untuk setiap kategori (headphone, earbuds, speaker, smartwatch, keyboard).
+
+### Dibangun Menggunakan
+
+- Eloquent ORM
+- Route Model Binding
+- Laravel Pagination
+- Laravel Blade
+- Tailwind CSS 4
+
+### File Terkait
+
+```text
+app/Models/Product.php
+app/Models/ProductCategory.php
+app/Models/Cart.php
+app/Models/Order.php
+app/Models/OrderItem.php
+app/Models/User.php
+app/Http/Controllers/HomeController.php
+app/Http/Controllers/ProductController.php
+app/Http/Controllers/CartController.php
+resources/views/home/index.blade.php
+resources/views/product/description.blade.php
+resources/views/vendor/pagination/tailwind.blade.php
+resources/views/vendor/pagination/simple-tailwind.blade.php
+database/seeders/ProductSeeder.php
+routes/web.php
+```
+
 ## Cara Menjalankan
 
 Pastikan PHP 8.3+, Composer, Node.js, dan npm sudah terpasang. Secara default proyek menggunakan database SQLite.
@@ -189,7 +238,7 @@ php artisan db:seed
 ecommerce10/
 ├── app/
 │   ├── Http/Controllers/       # Controller halaman, produk, cart, dan order
-│   ├── Models/                 # Model Eloquent
+│   ├── Models/                 # Model Eloquent beserta relasinya
 │   └── View/Components/        # Class komponen Blade
 ├── database/
 │   ├── migrations/             # Struktur tabel database
@@ -199,9 +248,10 @@ ecommerce10/
 │   ├── js/app.js               # Entry point JavaScript
 │   └── views/
 │       ├── components/         # Navbar, footer, layout, product card, dll.
-│       ├── home/               # Halaman utama dan daftar produk
+│       ├── home/               # Halaman utama dan daftar produk (dengan filter & pagination)
 │       ├── product/            # Halaman detail produk
-│       └── cart/               # Halaman keranjang
+│       ├── cart/               # Halaman keranjang
+│       └── vendor/pagination/  # Template pagination Tailwind
 ├── routes/web.php              # Definisi route
 ├── composer.json               # Dependency PHP
 ├── package.json                # Dependency frontend
