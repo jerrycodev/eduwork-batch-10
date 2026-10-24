@@ -1,9 +1,68 @@
+
 @import 'tailwindcss';
+
+@import url('https://fonts.googleapis.com/css2?family=Geist:ital,wght@0,100..900;1,100..900&display=swap');
+@import '../../public/shadcn-html/dist/theme/default-semantic-tokens.css';
+@import '../../public/shadcn-html/dist/components/accordion/accordion.css';
+@import '../../public/shadcn-html/dist/components/button/button.css';
+@import '../../public/shadcn-html/dist/components/collapsible/collapsible.css';
+@import '../../public/shadcn-html/dist/components/dialog/dialog.css';
+@import '../../public/shadcn-html/dist/components/input/input.css';
+@import '../../public/shadcn-html/dist/components/progress/progress.css';
+@import '../../public/shadcn-html/dist/components/sidebar/sidebar.css';
+@import '../../public/shadcn-html/dist/components/steps/steps.css';
+@import '../../public/shadcn-html/dist/components/toast/toast.css';
+@import '../../public/shadcn-html/dist/components/typography/typography.css';
+@import '../../public/shadcn-html/dist/components/alert/alert.css';
+@import '../../public/shadcn-html/dist/components/button-group/button-group.css';
+@import '../../public/shadcn-html/dist/components/color-picker/color-picker.css';
+@import '../../public/shadcn-html/dist/components/dropdown/dropdown.css';
+@import '../../public/shadcn-html/dist/components/label/label.css';
+@import '../../public/shadcn-html/dist/components/radio/radio.css';
+@import '../../public/shadcn-html/dist/components/skeleton/skeleton.css';
+@import '../../public/shadcn-html/dist/components/switch/switch.css';
+@import '../../public/shadcn-html/dist/components/toggle/toggle.css';
+@import '../../public/shadcn-html/dist/components/alert-dialog/alert-dialog.css';
+@import '../../public/shadcn-html/dist/components/calendar/calendar.css';
+@import '../../public/shadcn-html/dist/components/combobox/combobox.css';
+@import '../../public/shadcn-html/dist/components/file-input/file-input.css';
+@import '../../public/shadcn-html/dist/components/navigation-menu/navigation-menu.css';
+@import '../../public/shadcn-html/dist/components/scroll-area/scroll-area.css';
+@import '../../public/shadcn-html/dist/components/slider/slider.css';
+@import '../../public/shadcn-html/dist/components/table/table.css';
+@import '../../public/shadcn-html/dist/components/toggle-group/toggle-group.css';
+@import '../../public/shadcn-html/dist/components/avatar/avatar.css';
+@import '../../public/shadcn-html/dist/components/card/card.css';
+@import '../../public/shadcn-html/dist/components/command/command.css';
+@import '../../public/shadcn-html/dist/components/form/form.css';
+@import '../../public/shadcn-html/dist/components/number-input/number-input.css';
+@import '../../public/shadcn-html/dist/components/select/select.css';
+@import '../../public/shadcn-html/dist/components/sortable/sortable.css';
+@import '../../public/shadcn-html/dist/components/tabs/tabs.css';
+@import '../../public/shadcn-html/dist/components/toolbar/toolbar.css';
+@import '../../public/shadcn-html/dist/components/badge/badge.css';
+@import '../../public/shadcn-html/dist/components/carousel/carousel.css';
+@import '../../public/shadcn-html/dist/components/context-menu/context-menu.css';
+@import '../../public/shadcn-html/dist/components/icon/icon.css';
+@import '../../public/shadcn-html/dist/components/pagination/pagination.css';
+@import '../../public/shadcn-html/dist/components/separator/separator.css';
+@import '../../public/shadcn-html/dist/components/spinner/spinner.css';
+@import '../../public/shadcn-html/dist/components/textarea/textarea.css';
+@import '../../public/shadcn-html/dist/components/tooltip/tooltip.css';
+@import '../../public/shadcn-html/dist/components/breadcrumb/breadcrumb.css';
+@import '../../public/shadcn-html/dist/components/checkbox/checkbox.css';
+@import '../../public/shadcn-html/dist/components/date-picker/date-picker.css';
+@import '../../public/shadcn-html/dist/components/image/image.css';
+@import '../../public/shadcn-html/dist/components/popover/popover.css';
+@import '../../public/shadcn-html/dist/components/sheet/sheet.css';
+@import '../../public/shadcn-html/dist/components/statistic/statistic.css';
+@import '../../public/shadcn-html/dist/components/timeline/timeline.css';
+@import '../../public/shadcn-html/dist/components/tree-view/tree-view.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
