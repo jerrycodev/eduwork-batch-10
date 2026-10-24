@@ -13,6 +13,18 @@ return new class extends Migration
     {
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id')->constrained();
+            $table->foreignId('cart_id')->constrained();
+            $table->string('user_name');
+            $table->string('user_email');
+            $table->string('user_phone');
+            $table->string('address');
+            $table->string('city');
+            $table->string('state');
+            $table->string('zip');
+            $table->string('country');
+            $table->integer('total');
+            $table->string('status');
             $table->timestamps();
         });
     }

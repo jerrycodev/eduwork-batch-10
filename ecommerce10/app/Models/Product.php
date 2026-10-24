@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
+#[Fillable(['name', 'slug', 'description', 'image', 'price', 'stock', 'category_id'])]
 class Product extends Model
 {
     private $dummy_products = [
@@ -38,13 +40,14 @@ class Product extends Model
             'description' => 'Teman setia perjalanan Anda dengan daya tahan baterai hingga 30 jam, dukungan codec nirkabel berkualitas, dan fitur asisten suara.',
             'link' => '/product/4',
             'price' => 2199000,
-        ]
+        ],
     ];
 
     public function findAll()
     {
         return $this->dummy_products;
     }
+
     public function findById(int $id)
     {
         return (object) collect($this->dummy_products)->firstWhere('id', $id);
