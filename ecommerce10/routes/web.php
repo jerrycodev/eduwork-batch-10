@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FileUploadController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ProductCategoryController;
@@ -16,15 +17,12 @@ Route::get('/checkout', [HomeController::class, 'index'])->name('checkout');
 Route::get('/product/{product}', [HomeController::class, 'productDetail'])->name('product-detail');
 
 Route::prefix('/dashboard')->middleware(['auth', 'verified'])->group(function () {
+    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::resource('products', ProductController::class);
     Route::resource('product-categories', ProductCategoryController::class);
     Route::post('file-uploads', [FileUploadController::class, 'store'])->name('file-uploads.store');
     Route::delete('file-uploads', [FileUploadController::class, 'destroy'])->name('file-uploads.destroy');
 });
-
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

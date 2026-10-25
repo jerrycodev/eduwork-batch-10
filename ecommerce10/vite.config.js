@@ -10,6 +10,7 @@ export default defineConfig({
                 'resources/css/app.css',
                 'resources/js/app.js',
                 'resources/js/category.form.js',
+                'resources/js/dashboard.js',
                 'resources/js/file_upload.form.js',
                 'resources/js/product.form.js',
             ],

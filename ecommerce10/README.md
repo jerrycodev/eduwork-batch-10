@@ -1,8 +1,8 @@
-# E-Commerce Laravel : Tugas Sesi 10 - 17
+# E-Commerce Laravel : Tugas Sesi 10 - 18
 
 ## Deskripsi
 
-Folder `ecommerce10` berisi proyek e-commerce berbasis Laravel yang dibangun secara bertahap mulai dari sesi 10 sampai sesi 17. Proyek dimulai dari pembuatan proyek Laravel dan route dasar, kemudian dilanjutkan dengan controller, halaman Blade, komponen tampilan, migration dan seeder data dummy, relasi model dan pagination data produk, penambahan fitur autentikasi menggunakan Laravel Breeze, pembuatan halaman admin untuk pengelolaan produk dan kategori, hingga form tambah/edit produk dan kategori beserta upload gambar.
+Folder `ecommerce10` berisi proyek e-commerce berbasis Laravel yang dibangun secara bertahap mulai dari sesi 10 sampai sesi 18. Proyek dimulai dari pembuatan proyek Laravel dan route dasar, kemudian dilanjutkan dengan controller, halaman Blade, komponen tampilan, migration dan seeder data dummy, relasi model dan pagination data produk, penambahan fitur autentikasi menggunakan Laravel Breeze, pembuatan halaman admin untuk pengelolaan produk dan kategori, form tambah/edit produk dan kategori beserta upload gambar, hingga dashboard utama dengan ringkasan data dan grafik.
 
 README ini disusun per sesi agar riwayat pengerjaan mudah dibaca dan dapat diperbarui ketika ada tugas sesi berikutnya.
 
@@ -18,6 +18,7 @@ README ini disusun per sesi agar riwayat pengerjaan mudah dibaca dan dapat diper
 | 15 | Authentication with Laravel Breeze | Instalasi Laravel Breeze, login, registrasi, dan kustomisasi tampilan bawaan |
 | 16 | Admin Product & Category Management | Menu navigasi, tabel daftar kategori dan produk, serta tombol tambah, edit, dan hapus |
 | 17 | Product & Category Create/Edit Forms | Form tambah/edit produk dan kategori, validasi, serta upload gambar produk |
+| 18 | Dashboard Summary & Analytics | Ringkasan jumlah produk, kategori, dan klik produk, serta grafik dashboard |
 
 ## Tugas Sesi 10 : Laravel Basics & Project Introduction with AI
 
@@ -367,6 +368,49 @@ tests/Feature/ProductTest.php
 tests/Feature/FileUploadTest.php
 ```
 
+## Tugas Sesi 18 : Dashboard Summary & Analytics
+
+![Thumbnail](.thumbnails/tugas_sesi_18_dashboard.png)
+
+### Deskripsi
+
+Membuat tampilan dashboard utama yang menampilkan ringkasan informasi tentang jumlah produk, jumlah kategori produk, dan jumlah klik produk, dilengkapi grafik analitik serta tabel klik produk.
+
+### Fitur
+
+- `DashboardController@index` menghitung jumlah produk dan kategori langsung dari database menggunakan Eloquent.
+- Kartu ringkasan menampilkan Total Products, Total Categories, Total Orders, dan Total Customers.
+- Tabel `Products Clicks` menjadi ringkasan jumlah klik produk dan menampilkan 5 produk terbaru beserta jumlah klik bulan lalu, bulan ini, total klik, serta persentase tren.
+- Data klik produk disimulasikan dari ID produk untuk kebutuhan tampilan dashboard.
+- Grafik `Orders Analytic` berupa line chart berisi data income dan expense per bulan.
+- Grafik `Operating System` berupa doughnut chart berisi distribusi sistem operasi.
+- Data grafik dikirim dari controller dalam bentuk JSON dan dirender menggunakan Chart.js.
+- Route dashboard dipindahkan ke controller dan tetap dilindungi middleware `auth` serta `verified`.
+- Test fitur dashboard untuk memastikan ringkasan dan elemen grafik tampil.
+
+### Dibangun Menggunakan
+
+- Laravel Controller
+- Eloquent ORM
+- MySQL
+- Laravel Blade
+- Tailwind CSS 4
+- Chart.js
+- Lucide Icons
+- Vite
+- Pest
+
+### File Terkait
+
+```text
+app/Http/Controllers/DashboardController.php
+resources/views/dashboard.blade.php
+resources/js/dashboard.js
+vite.config.js
+routes/web.php
+tests/Feature/DashboardTest.php
+```
+
 ## Cara Menjalankan
 
 Pastikan PHP 8.3+, Composer, Node.js, npm, dan MySQL sudah terpasang. Sejak tugas sesi 14, proyek menggunakan database MySQL.
@@ -422,7 +466,7 @@ php artisan db:seed
 ```text
 ecommerce10/
 ├── app/
-│   ├── Http/Controllers/       # Controller halaman, produk, kategori, upload, cart, order, auth, dan profil
+│   ├── Http/Controllers/       # Controller dashboard, halaman, produk, kategori, upload, cart, order, auth, dan profil
 │   ├── Http/Requests/          # Form request validasi auth dan profil
 │   ├── Models/                 # Model Eloquent beserta relasinya
 │   └── View/Components/        # Class komponen Blade (termasuk layout Breeze)
@@ -431,8 +475,9 @@ ecommerce10/
 │   └── seeders/                # Data dummy produk dan kategori
 ├── resources/
 │   ├── css/app.css             # Style Tailwind CSS
-│   ├── js/                     # Entry point dan script form produk, kategori, serta upload
+│   ├── js/                     # Entry point, script dashboard, form produk/kategori, dan upload
 │   └── views/
+│       ├── dashboard.blade.php # Dashboard utama dengan ringkasan dan grafik
 │       ├── components/         # Navbar, footer, layout, product card, dll.
 │       ├── home/               # Halaman utama dan daftar produk (dengan filter & pagination)
 │       ├── product/            # Halaman detail produk
