@@ -19,6 +19,11 @@ $columns = ['Image', 'Name', 'Price', 'Stock', 'Category', 'Description', 'Actio
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col gap-4">
+            @if (session('success'))
+                <x-alert class="bg-green-200 border-green-400">
+                    {{ session('success') }}
+                </x-alert>
+            @endif
             <form action="{{ route('products.index') }}" method="GET">
                 <div class="flex flex-wrap sm:flex-nowrap items-center gap-4">
                     <input type="search" name="search" placeholder="Search" class="input"
@@ -104,6 +109,7 @@ $columns = ['Image', 'Name', 'Price', 'Stock', 'Category', 'Description', 'Actio
                                         <form action="{{ route('products.destroy', $product) }}" method="POST"
                                             onsubmit="return confirm('Are you sure?')">
                                             @csrf
+                                            @method('DELETE')
                                             <button type="submit" class="text-red-500 underline cursor-pointer">
                                                 Delete
                                             </button>

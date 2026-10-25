@@ -22,7 +22,7 @@
                         <i class="font-bold" data-lucide="shopping-cart"></i>
                     </a></li>
                 @auth
-                    <li class="nav-menu-item"><a class="nav-menu-link" href="/login" data-variant="outline"
+                    <li class="nav-menu-item"><a class="nav-menu-link" href="/profile" data-variant="outline"
                             data-tooltip-trigger="tooltip-profile">
                             <div class="tooltip" id="tooltip-profile" popover="hint" role="tooltip">Profile</div>
                             <i class="font-bold" data-lucide="user-round"></i>

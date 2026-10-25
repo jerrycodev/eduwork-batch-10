@@ -4,15 +4,17 @@
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                 {{ __('Categories') }}
             </h2>
-            <a href="{{ route('product-categories.create') }}" class="btn" data-variant="secondary">
-                <i data-lucide="plus" class="h-4 w-4"></i>
-                {{ __('Create Category') }}
-            </a>
+            @include('admin.categories._form')
         </div>
     </x-slot>
 
     <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 flex flex-col gap-4">
+            @if (session('success'))
+                <x-alert class="bg-green-200 border-green-400">
+                    {{ session('success') }}
+                </x-alert>
+            @endif
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <table class="table">
                     <thead>
@@ -29,7 +31,7 @@
                         @foreach ($categories as $category)
                             <tr class="table-row">
                                 <td class="table-cell">
-                                    <a href="{{ route('products.index', ['category_id' => $category->id]) }}">
+                                    <a href="{{ route('products.index', ['category_id' => $category->id]) }}" class="hover:underline">
                                         {{ $category->name }}
                                     </a>
                                 </td>
@@ -40,17 +42,19 @@
                                 <td class="table-cell">{{ $category->products_sum_stock }}</td>
                                 <td class="table-cell">
                                     <div class="flex items-center gap-2 justify-end">
-                                        <a href="{{ route('product-categories.show', $category) }}"
-                                            class="text-indigo-400 underline">
-                                            {{ __('View') }}
-                                        </a>
-                                        <a href="{{ route('product-categories.edit', $category) }}"
-                                            class="text-indigo-400 underline">
+                                        <button type="button" class="text-indigo-400 underline cursor-pointer"
+                                            data-dialog-trigger="category-dialog"
+                                            data-dialog-mode="edit"
+                                            data-dialog-id="{{ $category->id }}"
+                                            data-dialog-name="{{ $category->name }}"
+                                            data-dialog-slug="{{ $category->slug }}"
+                                            data-dialog-url="{{ route('product-categories.update', $category) }}">
                                             {{ __('Edit') }}
-                                        </a>
+                                        </button>
                                         <form action="{{ route('product-categories.destroy', $category) }}"
                                             method="POST" onsubmit="return confirm('Are you sure?')">
                                             @csrf
+                                            @method('DELETE')
                                             <button type="submit" class="text-red-500 underline cursor-pointer">
                                                 Delete
                                             </button>

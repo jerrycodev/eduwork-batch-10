@@ -24,4 +24,15 @@ class HomeController extends Controller
 
         return view('home.index', compact('products', 'categories'));
     }
+
+    public function productDetail(Product $product)
+    {
+        $links = [
+            ['Home', route('home')],
+            ['Shop', route('shop')],
+            [$product->name, route('product-detail', $product)],
+        ];
+
+        return view('product.description', compact('product', 'links'));
+    }
 }

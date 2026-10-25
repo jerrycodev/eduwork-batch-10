@@ -13,9 +13,10 @@ class ProductCategoryController extends Controller
     public function index()
     {
         $categories = ProductCategory::withCount('products')
-        ->withSum('products', 'price')
-        ->withSum('products', 'stock')
-        ->get();
+            ->withSum('products', 'price')
+            ->withSum('products', 'stock')
+            ->get();
+
         return view('admin.categories.index', compact('categories'));
     }
 
@@ -32,7 +33,14 @@ class ProductCategoryController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validated = $this->validate($request);
+        if ($validated && $this->uniqueSlug($request)) {
+            $productCategory = ProductCategory::create($request->all());
+
+            return redirect()->route('product-categories.index')->with('success', 'Category created successfully.');
+        }
+
+        return redirect()->route('product-categories.index')->withErrors($validated)->withInput();
     }
 
     /**
@@ -56,7 +64,14 @@ class ProductCategoryController extends Controller
      */
     public function update(Request $request, ProductCategory $productCategory)
     {
-        //
+        $validated = $this->validate($request);
+        if ($validated) {
+            $productCategory->update($request->all());
+
+            return redirect()->route('product-categories.index')->with('success', 'Category updated successfully.');
+        }
+
+        return redirect()->route('product-categories.index')->withErrors($validated)->withInput();
     }
 
     /**
@@ -64,6 +79,29 @@ class ProductCategoryController extends Controller
      */
     public function destroy(ProductCategory $productCategory)
     {
-        //
+        $productCategory->delete();
+
+        return redirect()->route('product-categories.index')->with('success', 'Category deleted successfully.');
+    }
+
+    // Validattion
+    public function validate(Request $request)
+    {
+        return $request->validate([
+            'name' => 'required|string|max:255',
+            'slug' => 'required|string|max:255|unique:product_categories,slug',
+        ]);
+    }
+
+    public function uniqueSlug(Request $request)
+    {
+        $slug = $request->slug;
+        $category = ProductCategory::where('slug', $slug)->first();
+
+        if ($category) {
+            return false;
+        }
+
+        return true;
     }
 }

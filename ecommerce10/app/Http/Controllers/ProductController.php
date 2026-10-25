@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\ProductCategory;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ProductController extends Controller
 {
@@ -14,8 +17,8 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         $products = Product::when($request->search, function ($query, $search) {
-                $query->where('name', 'like', '%' . $search . '%');
-            })
+            $query->where('name', 'like', '%' . $search . '%');
+        })
             ->when($request->category_id, function ($query, $category_id) {
                 $query->where('category_id', $category_id);
             })
@@ -52,15 +55,31 @@ class ProductController extends Controller
      */
     public function create()
     {
-        //
+        $categories = ProductCategory::all();
+
+        return view('admin.products.create', compact('categories'));
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
-        //
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'slug' => ['required', 'string', 'max:255', 'unique:products,slug'],
+            'description' => ['required', 'string', 'max:255'],
+            'image' => ['required', 'string', 'max:255'],
+            'price' => ['required', 'integer', 'min:0'],
+            'stock' => ['required', 'integer', 'min:0'],
+            'category_id' => ['required', 'integer', 'exists:product_categories,id'],
+        ]);
+
+        Product::create($validated);
+
+        return redirect()
+            ->route('products.index')
+            ->with('success', 'Product created successfully.');
     }
 
     /**
@@ -68,16 +87,7 @@ class ProductController extends Controller
      */
     public function show(Product $product)
     {
-        $category = $product->category;
-
-        $links = [
-            ['Home', route('home')],
-            ['Shop', route('shop')],
-            [$category->name, route('shop', ['category' => $category->slug])],
-            [$product->name, route('product-detail', $product)],
-        ];
-
-        return view('product.description', compact('product', 'links'));
+        return view('admin.products.detail', compact('product'));
     }
 
     /**
@@ -85,7 +95,8 @@ class ProductController extends Controller
      */
     public function edit(Product $product)
     {
-        //
+        $categories = ProductCategory::all();
+        return view('admin.products.edit', compact('product', 'categories'));
     }
 
     /**
@@ -93,14 +104,40 @@ class ProductController extends Controller
      */
     public function update(Request $request, Product $product)
     {
-        //
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'slug' => ['required', 'string', 'max:255', 'unique:products,slug,' . $product->id],
+            'description' => ['required', 'string', 'max:255'],
+            'image' => ['required', 'string', 'max:255'],
+            'price' => ['required', 'integer', 'min:0'],
+            'stock' => ['required', 'integer', 'min:0'],
+            'category_id' => ['required', 'integer', 'exists:product_categories,id'],
+        ]);
+
+        $product->update($validated);
+
+        return redirect()
+            ->route('products.index')
+            ->with('success', 'Product updated successfully.');
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Product $product)
+    public function destroy(Product $product): RedirectResponse
     {
-        //
+        if ($product->image) {
+            $imagePath = parse_url($product->image, PHP_URL_PATH);
+
+            if ($imagePath && Str::startsWith($imagePath, '/storage/uploads/')) {
+                Storage::disk('public')->delete(Str::after($imagePath, '/storage/'));
+            }
+        }
+
+        $product->delete();
+
+        return redirect()
+            ->route('products.index')
+            ->with('success', 'Product deleted successfully.');
     }
 }

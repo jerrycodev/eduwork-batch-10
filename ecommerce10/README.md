@@ -1,8 +1,8 @@
-# E-Commerce Laravel : Tugas Sesi 10 - 16
+# E-Commerce Laravel : Tugas Sesi 10 - 17
 
 ## Deskripsi
 
-Folder `ecommerce10` berisi proyek e-commerce berbasis Laravel yang dibangun secara bertahap mulai dari sesi 10 sampai sesi 16. Proyek dimulai dari pembuatan proyek Laravel dan route dasar, kemudian dilanjutkan dengan controller, halaman Blade, komponen tampilan, migration dan seeder data dummy, relasi model dan pagination data produk, penambahan fitur autentikasi menggunakan Laravel Breeze, hingga pembuatan halaman admin untuk pengelolaan produk dan kategori.
+Folder `ecommerce10` berisi proyek e-commerce berbasis Laravel yang dibangun secara bertahap mulai dari sesi 10 sampai sesi 17. Proyek dimulai dari pembuatan proyek Laravel dan route dasar, kemudian dilanjutkan dengan controller, halaman Blade, komponen tampilan, migration dan seeder data dummy, relasi model dan pagination data produk, penambahan fitur autentikasi menggunakan Laravel Breeze, pembuatan halaman admin untuk pengelolaan produk dan kategori, hingga form tambah/edit produk dan kategori beserta upload gambar.
 
 README ini disusun per sesi agar riwayat pengerjaan mudah dibaca dan dapat diperbarui ketika ada tugas sesi berikutnya.
 
@@ -17,6 +17,7 @@ README ini disusun per sesi agar riwayat pengerjaan mudah dibaca dan dapat diper
 | 14 | Eloquent Relationship & Pagination | Relasi model Product/ProductCategory, data produk dari database, dan pagination |
 | 15 | Authentication with Laravel Breeze | Instalasi Laravel Breeze, login, registrasi, dan kustomisasi tampilan bawaan |
 | 16 | Admin Product & Category Management | Menu navigasi, tabel daftar kategori dan produk, serta tombol tambah, edit, dan hapus |
+| 17 | Product & Category Create/Edit Forms | Form tambah/edit produk dan kategori, validasi, serta upload gambar produk |
 
 ## Tugas Sesi 10 : Laravel Basics & Project Introduction with AI
 
@@ -303,6 +304,69 @@ resources/views/vendor/pagination/tailwind.blade.php
 routes/web.php
 ```
 
+## Tugas Sesi 17 : Product & Category Create/Edit Forms
+
+![Thumbnail](.thumbnails/tugas_sesi_17_create_product_form.png)
+![Thumbnail](.thumbnails/tugas_sesi_17_edit_product_form.png)
+![Thumbnail](.thumbnails/tugas_sesi_17_create_product_category_form.png)
+![Thumbnail](.thumbnails/tugas_sesi_17_edit_product_category_form.png)
+
+### Deskripsi
+
+Membuat form untuk menambah dan mengedit produk serta kategori produk. Form produk memiliki halaman tersendiri, sedangkan form kategori ditampilkan dalam dialog pada halaman daftar kategori. Setiap form dilengkapi validasi, pembuatan slug otomatis, dan upload gambar produk.
+
+### Fitur
+
+- Halaman tambah produk (`/dashboard/products/create`) dan edit produk (`/dashboard/products/{product}/edit`) menggunakan partial form yang sama.
+- Field produk: nama, slug, deskripsi, kategori, harga, stok, dan gambar.
+- Form tambah dan edit kategori berupa dialog pada halaman daftar kategori, dengan field nama dan slug.
+- Validasi server-side: field wajib, slug produk/kategori unik, kategori harus ada, serta harga dan stok berupa bilangan bulat minimal 0.
+- Validasi client-side menggunakan Pristine.js dan pembuatan slug otomatis menggunakan Slugify.
+- Upload gambar produk melalui endpoint `file-uploads` dengan dukungan drag and drop, preview, dan hapus gambar.
+- Validasi file gambar: JPG, JPEG, PNG, GIF, atau WEBP dengan ukuran maksimal 2 MB, disimpan pada disk `public`.
+- Gambar yang diunggah ikut dihapus dari storage ketika produk dihapus.
+- Notifikasi sukses setelah produk atau kategori berhasil dibuat, diperbarui, atau dihapus.
+- Halaman detail produk admin dengan tombol untuk melihat produk di halaman shop dan mengedit produk.
+- Status aktif menu navigasi mengikuti seluruh route `products.*` dan `product-categories.*`.
+- Test fitur untuk pembuatan, validasi, penghapusan produk, halaman edit, dan upload file.
+
+### Dibangun Menggunakan
+
+- Laravel Resource Controller
+- Eloquent ORM
+- MySQL
+- Laravel Blade
+- Laravel Storage
+- Tailwind CSS 4
+- Pristine.js
+- Slugify
+- Vite
+- Pest
+
+### File Terkait
+
+```text
+app/Http/Controllers/ProductController.php
+app/Http/Controllers/ProductCategoryController.php
+app/Http/Controllers/FileUploadController.php
+app/Http/Controllers/HomeController.php
+resources/views/admin/products/index.blade.php
+resources/views/admin/products/create.blade.php
+resources/views/admin/products/edit.blade.php
+resources/views/admin/products/detail.blade.php
+resources/views/admin/products/_form.blade.php
+resources/views/admin/products/_file_upload.blade.php
+resources/views/admin/categories/index.blade.php
+resources/views/admin/categories/_form.blade.php
+resources/js/product.form.js
+resources/js/category.form.js
+resources/js/file_upload.form.js
+vite.config.js
+routes/web.php
+tests/Feature/ProductTest.php
+tests/Feature/FileUploadTest.php
+```
+
 ## Cara Menjalankan
 
 Pastikan PHP 8.3+, Composer, Node.js, npm, dan MySQL sudah terpasang. Sejak tugas sesi 14, proyek menggunakan database MySQL.
@@ -330,10 +394,11 @@ DB_USERNAME=root
 DB_PASSWORD=
 ```
 
-Setelah konfigurasi database benar, jalankan migration dan frontend:
+Setelah konfigurasi database benar, jalankan migration, storage link untuk upload gambar, dan frontend:
 
 ```bash
 php artisan migrate --seed
+php artisan storage:link
 npm install
 npm run dev
 ```
@@ -357,7 +422,7 @@ php artisan db:seed
 ```text
 ecommerce10/
 ├── app/
-│   ├── Http/Controllers/       # Controller halaman, produk, kategori, cart, order, auth, dan profil
+│   ├── Http/Controllers/       # Controller halaman, produk, kategori, upload, cart, order, auth, dan profil
 │   ├── Http/Requests/          # Form request validasi auth dan profil
 │   ├── Models/                 # Model Eloquent beserta relasinya
 │   └── View/Components/        # Class komponen Blade (termasuk layout Breeze)
@@ -366,13 +431,13 @@ ecommerce10/
 │   └── seeders/                # Data dummy produk dan kategori
 ├── resources/
 │   ├── css/app.css             # Style Tailwind CSS
-│   ├── js/app.js               # Entry point JavaScript
+│   ├── js/                     # Entry point dan script form produk, kategori, serta upload
 │   └── views/
 │       ├── components/         # Navbar, footer, layout, product card, dll.
 │       ├── home/               # Halaman utama dan daftar produk (dengan filter & pagination)
 │       ├── product/            # Halaman detail produk
 │       ├── cart/               # Halaman keranjang
-│       ├── admin/              # Halaman admin daftar produk dan kategori
+│       ├── admin/              # Halaman admin daftar, tambah, edit, dan detail produk/kategori
 │       ├── auth/               # Halaman login, registrasi, dan reset password
 │       ├── layouts/            # Layout aplikasi dan guest dari Breeze
 │       ├── profile/            # Halaman pengelolaan profil
