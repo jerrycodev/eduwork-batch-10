@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Models\ProductCategory;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
@@ -10,9 +11,40 @@ class ProductController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        //
+        $products = Product::when($request->search, function ($query, $search) {
+                $query->where('name', 'like', '%' . $search . '%');
+            })
+            ->when($request->category_id, function ($query, $category_id) {
+                $query->where('category_id', $category_id);
+            })
+            ->when($request->order, function ($query, $order) {
+                switch ($order) {
+                    case 'name':
+                        $query->orderBy('name', 'asc');
+                        break;
+                    case 'name_desc':
+                        $query->orderBy('name', 'desc');
+                        break;
+                    case 'price':
+                        $query->orderBy('price', 'asc');
+                        break;
+                    case 'price_desc':
+                        $query->orderBy('price', 'desc');
+                        break;
+                    case 'stock':
+                        $query->orderBy('stock', 'asc');
+                        break;
+                    case 'stock_desc':
+                        $query->orderBy('stock', 'desc');
+                        break;
+                }
+            })
+            ->paginate(5);
+        $categories = ProductCategory::all();
+
+        return view('admin.products.index', compact('products', 'categories'));
     }
 
     /**

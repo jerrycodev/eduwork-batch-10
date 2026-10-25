@@ -1,8 +1,8 @@
-# E-Commerce Laravel : Tugas Sesi 10 - 15
+# E-Commerce Laravel : Tugas Sesi 10 - 16
 
 ## Deskripsi
 
-Folder `ecommerce10` berisi proyek e-commerce berbasis Laravel yang dibangun secara bertahap mulai dari sesi 10 sampai sesi 15. Proyek dimulai dari pembuatan proyek Laravel dan route dasar, kemudian dilanjutkan dengan controller, halaman Blade, komponen tampilan, migration dan seeder data dummy, relasi model dan pagination data produk, hingga penambahan fitur autentikasi menggunakan Laravel Breeze.
+Folder `ecommerce10` berisi proyek e-commerce berbasis Laravel yang dibangun secara bertahap mulai dari sesi 10 sampai sesi 16. Proyek dimulai dari pembuatan proyek Laravel dan route dasar, kemudian dilanjutkan dengan controller, halaman Blade, komponen tampilan, migration dan seeder data dummy, relasi model dan pagination data produk, penambahan fitur autentikasi menggunakan Laravel Breeze, hingga pembuatan halaman admin untuk pengelolaan produk dan kategori.
 
 README ini disusun per sesi agar riwayat pengerjaan mudah dibaca dan dapat diperbarui ketika ada tugas sesi berikutnya.
 
@@ -16,6 +16,7 @@ README ini disusun per sesi agar riwayat pengerjaan mudah dibaca dan dapat diper
 | 13 | Database Migration & Dummy Data Using AI | Migration tabel dan seeder data dummy |
 | 14 | Eloquent Relationship & Pagination | Relasi model Product/ProductCategory, data produk dari database, dan pagination |
 | 15 | Authentication with Laravel Breeze | Instalasi Laravel Breeze, login, registrasi, dan kustomisasi tampilan bawaan |
+| 16 | Admin Product & Category Management | Menu navigasi, tabel daftar kategori dan produk, serta tombol tambah, edit, dan hapus |
 
 ## Tugas Sesi 10 : Laravel Basics & Project Introduction with AI
 
@@ -259,6 +260,49 @@ tests/Feature/Auth/
 tests/Feature/ProfileTest.php
 ```
 
+## Tugas Sesi 16 : Admin Product & Category Management
+
+![Thumbnail](.thumbnails/tugas_sesi_16_product-categories.png)
+![Thumbnail](.thumbnails/tugas_sesi_16_products.png)
+
+### Deskripsi
+
+Menambahkan menu navigasi menuju halaman daftar kategori dan produk, lalu membuat halaman admin untuk menampilkan data produk dan kategori dalam bentuk tabel beserta tombol tambah, edit, dan hapus.
+
+### Fitur
+
+- Menu navigasi `Products` dan `Product Categories` pada navigation bar untuk pengguna yang sudah login.
+- Route resource `products` dan `product-categories` di bawah prefix `/dashboard`, dilindungi middleware `auth` dan `verified`.
+- Halaman daftar kategori menampilkan tabel berisi nama, slug, jumlah produk, total harga, dan total stok produk pada setiap kategori.
+- Halaman daftar kategori menyediakan tombol `Create Category`, `View`, `Edit`, dan `Delete`.
+- Halaman daftar produk menampilkan tabel berisi gambar, nama, harga, stok, kategori, dan deskripsi produk.
+- Halaman daftar produk menyediakan tombol `Create Product`, `View`, `Edit`, dan `Delete`.
+- Pencarian produk berdasarkan nama, filter berdasarkan kategori, serta pengurutan berdasarkan nama, harga, dan stok (naik/turun).
+- Pagination 5 produk per halaman dan query filter tetap terbawa saat berpindah halaman.
+- Perhitungan jumlah produk, total harga, dan total stok kategori menggunakan `withCount()` dan `withSum()`.
+- Penyesuaian tampilan pagination Tailwind menggunakan style tombol aplikasi.
+
+### Dibangun Menggunakan
+
+- Laravel Resource Controller
+- Eloquent ORM (`withCount`, `withSum`)
+- MySQL
+- Laravel Blade
+- Tailwind CSS 4
+- Lucide Icons
+
+### File Terkait
+
+```text
+app/Http/Controllers/ProductController.php
+app/Http/Controllers/ProductCategoryController.php
+resources/views/admin/categories/index.blade.php
+resources/views/admin/products/index.blade.php
+resources/views/layouts/navigation.blade.php
+resources/views/vendor/pagination/tailwind.blade.php
+routes/web.php
+```
+
 ## Cara Menjalankan
 
 Pastikan PHP 8.3+, Composer, Node.js, npm, dan MySQL sudah terpasang. Sejak tugas sesi 14, proyek menggunakan database MySQL.
@@ -313,7 +357,7 @@ php artisan db:seed
 ```text
 ecommerce10/
 ├── app/
-│   ├── Http/Controllers/       # Controller halaman, produk, cart, order, auth, dan profil
+│   ├── Http/Controllers/       # Controller halaman, produk, kategori, cart, order, auth, dan profil
 │   ├── Http/Requests/          # Form request validasi auth dan profil
 │   ├── Models/                 # Model Eloquent beserta relasinya
 │   └── View/Components/        # Class komponen Blade (termasuk layout Breeze)
@@ -328,6 +372,7 @@ ecommerce10/
 │       ├── home/               # Halaman utama dan daftar produk (dengan filter & pagination)
 │       ├── product/            # Halaman detail produk
 │       ├── cart/               # Halaman keranjang
+│       ├── admin/              # Halaman admin daftar produk dan kategori
 │       ├── auth/               # Halaman login, registrasi, dan reset password
 │       ├── layouts/            # Layout aplikasi dan guest dari Breeze
 │       ├── profile/            # Halaman pengelolaan profil

@@ -12,7 +12,11 @@ class ProductCategoryController extends Controller
      */
     public function index()
     {
-        //
+        $categories = ProductCategory::withCount('products')
+        ->withSum('products', 'price')
+        ->withSum('products', 'stock')
+        ->get();
+        return view('admin.categories.index', compact('categories'));
     }
 
     /**
