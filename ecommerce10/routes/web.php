@@ -16,7 +16,7 @@ Route::get('/orders', [HomeController::class, 'index'])->name('orders');
 Route::get('/checkout', [HomeController::class, 'index'])->name('checkout');
 Route::get('/product/{product}', [HomeController::class, 'productDetail'])->name('product-detail');
 
-Route::prefix('/dashboard')->middleware(['auth', 'verified'])->group(function () {
+Route::prefix('/dashboard')->middleware(['admin'])->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::resource('products', ProductController::class);
     Route::resource('product-categories', ProductCategoryController::class);

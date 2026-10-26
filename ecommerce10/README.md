@@ -1,8 +1,8 @@
-# E-Commerce Laravel : Tugas Sesi 10 - 18
+# E-Commerce Laravel : Tugas Sesi 10 - 19
 
 ## Deskripsi
 
-Folder `ecommerce10` berisi proyek e-commerce berbasis Laravel yang dibangun secara bertahap mulai dari sesi 10 sampai sesi 18. Proyek dimulai dari pembuatan proyek Laravel dan route dasar, kemudian dilanjutkan dengan controller, halaman Blade, komponen tampilan, migration dan seeder data dummy, relasi model dan pagination data produk, penambahan fitur autentikasi menggunakan Laravel Breeze, pembuatan halaman admin untuk pengelolaan produk dan kategori, form tambah/edit produk dan kategori beserta upload gambar, hingga dashboard utama dengan ringkasan data dan grafik.
+Folder `ecommerce10` berisi proyek e-commerce berbasis Laravel yang dibangun secara bertahap mulai dari sesi 10 sampai sesi 19. Proyek dimulai dari pembuatan proyek Laravel dan route dasar, kemudian dilanjutkan dengan controller, halaman Blade, komponen tampilan, migration dan seeder data dummy, relasi model dan pagination data produk, penambahan fitur autentikasi menggunakan Laravel Breeze, pembuatan halaman admin untuk pengelolaan produk dan kategori, form tambah/edit produk dan kategori beserta upload gambar, dashboard utama dengan ringkasan data dan grafik, hingga pembatasan akses dashboard dan menu admin menggunakan role dan middleware.
 
 README ini disusun per sesi agar riwayat pengerjaan mudah dibaca dan dapat diperbarui ketika ada tugas sesi berikutnya.
 
@@ -19,6 +19,7 @@ README ini disusun per sesi agar riwayat pengerjaan mudah dibaca dan dapat diper
 | 16 | Admin Product & Category Management | Menu navigasi, tabel daftar kategori dan produk, serta tombol tambah, edit, dan hapus |
 | 17 | Product & Category Create/Edit Forms | Form tambah/edit produk dan kategori, validasi, serta upload gambar produk |
 | 18 | Dashboard Summary & Analytics | Ringkasan jumlah produk, kategori, dan klik produk, serta grafik dashboard |
+| 19 | Role & Admin Middleware | Kolom role pada users, middleware admin, dan pembatasan akses route dashboard |
 
 ## Tugas Sesi 10 : Laravel Basics & Project Introduction with AI
 
@@ -411,6 +412,50 @@ routes/web.php
 tests/Feature/DashboardTest.php
 ```
 
+## Tugas Sesi 19 : Role & Admin Middleware
+
+![Thumbnail](.thumbnails/tugas_sesi_19_admin_dashboard.png)
+![Thumbnail](.thumbnails/tugas_sesi_19_user_profile.png)
+
+### Deskripsi
+
+Menambahkan kolom role pada tabel users melalui migration, membuat middleware untuk membatasi akses hanya untuk admin, lalu menerapkan middleware tersebut pada route dashboard dan pengelolaan produk/kategori.
+
+### Fitur
+
+- Migration `add_role_to_users_table` menambahkan kolom `role` bertipe string dengan nilai default `user`.
+- Model `User` menambahkan `role` ke atribut fillable.
+- `AdminMiddleware` memeriksa pengguna yang sudah login dan memiliki role `admin`; pengguna lain diarahkan ke halaman home dengan pesan error.
+- Alias middleware `admin` didaftarkan pada `bootstrap/app.php`.
+- Route dashboard, produk, kategori, dan upload file dibatasi menggunakan middleware `admin`.
+- Blade directive `@admin` ditambahkan untuk menampilkan menu Dashboard, Products, dan Product Categories hanya kepada admin.
+- Menu admin juga disembunyikan pada tampilan navigasi responsif untuk pengguna non-admin.
+- `UserFactory` mengisi role default `user`, sedangkan `DatabaseSeeder` membuat akun admin `admin@ecommerce.com` dengan password `password`.
+- Data pengguna dummy menggunakan locale Indonesia (`id_ID`).
+
+### Dibangun Menggunakan
+
+- Laravel Migration
+- Laravel Middleware
+- Laravel Blade Directive
+- Eloquent ORM
+- Laravel Seeder & Factory
+- MySQL
+
+### File Terkait
+
+```text
+database/migrations/2026_10_26_132001_add_role_to_users_table.php
+app/Http/Middleware/AdminMiddleware.php
+bootstrap/app.php
+app/Models/User.php
+app/Providers/AppServiceProvider.php
+database/factories/UserFactory.php
+database/seeders/DatabaseSeeder.php
+resources/views/layouts/navigation.blade.php
+routes/web.php
+```
+
 ## Cara Menjalankan
 
 Pastikan PHP 8.3+, Composer, Node.js, npm, dan MySQL sudah terpasang. Sejak tugas sesi 14, proyek menggunakan database MySQL.
@@ -467,6 +512,7 @@ php artisan db:seed
 ecommerce10/
 ├── app/
 │   ├── Http/Controllers/       # Controller dashboard, halaman, produk, kategori, upload, cart, order, auth, dan profil
+│   ├── Http/Middleware/        # Middleware pembatasan akses admin
 │   ├── Http/Requests/          # Form request validasi auth dan profil
 │   ├── Models/                 # Model Eloquent beserta relasinya
 │   └── View/Components/        # Class komponen Blade (termasuk layout Breeze)
