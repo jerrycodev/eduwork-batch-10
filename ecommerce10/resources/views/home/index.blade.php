@@ -2,7 +2,7 @@
 
     {{-- List Categories --}}
     @php($activeCategory = request('category'))
-    <section class="mt-8 mb-8">
+    <section class="mb-8 mt-8">
         <div class="mb-4 flex items-end justify-between gap-4">
             <div>
                 <h2 class="text-lg font-semibold tracking-tight text-[var(--foreground)]">Kategori</h2>
@@ -50,5 +50,7 @@
             <x-product-card :image="$product->image" :title="$product->name" :description="$product->description" :link="route('product-detail', $product)" :price="$product->price" />
         @endforeach
     </div>
-    {{ $products->links() }}
+    <div class="py-4">
+        {{ $products->links() }}
+    </div>
 </x-layout-component>

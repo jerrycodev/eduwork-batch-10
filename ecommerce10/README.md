@@ -1,8 +1,8 @@
-# E-Commerce Laravel : Tugas Sesi 10 - 19
+# E-Commerce Laravel : Tugas Sesi 10 - 23
 
 ## Deskripsi
 
-Folder `ecommerce10` berisi proyek e-commerce berbasis Laravel yang dibangun secara bertahap mulai dari sesi 10 sampai sesi 19. Proyek dimulai dari pembuatan proyek Laravel dan route dasar, kemudian dilanjutkan dengan controller, halaman Blade, komponen tampilan, migration dan seeder data dummy, relasi model dan pagination data produk, penambahan fitur autentikasi menggunakan Laravel Breeze, pembuatan halaman admin untuk pengelolaan produk dan kategori, form tambah/edit produk dan kategori beserta upload gambar, dashboard utama dengan ringkasan data dan grafik, hingga pembatasan akses dashboard dan menu admin menggunakan role dan middleware.
+Folder `ecommerce10` berisi proyek e-commerce berbasis Laravel yang dibangun secara bertahap mulai dari sesi 10 sampai sesi 23. Proyek mencakup setup Laravel dan MySQL, controller dan halaman Blade, migration dan seeder, relasi model, autentikasi, pengelolaan produk dan kategori, upload gambar, pembatasan akses admin, serta dashboard admin dengan metrik dan analitik yang dihitung dari data database, termasuk pelacakan klik produk dan ringkasan status pesanan.
 
 README ini disusun per sesi agar riwayat pengerjaan mudah dibaca dan dapat diperbarui ketika ada tugas sesi berikutnya.
 
@@ -20,6 +20,10 @@ README ini disusun per sesi agar riwayat pengerjaan mudah dibaca dan dapat diper
 | 17 | Product & Category Create/Edit Forms | Form tambah/edit produk dan kategori, validasi, serta upload gambar produk |
 | 18 | Dashboard Summary & Analytics | Ringkasan jumlah produk, kategori, dan klik produk, serta grafik dashboard |
 | 19 | Role & Admin Middleware | Kolom role pada users, middleware admin, dan pembatasan akses route dashboard |
+| 20 | Complete Back-End Product System | Form tambah produk dan kategori, route POST, validasi input, dan penyimpanan data ke database |
+| 21 | Product Editing & Deletion System | Form edit produk, pembaruan data, serta penghapusan produk dan kategori |
+| 22 | Final Dashboard Adjustments with AI | Penyesuaian Product Controller, pengelolaan edit/hapus kategori, dan penyempurnaan dashboard admin |
+| 23 | Streamlined Back-End Finalization Using AI | Kolom dan pelacakan klik produk, DashboardController berbasis database, grafik jumlah pesanan, dan ringkasan status order |
 
 ## Tugas Sesi 10 : Laravel Basics & Project Introduction with AI
 
@@ -29,7 +33,7 @@ Membuat proyek Laravel baru untuk membangun website e-commerce, menyiapkan route
 
 ### Fitur
 
-- Proyek Laravel baru dengan konfigurasi database SQLite.
+- Proyek Laravel baru dengan konfigurasi database MySQL.
 - Route dasar: `/`, `/products`, `/cart`, dan `/checkout`.
 - Route tambahan: `/shop`, `/product/{id}`, dan `/orders`.
 - Model awal: `Product`, `ProductCategory`, `Cart`, `Order`, `OrderItem`, dan `User`.
@@ -40,7 +44,7 @@ Membuat proyek Laravel baru untuk membangun website e-commerce, menyiapkan route
 
 - Laravel 13
 - PHP 8.3+
-- SQLite
+- MySQL
 
 ### File Terkait
 
@@ -138,7 +142,7 @@ Catatan: pada implementasi ini, detail produk dalam pesanan disimpan di tabel `o
 - Laravel Migration
 - Laravel Seeder
 - Eloquent ORM
-- SQLite / MySQL
+- MySQL
 
 ### File Terkait
 
@@ -456,6 +460,191 @@ resources/views/layouts/navigation.blade.php
 routes/web.php
 ```
 
+## Tugas Sesi 20 : Complete Back-End Product System
+
+### Deskripsi
+
+Melengkapi proses back-end untuk menambahkan produk dan kategori produk. Form produk ditampilkan pada halaman tersendiri, sedangkan form kategori menggunakan dialog pada halaman daftar kategori. Data dikirim melalui route POST, divalidasi di controller, lalu disimpan ke database.
+
+### Fitur
+
+- `ProductController@create` menampilkan halaman form tambah produk beserta daftar kategori.
+- Form tambah produk dikirim ke route bernama `products.store` dengan method POST.
+- Form tambah kategori ditampilkan melalui dialog pada halaman daftar kategori dan dikirim ke route `product-categories.store` dengan method POST.
+- `ProductController@store` memvalidasi nama, slug unik, deskripsi, gambar, harga, stok, dan kategori sebelum membuat data produk.
+- `ProductCategoryController@store` memvalidasi nama dan slug sebelum membuat data kategori.
+- Pesan sukses ditampilkan setelah produk atau kategori berhasil ditambahkan.
+- Validasi sisi client pada form kategori menggunakan Pristine.js dan pembuatan slug otomatis menggunakan Slugify.
+
+### Dibangun Menggunakan
+
+- Laravel Controller dan Resource Routing
+- Laravel Validation
+- Eloquent ORM
+- MySQL
+- Laravel Blade
+- Pristine.js
+- Slugify
+
+### File Terkait
+
+```text
+app/Http/Controllers/ProductController.php
+app/Http/Controllers/ProductCategoryController.php
+resources/views/admin/products/create.blade.php
+resources/views/admin/products/_form.blade.php
+resources/views/admin/categories/index.blade.php
+resources/views/admin/categories/_form.blade.php
+resources/js/category.form.js
+routes/web.php
+```
+
+Catatan: form tambah kategori saat ini menggunakan dialog pada halaman daftar kategori. Method `ProductCategoryController@create` masih kosong dan belum digunakan oleh alur tersebut.
+
+## Tugas Sesi 21 : Product Editing & Deletion System
+
+### Deskripsi
+
+Menambahkan fitur untuk mengubah dan menghapus data produk serta kategori produk melalui halaman admin. Produk dapat diedit pada halaman khusus dengan form yang menggunakan kembali komponen form produk, sedangkan kategori diedit melalui dialog pada halaman daftar kategori.
+
+### Fitur
+
+- Tombol Edit pada daftar produk membuka halaman edit melalui route `products.edit`.
+- `ProductController@edit` mengambil data produk dan daftar kategori untuk mengisi form.
+- Form edit menggunakan partial `admin.products._form` yang sama dengan form tambah, dengan method PUT menuju route `products.update`.
+- `ProductController@update` memvalidasi input, termasuk keunikan slug dengan mengecualikan produk yang sedang diedit, kemudian memperbarui data produk.
+- Form edit menampilkan gambar produk saat ini dan mendukung pengelolaan gambar melalui komponen upload.
+- Tombol Delete mengirim request DELETE ke route `products.destroy`; controller menghapus data produk dan file gambar terkait dari storage publik.
+- Kategori dapat diedit melalui dialog yang mengisi data kategori dan mengirim request PUT ke route `product-categories.update`.
+- `ProductCategoryController@update` memvalidasi dan memperbarui data kategori.
+- Produk dan kategori dapat dihapus melalui route DELETE masing-masing.
+- Route resource produk dan kategori berada di bawah prefix `/dashboard` dan dilindungi middleware `admin`.
+
+### Dibangun Menggunakan
+
+- Laravel Resource Controller dan Resource Routing
+- Laravel Validation
+- Eloquent ORM
+- Laravel Blade
+- Laravel Storage
+- JavaScript
+- MySQL
+
+### File Terkait
+
+```text
+app/Http/Controllers/ProductController.php
+app/Http/Controllers/ProductCategoryController.php
+resources/views/admin/products/index.blade.php
+resources/views/admin/products/edit.blade.php
+resources/views/admin/products/_form.blade.php
+resources/views/admin/categories/index.blade.php
+resources/views/admin/categories/_form.blade.php
+resources/js/category.form.js
+routes/web.php
+tests/Feature/ProductTest.php
+```
+
+Catatan: validasi slug pada `ProductCategoryController@update` saat ini masih menerapkan aturan unik tanpa mengecualikan kategori yang sedang diedit. Akibatnya, penyimpanan edit kategori dengan slug yang tidak berubah dapat ditolak oleh validasi.
+
+## Tugas Sesi 22 : Final Dashboard Adjustments with AI
+
+### Deskripsi
+
+Melakukan penyesuaian akhir pada pengelolaan produk dan kategori melalui controller serta melengkapi dashboard admin. Fitur edit dan hapus produk/kategori diintegrasikan dengan route resource, sementara dashboard menampilkan ringkasan data, visualisasi analitik, dan daftar produk berdasarkan jumlah klik.
+
+### Fitur
+
+- Menyempurnakan alur `ProductController` untuk menampilkan daftar produk, form edit, memperbarui data, dan menghapus produk berdasarkan ID melalui route resource.
+- Menampilkan form edit produk dengan data produk saat ini dan pilihan kategori.
+- Memvalidasi perubahan data produk, termasuk validasi slug unik yang mengecualikan produk yang sedang diedit.
+- Menyediakan pengelolaan kategori melalui `ProductCategoryController`, termasuk edit melalui dialog dan penghapusan berdasarkan ID.
+- Menampilkan ringkasan jumlah produk, kategori, dan pesanan pada dashboard admin.
+- Menampilkan grafik analitik pesanan yang membandingkan data income dan expense per bulan.
+- Menampilkan visualisasi distribusi operating system.
+- Menampilkan daftar produk dengan informasi klik bulan sebelumnya, klik bulan berjalan, total klik, dan tren perubahan.
+- Menggunakan middleware `admin` untuk melindungi dashboard dan route pengelolaan produk serta kategori.
+
+### Dibangun Menggunakan
+
+- Laravel Controller dan Resource Routing
+- Laravel Validation dan Eloquent ORM
+- Laravel Blade
+- MySQL
+- JavaScript dan Chart.js
+- Laravel Middleware
+
+### File Terkait
+
+```text
+app/Http/Controllers/ProductController.php
+app/Http/Controllers/ProductCategoryController.php
+app/Http/Controllers/DashboardController.php
+routes/web.php
+resources/views/dashboard.blade.php
+resources/views/admin/products/
+resources/views/admin/categories/
+resources/js/dashboard.js
+resources/js/category.form.js
+```
+
+### Catatan Implementasi
+
+- Jumlah produk, kategori, dan pesanan pada kartu statistik diambil dari database. Jumlah pelanggan masih menggunakan nilai statis.
+- Data grafik income/expense dan distribusi operating system masih berupa data simulasi.
+- Data klik dan tren produk pada dashboard juga dihitung menggunakan nilai simulasi, bukan catatan aktivitas pengunjung aktual.
+- Validasi slug pada `ProductCategoryController@update` masih perlu disesuaikan agar kategori dapat disimpan ketika slug tidak berubah.
+
+## Tugas Sesi 23 : Streamlined Back-End Finalization Using AI
+
+### Deskripsi
+
+Menyelesaikan integrasi dashboard admin dengan data aktual dari database. Menambahkan pencatatan jumlah kunjungan pada setiap halaman detail produk, menghitung total produk, total klik, kategori, dan pesanan, serta menyajikan statistik jumlah pesanan per bulan dan jumlah pesanan berdasarkan status.
+
+### Fitur
+
+- Menambahkan kolom `click` bertipe unsigned big integer dengan nilai awal `0` pada tabel `products` melalui migration baru.
+- Menambahkan atribut `click` ke daftar fillable pada model `Product`.
+- Menambah jumlah klik produk secara otomatis setiap kali halaman detail produk dibuka melalui `HomeController@productDetail`.
+- Menampilkan empat metrik dashboard dari database: total produk, total klik produk, total kategori, dan total pesanan.
+- Mengurutkan lima produk dengan jumlah klik tertinggi berdasarkan nilai `products.click`.
+- Mengganti grafik income/expense simulasi menjadi grafik jumlah pesanan per bulan pada tahun berjalan berdasarkan tabel `orders`.
+- Mengganti visualisasi Operating System menjadi Order Status yang menghitung jumlah pesanan berdasarkan nilai `orders.status`.
+- Menampilkan status umum seperti Pending, Processing, Success, Failed, Refund, dan Cancelled, termasuk status tambahan yang ditemukan pada database.
+- Memastikan seluruh angka dashboard berasal dari agregasi database, bukan angka analitik buatan.
+
+### Dibangun Menggunakan
+
+- Laravel Migration
+- Laravel Controller
+- Eloquent ORM dan Query Builder
+- MySQL
+- Laravel Blade
+- JavaScript
+- Chart.js
+- Pest Feature Tests
+
+### File Terkait
+
+```text
+database/migrations/2026_11_04_000001_add_click_to_products_table.php
+app/Models/Product.php
+app/Http/Controllers/HomeController.php
+app/Http/Controllers/DashboardController.php
+resources/views/dashboard.blade.php
+resources/js/dashboard.js
+tests/Feature/ProductTest.php
+tests/Feature/DashboardTest.php
+```
+
+### Catatan Implementasi
+
+- Nilai klik dihitung satu kali per produk untuk setiap session browser. Refresh halaman atau membuka kembali produk yang sama selama session masih aktif tidak menambah hitungan; produk lain tetap memiliki penghitung session tersendiri. Session baru dapat dihitung sebagai kunjungan baru.
+- Grafik bulanan menampilkan jumlah order yang dibuat pada masing-masing bulan di tahun berjalan.
+- Status pesanan dihitung secara dinamis dari kolom `orders.status`. Status umum tetap ditampilkan dengan nilai `0` jika belum memiliki pesanan.
+- Skema tabel `orders` belum memiliki kolom biaya/pengeluaran, sehingga grafik income/expense tidak lagi ditampilkan dan diganti dengan jumlah pesanan aktual.
+- Migration penambahan kolom klik sudah dijalankan pada database MySQL yang dikonfigurasi di project.
+
 ## Cara Menjalankan
 
 Pastikan PHP 8.3+, Composer, Node.js, npm, dan MySQL sudah terpasang. Sejak tugas sesi 14, proyek menggunakan database MySQL.
@@ -472,7 +661,7 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-Sesuaikan konfigurasi database pada file `.env` (`.env.example` masih menggunakan SQLite):
+Pastikan konfigurasi database pada file `.env` menggunakan MySQL:
 
 ```dotenv
 DB_CONNECTION=mysql

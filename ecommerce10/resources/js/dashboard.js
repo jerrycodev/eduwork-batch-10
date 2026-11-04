@@ -23,64 +23,20 @@ Chart.register(
     Tooltip,
 );
 
-Chart.defaults.font.family =
-    "'Geist', ui-sans-serif, system-ui, sans-serif";
+Chart.defaults.font.family = "'Geist', ui-sans-serif, system-ui, sans-serif";
 Chart.defaults.color = "#94a3b8";
 
-const fullMonths = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-];
+function getDashboardData() {
+    const element = document.getElementById("dashboard-chart-data");
 
-function formatCurrency(value) {
-    return `$${new Intl.NumberFormat("id-ID").format(Math.round(value))}`;
-}
-
-function getChartData() {
-    const data = document.getElementById("dashboard-chart-data");
-
-    if (!data) {
-        console.log("No data found.");
-        return null;
-    }
+    if (!element) return null;
 
     try {
-        console.log("Data parsed successfully.");
-        return JSON.parse(data.textContent);
-    } catch {
-        console.log("Invalid data format.");
+        return JSON.parse(element.textContent);
+    } catch (error) {
+        console.error("Unable to parse dashboard chart data.", error);
         return null;
     }
-}
-
-function areaGradient(topColor, bottomColor) {
-    return function (context) {
-        const { ctx, chartArea } = context.chart;
-
-        if (!chartArea) return bottomColor;
-
-        const gradient = ctx.createLinearGradient(
-            0,
-            chartArea.top,
-            0,
-            chartArea.bottom,
-        );
-
-        gradient.addColorStop(0, topColor);
-        gradient.addColorStop(1, bottomColor);
-
-        return gradient;
-    };
 }
 
 function createOrdersChart(canvas, orders) {
@@ -90,54 +46,24 @@ function createOrdersChart(canvas, orders) {
             labels: orders.labels,
             datasets: [
                 {
-                    label: "Income",
-                    data: orders.income,
-                    borderColor: "#22c55e",
-                    backgroundColor: areaGradient(
-                        "rgba(34, 197, 94, 0.20)",
-                        "rgba(34, 197, 94, 0)",
-                    ),
+                    label: "Orders",
+                    data: orders.orders,
+                    borderColor: "#3b82f6",
+                    backgroundColor: "rgba(59, 130, 246, 0.14)",
                     fill: true,
-                    tension: 0.45,
+                    tension: 0.35,
                     borderWidth: 2.5,
-                    pointRadius: 0,
+                    pointRadius: 3,
                     pointHoverRadius: 5,
-                    pointHoverBackgroundColor: "#22c55e",
-                    pointHoverBorderColor: "#ffffff",
-                    pointHoverBorderWidth: 2,
-                    hitRadius: 24,
-                },
-                {
-                    label: "Expense",
-                    data: orders.expense,
-                    borderColor: "#8b5cf6",
-                    backgroundColor: areaGradient(
-                        "rgba(139, 92, 246, 0.16)",
-                        "rgba(139, 92, 246, 0)",
-                    ),
-                    fill: true,
-                    tension: 0.45,
-                    borderWidth: 2.5,
-                    pointRadius: 0,
-                    pointHoverRadius: 5,
-                    pointHoverBackgroundColor: "#8b5cf6",
-                    pointHoverBorderColor: "#ffffff",
-                    pointHoverBorderWidth: 2,
-                    hitRadius: 24,
                 },
             ],
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            interaction: {
-                mode: "nearest",
-                intersect: false,
-            },
+            interaction: { mode: "index", intersect: false },
             plugins: {
-                legend: {
-                    display: false,
-                },
+                legend: { display: false },
                 tooltip: {
                     backgroundColor: "#111827",
                     titleColor: "#f9fafb",
@@ -145,66 +71,40 @@ function createOrdersChart(canvas, orders) {
                     borderWidth: 0,
                     cornerRadius: 8,
                     padding: 12,
-                    displayColors: false,
-                    titleFont: {
-                        size: 15,
-                        weight: "bold",
-                    },
-                    bodyFont: {
-                        size: 11,
-                        weight: "normal",
-                    },
                     callbacks: {
-                        title: function (items) {
-                            return formatCurrency(items[0].parsed.y);
-                        },
-                        label: function (item) {
-                            return `${fullMonths[item.dataIndex]} 6`;
-                        },
+                        label: (context) =>
+                            `Orders: ${new Intl.NumberFormat("id-ID").format(context.parsed.y)}`,
                     },
                 },
             },
             scales: {
                 x: {
-                    grid: {
-                        display: false,
-                    },
-                    border: {
-                        display: false,
-                    },
-                    ticks: {
-                        color: "#94a3b8",
-                        font: {
-                            size: 11,
-                        },
-                        maxRotation: 0,
-                    },
+                    grid: { display: false },
+                    border: { display: false },
+                    ticks: { maxRotation: 0 },
                 },
                 y: {
-                    display: false,
                     beginAtZero: true,
-                    grace: "20%",
+                    ticks: {
+                        precision: 0,
+                        callback: (value) =>
+                            new Intl.NumberFormat("id-ID").format(value),
+                    },
                 },
             },
         },
     });
 }
 
-function createOperatingSystemChart(canvas, operatingSystems) {
+function createOrderStatusChart(canvas, statuses) {
     new Chart(canvas, {
         type: "doughnut",
         data: {
-            labels: operatingSystems.map(function (item) {
-                return item.name;
-            }),
+            labels: statuses.map((status) => status.name),
             datasets: [
                 {
-                    data: operatingSystems.map(function (item) {
-                        return item.value;
-                    }),
-                    backgroundColor: operatingSystems.map(function (item) {
-                        return item.color;
-                    }),
+                    data: statuses.map((status) => status.value),
+                    backgroundColor: statuses.map((status) => status.color),
                     borderWidth: 0,
                     hoverOffset: 4,
                 },
@@ -214,13 +114,9 @@ function createOperatingSystemChart(canvas, operatingSystems) {
             responsive: true,
             maintainAspectRatio: false,
             cutout: "66%",
-            layout: {
-                padding: 4,
-            },
+            layout: { padding: 4 },
             plugins: {
-                legend: {
-                    display: false,
-                },
+                legend: { display: false },
                 tooltip: {
                     backgroundColor: "#111827",
                     titleColor: "#f9fafb",
@@ -228,14 +124,9 @@ function createOperatingSystemChart(canvas, operatingSystems) {
                     borderWidth: 0,
                     cornerRadius: 8,
                     padding: 10,
-                    displayColors: false,
                     callbacks: {
-                        title: function () {
-                            return "";
-                        },
-                        label: function (context) {
-                            return `${context.label} (${context.parsed}%)`;
-                        },
+                        label: (context) =>
+                            `${context.label}: ${new Intl.NumberFormat("id-ID").format(context.parsed)}`,
                     },
                 },
             },
@@ -243,25 +134,19 @@ function createOperatingSystemChart(canvas, operatingSystems) {
     });
 }
 
-document.addEventListener("DOMContentLoaded", function () {
-    console.log("DOMContentLoaded event fired.");
-    const data = getChartData();
+document.addEventListener("DOMContentLoaded", () => {
+    const data = getDashboardData();
 
     if (!data) return;
 
     const ordersCanvas = document.getElementById("orders-chart");
-    const operatingSystemCanvas = document.getElementById(
-        "operating-system-chart",
-    );
+    const statusCanvas = document.getElementById("order-status-chart");
 
     if (ordersCanvas && data.orders) {
         createOrdersChart(ordersCanvas, data.orders);
     }
 
-    if (operatingSystemCanvas && data.operating_systems) {
-        createOperatingSystemChart(
-            operatingSystemCanvas,
-            data.operating_systems,
-        );
+    if (statusCanvas && data.order_statuses) {
+        createOrderStatusChart(statusCanvas, data.order_statuses);
     }
 });

@@ -6,7 +6,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
-    $this->actingAs(User::factory()->create());
+    $this->actingAs(User::factory()->create(['role' => 'admin']));
 });
 
 function createProductCategory(): ProductCategory
@@ -76,6 +76,57 @@ test('a product and its uploaded image can be deleted', function () {
 
     $this->assertModelMissing($product);
     Storage::disk('public')->assertMissing('uploads/headphones.png');
+});
+
+
+test('visiting a product detail page increments its click counter', function () {
+    $category = createProductCategory();
+
+    $product = Product::query()->create([
+        'name' => 'Click Tracking Product',
+        'slug' => 'click-tracking-product',
+        'description' => 'Product used to verify click tracking.',
+        'image' => 'http://localhost:8000/storage/uploads/product.png',
+        'price' => 100000,
+        'stock' => 5,
+        'category_id' => $category->id,
+    ]);
+
+    $this->get(route('product-detail', $product))->assertOk();
+    $this->get(route('product-detail', $product))->assertOk();
+
+    expect($product->fresh()->click)->toBe(1);
+});
+
+test('viewing another product in the same session increments that product independently', function () {
+    $category = createProductCategory();
+
+    $firstProduct = Product::query()->create([
+        'name' => 'First Session Product',
+        'slug' => 'first-session-product',
+        'description' => 'First product for session tracking.',
+        'image' => 'http://localhost:8000/storage/uploads/first.png',
+        'price' => 100000,
+        'stock' => 5,
+        'category_id' => $category->id,
+    ]);
+
+    $secondProduct = Product::query()->create([
+        'name' => 'Second Session Product',
+        'slug' => 'second-session-product',
+        'description' => 'Second product for session tracking.',
+        'image' => 'http://localhost:8000/storage/uploads/second.png',
+        'price' => 120000,
+        'stock' => 5,
+        'category_id' => $category->id,
+    ]);
+
+    $this->get(route('product-detail', $firstProduct))->assertOk();
+    $this->get(route('product-detail', $secondProduct))->assertOk();
+    $this->get(route('product-detail', $firstProduct))->assertOk();
+
+    expect($firstProduct->fresh()->click)->toBe(1)
+        ->and($secondProduct->fresh()->click)->toBe(1);
 });
 
 test('the edit page previews the current product image', function () {
