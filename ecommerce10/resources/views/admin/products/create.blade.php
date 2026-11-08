@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                 {{ __('Create Product') }}
             </h2>
@@ -11,9 +11,9 @@
         </div>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col gap-4">
-            <div class="bg-white p-4 shadow sm:rounded-lg">
+    <div class="py-6 sm:py-8 lg:py-10">
+        <div class="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 sm:px-6 lg:px-8">
+            <div class="rounded-lg bg-white p-4 shadow sm:p-6 lg:p-8">
                 @include('admin.products._form', [
                     'action' => route('products.store'),
                     'submitLabel' => 'Create Product',

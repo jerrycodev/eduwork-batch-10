@@ -6,7 +6,7 @@ $columns = ['Image', 'Name', 'Price', 'Stock', 'Category', 'Description', 'Actio
 
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                 {{ __('Products') }}
             </h2>
@@ -17,15 +17,15 @@ $columns = ['Image', 'Name', 'Price', 'Stock', 'Category', 'Description', 'Actio
         </div>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col gap-4">
+    <div class="py-6 sm:py-8 lg:py-10">
+        <div class="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 sm:px-6 lg:px-8">
             @if (session('success'))
                 <x-alert class="bg-green-200 border-green-400">
                     {{ session('success') }}
                 </x-alert>
             @endif
             <form action="{{ route('products.index') }}" method="GET">
-                <div class="flex flex-wrap sm:flex-nowrap items-center gap-4">
+                <div class="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
                     <input type="search" name="search" placeholder="Search" class="input"
                         value="{{ request('search') }}">
                     <select name="category_id" class="select max-w-50" onchange="this.form.submit()">
@@ -64,7 +64,7 @@ $columns = ['Image', 'Name', 'Price', 'Stock', 'Category', 'Description', 'Actio
                 </div>
             </form>
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg divide-y divide-neutral-200">
-                <table class="table ">
+                <div class="w-full overflow-x-auto"><table class="table min-w-[760px]">
                     <thead>
                         <tr class="table-row">
                             {{-- <th class="table-cell">#</th>
@@ -125,7 +125,7 @@ $columns = ['Image', 'Name', 'Price', 'Stock', 'Category', 'Description', 'Actio
                                 <td class="table-cell" style="text-align:right">1</td>
                             </tr>
                         </tfoot> --}}
-                </table>
+                </table></div>
                 @if ($products->hasPages())
                     <div class="p-4">
                         {{ $products->appends(request()->query())->links() }}

@@ -72,5 +72,9 @@ test('the dashboard renders database-backed order and product metrics', function
         ->assertSee('Products Clicks')
         ->assertSee('Total Clicks')
         ->assertSee('4')
+        ->assertSee('action="'.route('logout').'"', false)
+        ->assertSee('method="POST"', false)
+        ->assertSee('<button type="submit"', false)
+        ->assertDontSee('href="'.route('logout').'"', false)
         ->assertDontSee('Operating System');
 });

@@ -39,3 +39,30 @@ test('users can logout', function () {
     $this->assertGuest();
     $response->assertRedirect('/');
 });
+
+
+test('users are redirected to the requested local path after login', function () {
+    $user = User::factory()->create();
+
+    $response = $this->post('/login', [
+        'email' => $user->email,
+        'password' => 'password',
+        'redirect_to' => '/checkout?source=login',
+    ]);
+
+    $this->assertAuthenticated();
+    $response->assertRedirect('/checkout?source=login');
+});
+
+test('external redirect destinations are ignored after login', function () {
+    $user = User::factory()->create();
+
+    $response = $this->post('/login', [
+        'email' => $user->email,
+        'password' => 'password',
+        'redirect_to' => 'https://evil.example/phishing',
+    ]);
+
+    $this->assertAuthenticated();
+    $response->assertRedirect(route('dashboard', absolute: false));
+});

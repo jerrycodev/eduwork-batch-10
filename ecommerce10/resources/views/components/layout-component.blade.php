@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ str_replace("_", "-", app()->getLocale()) }}">
 
 <head>
     <meta charset="UTF-8">
@@ -14,9 +14,9 @@
     @stack('styles')
 </head>
 
-<body>
+<body data-boost="true">
     @include('components.header')
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-[calc(100vh-5rem)]">
+    <main class="mx-auto min-h-[calc(100vh-5rem)] w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
         {{ $slot }}
     </main>
     @include('components.footer')

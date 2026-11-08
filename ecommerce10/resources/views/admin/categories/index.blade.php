@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                 {{ __('Categories') }}
             </h2>
@@ -8,15 +8,15 @@
         </div>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 flex flex-col gap-4">
+    <div class="py-6 sm:py-8 lg:py-10">
+        <div class="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 sm:px-6 lg:px-8">
             @if (session('success'))
                 <x-alert class="bg-green-200 border-green-400">
                     {{ session('success') }}
                 </x-alert>
             @endif
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <table class="table">
+                <div class="w-full overflow-x-auto"><table class="table min-w-[680px]">
                     <thead>
                         <tr class="table-row">
                             <th class="table-cell">Name</th>
@@ -64,7 +64,7 @@
                             </tr>
                         @endforeach
                     </tbody>
-                </table>
+                </table></div>
             </div>
         </div>
     </div>

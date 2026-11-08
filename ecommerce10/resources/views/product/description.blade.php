@@ -1,6 +1,6 @@
 <x-layout-component>
     <x-breadcrumb :links="$links" />
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
+    <div class="grid grid-cols-1 gap-6 sm:gap-8 md:grid-cols-2 lg:gap-12">
 
         <!-- Kiri: Galeri Gambar -->
         <div class="flex flex-col gap-4">
@@ -24,43 +24,46 @@
 
         <!-- Kanan: Detail Produk -->
         <div class="flex flex-col">
-            <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-2">
+            <h1 class="mb-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl lg:text-4xl">
                 {{ $product->name ?? 'Nama Produk Berkualitas Tinggi' }}
             </h1>
 
             <!-- Harga & Badge -->
-            <div class="flex items-center gap-4 mb-6">
-                <span class="text-2xl font-bold text-foreground">
+            <div class="mb-5 flex flex-wrap items-center gap-3 sm:mb-6 sm:gap-4">
+                <span class="text-xl font-bold text-foreground sm:text-2xl">
                     Rp {{ number_format($product->price ?? 250000, 0, ',', '.') }}
                 </span>
-                <span class="badge" data-variant="secondary">In Stock</span>
+                <span class="badge" data-variant="secondary">
+                    {{ $product->stock > 0 ? "Stok: {$product->stock}" : "Stok Habis" }}
+                </span>
             </div>
 
             <!-- Deskripsi Singkat -->
-            <p class="text-base text-muted-foreground mb-8 line-clamp-4">
+            <p class="mb-6 text-sm text-muted-foreground sm:mb-8 sm:text-base line-clamp-4">
                 {{ $product->description ?? 'Ini adalah deskripsi produk yang menjelaskan secara detail mengenai fitur, bahan, dan keunggulan produk ini. Dirancang menggunakan material premium untuk memastikan kenyamanan dan daya tahan jangka panjang.' }}
             </p>
 
             <!-- Form Add to Cart -->
-            <form action="/cart/add" method="POST" class="mb-8">
+            <form action="{{ route('cart.store', $product) }}" method="POST" class="mb-8">
                 @csrf
-                <input type="hidden" name="product_id" value="{{ $product->id ?? 1 }}">
 
                 <div class="flex flex-col gap-4">
-                    <!-- Kuantitas -->
                     <div class="flex items-center gap-4">
-                        <label for="quantity" class="text-sm font-medium text-foreground w-20">Jumlah</label>
-                        <input type="number" id="quantity" name="quantity" value="1" min="1"
-                            class="input w-24">
+                        <label for="quantity" class="w-20 text-sm font-medium text-foreground">Jumlah</label>
+                        <input type="number" id="quantity" name="quantity" value="{{ old('quantity', 1) }}" min="1"
+                            max="{{ $product->stock }}" required class="input w-24">
                     </div>
+                    @error('quantity')
+                        <p class="text-sm text-destructive">{{ $message }}</p>
+                    @enderror
 
                     <hr class="my-4 border-neutral-200">
 
-                    <!-- Tombol Aksi -->
-                    <div class="flex gap-4">
-                        <button type="submit" class="btn flex-1" data-variant="default">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:gap-4">
+                        <button type="submit" class="btn min-h-11 flex-1" data-variant="default"
+                            @disabled($product->stock < 1)>
                             <i data-lucide="shopping-cart" class="mr-2 h-4 w-4"></i>
-                            Tambah ke Keranjang
+                            {{ $product->stock > 0 ? 'Tambah ke Keranjang' : 'Stok Habis' }}
                         </button>
                         <button type="button" class="btn" data-variant="outline" data-size="icon"
                             aria-label="Add to wishlist">
@@ -72,7 +75,7 @@
 
             <!-- Informasi Tambahan (Spesifikasi, Pengiriman) -->
             <div class="border border-neutral-200 rounded-lg bg-card">
-                <div class="p-4 border-b border-neutral-200">
+                <div class="border-b border-neutral-200 p-4 sm:p-5">
                     <h3 class="font-medium flex items-center gap-2">
                         <i data-lucide="truck" class="h-4 w-4 text-muted-foreground"></i>
                         Informasi Pengiriman
@@ -80,7 +83,7 @@
                     <p class="text-sm text-muted-foreground mt-1">Gratis ongkir untuk pesanan di atas Rp 500.000.
                         Pengiriman dalam 2-3 hari kerja.</p>
                 </div>
-                <div class="p-4">
+                <div class="p-4 sm:p-5">
                     <h3 class="font-medium flex items-center gap-2">
                         <i data-lucide="shield-check" class="h-4 w-4 text-muted-foreground"></i>
                         Garansi

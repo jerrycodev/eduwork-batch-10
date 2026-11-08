@@ -46,6 +46,34 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
-        return redirect(route('dashboard', absolute: false));
+        $redirectTo = $this->safeRedirectTo($request->input('redirect_to'));
+
+        return $redirectTo
+            ? redirect()->to($redirectTo)
+            : redirect(route('dashboard', absolute: false));
+    }
+
+    /**
+     * Accept only a local path to prevent open-redirect vulnerabilities.
+     */
+    private function safeRedirectTo(mixed $destination): ?string
+    {
+        if (! is_string($destination) || $destination === '' || str_contains($destination, "\\") || preg_match('/[\x00-\x1F\x7F]/', $destination)) {
+            return null;
+        }
+
+        $parts = parse_url($destination);
+
+        if ($parts === false || isset($parts['scheme']) || isset($parts['host']) || isset($parts['user']) || isset($parts['pass'])) {
+            return null;
+        }
+
+        $path = $parts['path'] ?? '';
+
+        if (! str_starts_with($path, '/') || str_starts_with($path, '//')) {
+            return null;
+        }
+
+        return $destination;
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Request;
 
 class HomeController extends Controller
 {
@@ -42,5 +43,34 @@ class HomeController extends Controller
         ];
 
         return view('product.description', compact('product', 'links'));
+    }
+
+    public function shop(Request $request)
+    {
+        $search = $request->input('search');
+        $category = $request->input('category');
+        $query = Product::query();
+
+        if ($search) {
+            $query->where('name', 'like', '%' . $search . '%')
+                ->orWhere('description', 'like', '%' . $search . '%');
+        }
+
+        if ($category) {
+            $category = trim($category);
+            $query->whereHas('category', function ($q) use ($category) {
+                $q->where('name', $category);
+            });
+        }
+
+        $products = $query
+            ->where('stock', '>', 0)
+            ->with('category')
+            ->paginate(12)
+            ->withQueryString();
+
+        $categories = ProductCategory::all();
+
+        return view('home.shop', compact('products', 'search', 'category', 'categories'));
     }
 }

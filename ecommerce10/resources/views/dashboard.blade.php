@@ -89,7 +89,7 @@
                     <span class="badge" data-variant="outline">All time</span>
                 </div>
                 <div class="card-content p-0">
-                    <table class="table">
+                    <div class="w-full overflow-x-auto"><table class="table min-w-[520px]">
                         <thead>
                             <tr class="table-row">
                                 <th class="table-head w-16 rounded-none">Image</th>
@@ -121,7 +121,7 @@
                                 </tr>
                             @endforelse
                         </tbody>
-                    </table>
+                    </table></div>
                 </div>
             </div>
         </div>

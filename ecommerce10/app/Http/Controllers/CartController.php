@@ -3,63 +3,140 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cart;
+use App\Models\Product;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class CartController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Display the authenticated user's shopping cart.
      */
-    public function index()
+    public function index(): View
     {
-        return view('cart.index');
+        $cartItems = Auth::check()
+            ? Cart::query()
+                ->with('product.category')
+                ->where('user_id', Auth::id())
+                ->latest()
+                ->get()
+                ->filter(fn (Cart $item) => $item->product !== null)
+                ->values()
+            : new Collection();
+
+        $totalQuantity = $cartItems->sum('quantity');
+        $totalPrice = $cartItems->sum(
+            fn (Cart $item) => $item->quantity * $item->product->price
+        );
+
+        return view('cart.index', compact('cartItems', 'totalQuantity', 'totalPrice'));
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Add a product to the authenticated user's cart.
      */
-    public function create()
+    public function store(Request $request, Product $product): RedirectResponse
     {
-        //
+        if (! Auth::check()) {
+            return redirect()->route('login', ['redirect_to' => route('product-detail', $product, absolute: false)])
+                ->with('error', 'Silakan masuk terlebih dahulu untuk menambahkan produk ke keranjang.');
+        }
+
+        $validated = $request->validate([
+            'quantity' => ['required', 'integer', 'min:1'],
+        ], [
+            'quantity.required' => 'Jumlah produk wajib diisi.',
+            'quantity.integer' => 'Jumlah produk harus berupa angka.',
+            'quantity.min' => 'Jumlah produk minimal 1.',
+        ]);
+
+        if ($product->stock < 1) {
+            return back()->with('error', 'Maaf, produk ini sedang habis.');
+        }
+
+        $stockError = DB::transaction(function () use ($product, $validated): ?int {
+            // Serialize additions for the same product to prevent stock overselling.
+            $lockedProduct = Product::query()->lockForUpdate()->findOrFail($product->id);
+
+            $cartItem = Cart::query()
+                ->where('user_id', Auth::id())
+                ->where('product_id', $lockedProduct->id)
+                ->lockForUpdate()
+                ->first();
+
+            $newQuantity = ($cartItem?->quantity ?? 0) + $validated['quantity'];
+
+            if ($newQuantity > $lockedProduct->stock) {
+                return $lockedProduct->stock;
+            }
+
+            if ($cartItem) {
+                $cartItem->quantity = $newQuantity;
+                $cartItem->save();
+            } else {
+                Cart::query()->create([
+                    'user_id' => Auth::id(),
+                    'product_id' => $lockedProduct->id,
+                    'quantity' => $validated['quantity'],
+                ]);
+            }
+
+            return null;
+        });
+
+        if ($stockError !== null) {
+            return back()->with('error', "Jumlah melebihi stok tersedia ({$stockError}).");
+        }
+
+        return redirect()->route('cart')->with('success', 'Produk berhasil ditambahkan ke keranjang.');
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Update the quantity of a cart item owned by the current user.
      */
-    public function store(Request $request)
+    public function update(Request $request, Cart $cart): RedirectResponse
     {
-        //
+        $this->authorizeCartItem($cart);
+
+        $validated = $request->validate([
+            'quantity' => ['required', 'integer', 'min:1'],
+        ], [
+            'quantity.required' => 'Jumlah produk wajib diisi.',
+            'quantity.integer' => 'Jumlah produk harus berupa angka.',
+            'quantity.min' => 'Jumlah produk minimal 1.',
+        ]);
+
+        $cart->loadMissing('product');
+        abort_if($cart->product === null, 404);
+
+        if ($validated['quantity'] > $cart->product->stock) {
+            return back()->with('error', "Jumlah melebihi stok tersedia ({$cart->product->stock}).");
+        }
+
+        $cart->update(['quantity' => $validated['quantity']]);
+
+        return redirect()->route('cart')->with('success', 'Jumlah produk di keranjang berhasil diperbarui.');
     }
 
     /**
-     * Display the specified resource.
+     * Remove a cart item owned by the current user.
      */
-    public function show(Cart $cart)
+    public function destroy(Cart $cart): RedirectResponse
     {
-        //
+        $this->authorizeCartItem($cart);
+
+        $cart->delete();
+
+        return redirect()->route('cart')->with('success', 'Produk berhasil dihapus dari keranjang.');
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Cart $cart)
+    private function authorizeCartItem(Cart $cart): void
     {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Cart $cart)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Cart $cart)
-    {
-        //
+        abort_unless(Auth::check(), 401);
+        abort_unless((int) $cart->user_id === (int) Auth::id(), 403);
     }
 }

@@ -1,8 +1,8 @@
 <footer class="bg-background">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-8">
+    <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
 
         <!-- Grid Footer Atas -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
+        <div class="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-10">
 
             <!-- Kolom 1: Info Brand -->
             <div class="flex flex-col gap-4">
@@ -14,7 +14,7 @@
                     Platform belanja online terpercaya yang menyediakan berbagai macam produk berkualitas dengan harga
                     terbaik untuk kebutuhan sehari-hari Anda.
                 </p>
-                <div class="flex items-center gap-4 mt-2">
+                <div class="mt-2 flex items-center gap-4">
                     <a href="#" class="text-muted-foreground hover:text-foreground transition-colors"
                         aria-label="Facebook">
                         <i data-lucide="facebook" class="h-5 w-5"></i>
@@ -62,7 +62,7 @@
                 </p>
                 <form action="/subscribe" method="POST" class="flex flex-col gap-2">
                     @csrf
-                    <div class="flex items-center gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
                         <input type="email" name="email" placeholder="Alamat email Anda" class="input flex-1"
                             required>
                         <button type="submit" class="btn" data-variant="outline">
@@ -78,7 +78,7 @@
         <hr class="my-8 border-neutral-200" />
 
         <!-- Footer Bawah -->
-        <div class="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
+        <div class="flex flex-col items-start justify-between gap-4 text-sm text-muted-foreground sm:flex-row sm:items-center">
             <p>
                 &copy; {{ date('Y') }} Ecommerce. All rights reserved.
             </p>

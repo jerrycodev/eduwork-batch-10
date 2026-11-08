@@ -11,9 +11,9 @@
         </div>
     </x-slot>
 
-    <div class="py-12">
+    <div class="py-6 sm:py-8 lg:py-10">
         <div class="mx-auto flex max-w-7xl flex-col gap-4 px-4 sm:px-6 lg:px-8">
-            <div class="bg-white p-4 shadow sm:rounded-lg">
+            <div class="rounded-lg bg-white p-4 shadow sm:p-6 lg:p-8">
                 @include('admin.products._form', [
                     'action' => route('products.update', $product),
                     'submitLabel' => 'Update Product',

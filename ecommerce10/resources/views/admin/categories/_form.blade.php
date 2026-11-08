@@ -15,7 +15,7 @@
             <p class="dialog-description" id="category-form-description">Create a new category</p>
         </div>
         <div class="dialog-body">
-            <div class="form-group">
+            <div class="form-group flex flex-col gap-4">
                 <div class="form-field">
                     <label class="label" for="category-name">Category Name</label>
                     <input class="input" id="category-name" name="name" type="text" required>
@@ -26,7 +26,7 @@
                 </div>
             </div>
         </div>
-        <div class="dialog-footer">
+        <div class="dialog-footer flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <button type="button" class="btn" data-variant="outline" data-dialog-close>Cancel</button>
             <button type="submit" id="category-form-submit" class="btn bg-indigo-400" data-variant="default">
                 Save changes

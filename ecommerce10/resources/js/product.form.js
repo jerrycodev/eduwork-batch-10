@@ -1,10 +1,12 @@
 import Pristine from "pristinejs";
 import slugify from "slugify";
 
-document.addEventListener("DOMContentLoaded", function () {
+function initializeProductForm() {
     const form = document.querySelector("#product-form");
 
     if (!form) return;
+    if (form.dataset.boostInitialized) return;
+    form.dataset.boostInitialized = "true";
 
     const input_name = form.querySelector("[name='name']");
     const input_slug = form.querySelector("[name='slug']");
@@ -74,4 +76,12 @@ document.addEventListener("DOMContentLoaded", function () {
         pristine.reset();
         clearImageError();
     });
-});
+}
+
+document.addEventListener("boost:page-ready", initializeProductForm);
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initializeProductForm, { once: true });
+} else {
+    initializeProductForm();
+}

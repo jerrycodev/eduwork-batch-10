@@ -231,6 +231,14 @@ function initFileUpload(container) {
     });
 }
 
-document.addEventListener("DOMContentLoaded", function () {
+function initializeFileUploads() {
     document.querySelectorAll("[data-file-upload]").forEach(initFileUpload);
-});
+}
+
+document.addEventListener("boost:page-ready", initializeFileUploads);
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initializeFileUploads, { once: true });
+} else {
+    initializeFileUploads();
+}

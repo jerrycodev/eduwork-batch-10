@@ -1,37 +1,67 @@
+<?php
+$links = [
+    [
+        'label' => 'Dashboard',
+        'route' => route('dashboard'),
+        'active' => request()->routeIs('dashboard'),
+    ],
+    [
+        'label' => 'Products',
+        'route' => route('products.index'),
+        'active' => request()->routeIs('products.*'),
+    ],
+    [
+        'label' => 'Product Categories',
+        'route' => route('product-categories.index'),
+        'active' => request()->routeIs('product-categories.*'),
+    ],
+    [
+        'label' => 'Orders',
+        'route' => route('orders.index'),
+        'active' => request()->routeIs('orders.*'),
+    ],
+];
+?>
+
 <nav x-data="{ open: false }" class="border-b border-gray-100 bg-white">
     <!-- Primary Navigation Menu -->
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div class="flex h-16 justify-between">
+        <div class="flex min-h-16 items-center justify-between gap-3">
             <div class="flex">
                 <!-- Logo -->
                 <div class="flex shrink-0 items-center">
-                    <a href="{{ route('dashboard') }}" class="flex items-center gap-4 text-xl font-semibold">
+                    <a href="{{ route('dashboard') }}"
+                        class="flex items-center gap-2 text-lg font-semibold sm:gap-4 sm:text-xl">
                         <x-application-logo class="block h-9 w-auto text-gray-800" />
                         <span>Ecommerce</span>
                     </a>
                 </div>
 
                 <!-- Navigation Links -->
-                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                    @admin
-                        {{-- Dashboard --}}
+                <div class="hidden items-center gap-4 sm:-my-px sm:ms-6 sm:flex lg:gap-8">
+                    {{-- @admin
                         <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                             {{ __('Dashboard') }}
                         </x-nav-link>
-                        {{-- Products --}}
+
                         <x-nav-link :href="route('products.index')" :active="request()->routeIs('products.*')">
                             {{ __('Products') }}
                         </x-nav-link>
-                        {{-- Product Category --}}
+
                         <x-nav-link :href="route('product-categories.index')" :active="request()->routeIs('product-categories.*')">
                             {{ __('Product Categories') }}
                         </x-nav-link>
-                    @endadmin
+                    @endadmin --}}
+                    @foreach ($links as $item)
+                        <x-nav-link :href="$item['route']" :active="$item['active']">
+                            {{ $item['label'] }}
+                        </x-nav-link>
+                    @endforeach
                 </div>
             </div>
 
             <!-- Settings Dropdown -->
-            <div class="hidden sm:ms-6 sm:flex sm:items-center">
+            <div class="hidden sm:ms-4 sm:flex sm:items-center lg:ms-6">
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button
@@ -58,11 +88,10 @@
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
 
-                            <x-dropdown-link :href="route('logout')"
-                                onclick="event.preventDefault();
-                                                this.closest('form').submit();">
+                            <button type="submit"
+                                class="block w-full px-4 py-2 text-start text-sm leading-5 text-gray-700 transition duration-150 ease-in-out hover:bg-gray-100 focus:bg-gray-100 focus:outline-none">
                                 {{ __('Log Out') }}
-                            </x-dropdown-link>
+                            </button>
                         </form>
                     </x-slot>
                 </x-dropdown>
@@ -88,7 +117,7 @@
     <div :class="{ 'block': open, 'hidden': !open }" class="hidden sm:hidden">
 
         @admin
-            <div class="space-y-1 pb-3 pt-2">
+            <div class="space-y-1 px-2 pb-3 pt-2">
                 <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                     {{ __('Dashboard') }}
                 </x-responsive-nav-link>
@@ -98,11 +127,14 @@
                 <x-responsive-nav-link :href="route('product-categories.index')" :active="request()->routeIs('product-categories.*')">
                     {{ __('Product Categories') }}
                 </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('orders.index')" :active="request()->routeIs('orders.index')">
+                    {{ __('Orders') }}
+                </x-responsive-nav-link>
             </div>
         @endadmin
 
         <!-- Responsive Settings Options -->
-        <div class="border-t border-gray-200 pb-1 pt-4">
+        <div class="border-t border-gray-200 px-2 pb-2 pt-4">
             <div class="px-4">
                 <div class="text-base font-medium text-gray-800">{{ Auth::user()->name }}</div>
                 <div class="text-sm font-medium text-gray-500">{{ Auth::user()->email }}</div>
@@ -117,11 +149,10 @@
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
 
-                    <x-responsive-nav-link :href="route('logout')"
-                        onclick="event.preventDefault();
-                                        this.closest('form').submit();">
+                    <button type="submit"
+                        class="block w-full border-l-4 border-transparent px-3 py-2 pe-4 ps-3 text-start text-base font-medium text-gray-600 transition duration-150 ease-in-out hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800 focus:border-gray-300 focus:bg-gray-50 focus:text-gray-800 focus:outline-none">
                         {{ __('Log Out') }}
-                    </x-responsive-nav-link>
+                    </button>
                 </form>
             </div>
         </div>

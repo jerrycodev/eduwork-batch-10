@@ -1,8 +1,7 @@
-
+@import url('https://fonts.googleapis.com/css2?family=Geist:ital,wght@0,100..900;1,100..900&display=swap');
 @import 'tailwindcss';
 @plugin '@tailwindcss/forms';
 
-@import url('https://fonts.googleapis.com/css2?family=Geist:ital,wght@0,100..900;1,100..900&display=swap');
 @import '../../public/shadcn-html/dist/theme/default-semantic-tokens.css';
 @import '../../public/shadcn-html/dist/components/accordion/accordion.css';
 @import '../../public/shadcn-html/dist/components/button/button.css';

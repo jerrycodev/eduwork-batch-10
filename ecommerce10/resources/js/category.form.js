@@ -1,10 +1,12 @@
 import Pristine from "pristinejs";
 import slugify from "slugify";
 
-document.addEventListener("DOMContentLoaded", function () {
+function initializeCategoryForm() {
     const form = document.querySelector("#category-form");
 
     if (!form) return;
+    if (form.dataset.boostInitialized) return;
+    form.dataset.boostInitialized = "true";
 
     const dialog = document.querySelector("#category-dialog");
     const createButton = document.querySelector("#category-dialog-button");
@@ -94,4 +96,12 @@ document.addEventListener("DOMContentLoaded", function () {
             configureForm({ mode: "create" });
         }, 500);
     });
-});
+}
+
+document.addEventListener("boost:page-ready", initializeCategoryForm);
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initializeCategoryForm, { once: true });
+} else {
+    initializeCategoryForm();
+}

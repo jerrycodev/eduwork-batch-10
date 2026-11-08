@@ -134,7 +134,7 @@ function createOrderStatusChart(canvas, statuses) {
     });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+function initializeDashboard() {
     const data = getDashboardData();
 
     if (!data) return;
@@ -143,10 +143,29 @@ document.addEventListener("DOMContentLoaded", () => {
     const statusCanvas = document.getElementById("order-status-chart");
 
     if (ordersCanvas && data.orders) {
+        Chart.getChart(ordersCanvas)?.destroy();
         createOrdersChart(ordersCanvas, data.orders);
     }
 
     if (statusCanvas && data.order_statuses) {
+        Chart.getChart(statusCanvas)?.destroy();
         createOrderStatusChart(statusCanvas, data.order_statuses);
     }
-});
+}
+
+function destroyDashboardCharts() {
+    const ordersCanvas = document.getElementById("orders-chart");
+    const statusCanvas = document.getElementById("order-status-chart");
+
+    if (ordersCanvas) Chart.getChart(ordersCanvas)?.destroy();
+    if (statusCanvas) Chart.getChart(statusCanvas)?.destroy();
+}
+
+document.addEventListener("boost:before-swap", destroyDashboardCharts);
+document.addEventListener("boost:page-ready", initializeDashboard);
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initializeDashboard, { once: true });
+} else {
+    initializeDashboard();
+}

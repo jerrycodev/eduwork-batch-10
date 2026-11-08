@@ -18,9 +18,9 @@ $fields = [
     @if ($product)
         @method('PUT')
     @endif
-    <div class="grid grid-cols-12 gap-4">
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-12 lg:gap-5">
         @foreach ($fields as $field)
-            <div class="form-field" style="{{ $field['colSpan'] ? 'grid-column-start: span '.$field['colSpan'] : '' }}">
+            <div class="form-field min-w-0 col-span-1 @if ($field['colSpan'] === 12) sm:col-span-2 lg:col-span-12 @elseif ($field['colSpan'] === 6) lg:col-span-6 @elseif ($field['colSpan'] === 4) lg:col-span-4 @endif">
                 <label class="label" for="{{ $field['name'] }}">{{ $field['label'] }}</label>
                 @if ($field['type'] === 'text' || $field['type'] === 'number')
                     <input class="input" id="{{ $field['name'] }}" name="{{ $field['name'] }}"
@@ -46,7 +46,7 @@ $fields = [
             </div>
         @endforeach
     </div>
-    <div class="form-actions">
+    <div class="form-actions mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <button class="btn bg-indigo-400" type="submit"
             data-variant="default">{{ $submitLabel ?? 'Save changes' }}</button>
         <button class="btn" type="reset" data-variant="outline">Reset</button>

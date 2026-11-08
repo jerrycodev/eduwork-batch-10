@@ -14,7 +14,7 @@ $columns = [
 
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 class="text-xl font-semibold leading-tight text-gray-800">
                 {{ __('Product Detail') }}
             </h2>
@@ -25,7 +25,7 @@ $columns = [
         </div>
     </x-slot>
 
-    <div class="py-12">
+    <div class="py-6 sm:py-8 lg:py-10">
         <div class="mx-auto flex max-w-7xl flex-col gap-4 px-4 sm:px-6 lg:px-8">
 
             <div class="bg-white shadow sm:rounded-lg flex flex-col divide-y divide-neutral-200">
@@ -43,7 +43,7 @@ $columns = [
                     </a>
                 </div>
 
-                <table class="table whitespace-nowrap">
+                <div class="w-full overflow-x-auto"><table class="table min-w-[560px]">
                     <tbody>
                         @foreach ($columns as $column)
                             <tr class="table-row">
@@ -52,7 +52,7 @@ $columns = [
                                 <td class="table-cell w-full">
                                      @if($column['label'] === 'Image')
                                         @if($column['value'])
-                                            <img src="{{ asset($column['value']) }}" alt="{{ $product->name }}" class="h-50 w-50 rounded-lg shadow object-cover">
+                                            <img src="{{ asset($column['value']) }}" alt="{{ $product->name }}" class="h-36 w-36 rounded-lg object-cover shadow sm:h-48 sm:w-48">
                                         @else
                                             <span class="text-gray-400">No Image</span>
                                         @endif
@@ -63,7 +63,7 @@ $columns = [
                             </tr>
                         @endforeach
                     </tbody>
-                </table>
+                </table></div>
             </div>
 
         </div>

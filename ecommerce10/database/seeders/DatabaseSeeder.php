@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -15,17 +16,22 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        User::factory(2)->create();
-        
-        User::query()->firstOrCreate(
-            ['email' => 'admin@ecommerce.com'],
-            [
-                'name' => 'Admin',
-                'password' => 'password',
-                'role' => 'admin'
+        if (app()->environment(['local', 'testing'])) {
+            User::factory(2)->create();
+        }
+
+        $adminEmail = env('ADMIN_EMAIL');
+        $adminPassword = env('ADMIN_PASSWORD');
+
+        if (filled($adminEmail) && filled($adminPassword)) {
+            User::query()->firstOrCreate(
+                ['email' => $adminEmail],
+                [
+                    'name' => env('ADMIN_NAME', 'Administrator'),
+                    'password' => Hash::make($adminPassword),
+                    'role' => 'admin',
                 ],
-                );
-                
-        // $this->call(ProductSeeder::class);
+            );
+        }
     }
 }
