@@ -23,12 +23,24 @@ class ProductSeeder extends Seeder
 
         $this->call(ProductCategorySeeder::class);
 
+        // Setiap produk memiliki URL gambar utama sendiri, bukan gambar bersama kategori.
         $images = [
-            'headphone' => 'https://images.unsplash.com/photo-1546435770-a3e426bf472b?q=80&w=1465&auto=format&fit=crop',
-            'earbuds' => 'https://images.unsplash.com/photo-1608156639585-b3a032ef9689?q=80&w=765&auto=format&fit=crop',
-            'speaker' => 'https://plus.unsplash.com/premium_photo-1683141496040-eeef9702269f?q=80&w=880&auto=format&fit=crop',
-            'smartwatch' => 'https://images.unsplash.com/photo-1660844817855-3ecc7ef21f12?q=80&w=786&auto=format&fit=crop',
-            'keyboard' => 'https://images.unsplash.com/photo-1617096819670-6de2869bbd2e?q=80&w=627&auto=format&fit=crop',
+            'Sony WH-1000XM4 Wireless Headphones' => 'https://images.unsplash.com/photo-1546435770-a3e426bf472b?q=80&w=1465&auto=format&fit=crop',
+            'Bose QuietComfort Ultra' => 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=1465&auto=format&fit=crop',
+            'Audio-Technica ATH-M50xBT2' => 'https://images.unsplash.com/photo-1593078166035-9b9e6c7c3a15?q=80&w=1465&auto=format&fit=crop',
+            'Sennheiser HD 450BT Wireless' => 'https://images.unsplash.com/photo-1484704849700-f032a568e944?q=80&w=1465&auto=format&fit=crop',
+            'Apple AirPods Pro 2nd Gen' => 'https://images.unsplash.com/photo-1603351154351-5e2d0600bb77?q=80&w=1465&auto=format&fit=crop',
+            'Samsung Galaxy Buds3 Pro' => 'https://images.unsplash.com/photo-1608156639585-b3a032ef9689?q=80&w=1465&auto=format&fit=crop',
+            'Marshall Motif II A.N.C.' => 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?q=80&w=1465&auto=format&fit=crop',
+            'JBL Charge 6' => 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?q=80&w=1465&auto=format&fit=crop',
+            'Marshall Emberton III' => 'https://images.unsplash.com/photo-1605648916361-9bc12ad6a569?q=80&w=1465&auto=format&fit=crop',
+            'Sonos Roam 2' => 'https://images.unsplash.com/photo-1589003077984-894e133dabab?q=80&w=1465&auto=format&fit=crop',
+            'Apple Watch Series 10' => 'https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?q=80&w=1465&auto=format&fit=crop',
+            'Samsung Galaxy Watch7' => 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1465&auto=format&fit=crop',
+            'Garmin Forerunner 165' => 'https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?q=80&w=1465&auto=format&fit=crop',
+            'Keychron K8 Pro' => 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?q=80&w=1465&auto=format&fit=crop',
+            'Logitech MX Mechanical' => 'https://images.unsplash.com/photo-1595225476474-87563907a212?q=80&w=1465&auto=format&fit=crop',
+            'Royal Kludge RK84' => 'https://images.unsplash.com/photo-1595044426077-d36d9236d54a?q=80&w=1465&auto=format&fit=crop',
         ];
 
         // Berat dibuat tetap per kategori agar hasil simulasi ongkir konsisten.
@@ -85,7 +97,7 @@ class ProductSeeder extends Seeder
                     [
                         'name' => $name,
                         'description' => $description,
-                        'image' => $images[$categorySlug],
+                        'image' => $images[$name],
                         'price' => $price,
                         'stock' => 10,
                         'weight_gram' => $categoryWeights[$categorySlug],
@@ -93,9 +105,17 @@ class ProductSeeder extends Seeder
                     ],
                 );
 
-                if ($product->weight_gram !== $categoryWeights[$categorySlug]) {
-                    $product->update(['weight_gram' => $categoryWeights[$categorySlug]]);
-                }
+                $product->update([
+                    'image' => $images[$name],
+                    'weight_gram' => $categoryWeights[$categorySlug],
+                ]);
+
+                // Keep the seeded product's own primary image in the gallery table.
+                $product->images()->update(['is_primary' => false]);
+                $product->images()->updateOrCreate(
+                    ['sort_order' => 0],
+                    ['path' => $images[$name], 'is_primary' => true],
+                );
             }
         }
     }

@@ -3,6 +3,9 @@
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\User;
+use Database\Seeders\ProductSeeder;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
@@ -257,4 +260,92 @@ test('product detail shows available products from the same category before revi
     expect(strpos($content, 'id="related-products"'))
         ->toBeLessThan(strpos($content, 'id="reviews"'))
         ->and($content)->toContain(route('product-detail', $relatedProduct));
+});
+
+test('admin can upload multiple product images and choose the storefront main image', function () {
+    Storage::fake('public');
+    $category = createProductCategory();
+
+    $this->post(route('products.store'), [
+        'name' => 'Gallery Product',
+        'slug' => 'gallery-product',
+        'description' => 'Product with multiple gallery images.',
+        'images' => [
+            UploadedFile::fake()->image('front.jpg'),
+            UploadedFile::fake()->image('side.jpg'),
+            UploadedFile::fake()->image('back.png'),
+        ],
+        'primary_image' => 'new:1',
+        'price' => 250000,
+        'stock' => 4,
+        'weight_gram' => 500,
+        'category_id' => $category->id,
+    ])->assertRedirect(route('products.index'));
+
+    $product = Product::query()->where('slug', 'gallery-product')->with('images')->firstOrFail();
+    expect($product->images)->toHaveCount(3)
+        ->and($product->images->where('is_primary', true))->toHaveCount(1)
+        ->and($product->main_image)->toBe($product->images->get(1)->path);
+
+    foreach ($product->images as $image) {
+        Storage::disk('public')->assertExists(str_replace('/storage/', '', parse_url($image->path, PHP_URL_PATH)));
+    }
+});
+
+test('adding a new image keeps the existing legacy product image in the gallery', function () {
+    Storage::fake('public');
+    $category = createProductCategory();
+    $legacyImage = 'https://example.test/storage/legacy-shirt.jpg';
+    $product = Product::query()->create([
+        'name' => 'Legacy Gallery Product',
+        'slug' => 'legacy-gallery-product',
+        'description' => 'Product with an image from the old image column.',
+        'image' => $legacyImage,
+        'price' => 120000,
+        'stock' => 3,
+        'weight_gram' => 400,
+        'category_id' => $category->id,
+    ]);
+
+    $this->put(route('products.update', $product), [
+        'name' => $product->name,
+        'slug' => $product->slug,
+        'description' => $product->description,
+        'image' => $legacyImage,
+        'images' => [UploadedFile::fake()->image('new-angle.jpg')],
+        'primary_image' => 'new:0',
+        'price' => $product->price,
+        'stock' => $product->stock,
+        'weight_gram' => $product->weight_gram,
+        'category_id' => $category->id,
+    ])->assertRedirect(route('products.index'));
+
+    $product->refresh()->load('images');
+    expect($product->images)->toHaveCount(2)
+        ->and($product->images->pluck('path'))->toContain($legacyImage)
+        ->and($product->images->where('is_primary', true))->toHaveCount(1)
+        ->and($product->main_image)->not->toBe($legacyImage);
+});
+
+test('the reusable file upload component renders its configured input', function () {
+    $html = Blade::render('<x-file-upload name="refund_proof" label="Refund proof" />');
+
+    expect($html)->toContain('data-file-upload')
+        ->and($html)->toContain('name="refund_proof"')
+        ->and($html)->toContain('Refund proof');
+});
+
+test('product seeder assigns a distinct primary image to every seeded product', function () {
+    app(ProductSeeder::class)->run();
+
+    $products = Product::query()->with('images')->get();
+
+    expect($products)->toHaveCount(16);
+    expect($products->pluck('image')->unique())->toHaveCount(16);
+
+    foreach ($products as $product) {
+        expect($product->images)->toHaveCount(1)
+            ->and($product->images->first()->is_primary)->toBeTrue()
+            ->and($product->images->first()->path)->toBe($product->image);
+    }
 });
