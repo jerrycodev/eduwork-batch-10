@@ -1,8 +1,10 @@
 <?php
 
+use App\Mail\OrderTransactionalMail;
 use App\Models\Order;
 use App\Models\User;
 use App\Notifications\OrderAlert;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 test('opening the legacy checkout URL redirects to the cart instead of creating a demo payment', function () {
@@ -48,6 +50,7 @@ test('midtrans callback endpoint is exempt from browser CSRF validation', functi
 });
 
 test('verified Midtrans settlement updates payment status but leaves fulfillment status for admin', function () {
+    Mail::fake();
     $user = User::factory()->create();
     User::factory()->create(['role' => 'admin']);
     $order = Order::query()->create([
@@ -89,6 +92,9 @@ test('verified Midtrans settlement updates payment status but leaves fulfillment
     expect($user->notifications()->where('type', OrderAlert::class)->count())->toBe(1)
         ->and(User::query()->where('role', 'admin')->first()->notifications()->count())->toBe(1);
 
+    Mail::assertQueued(OrderTransactionalMail::class, fn (OrderTransactionalMail $mail): bool => $mail->order->is($order) && $mail->type === 'payment_successful'
+    );
+
     // Midtrans may retry the same webhook; it must not create duplicate notifications.
     $this->postJson(route('midtrans.callback'), [
         'order_id' => $orderId, 'status_code' => $statusCode, 'gross_amount' => $grossAmount,
@@ -99,6 +105,8 @@ test('verified Midtrans settlement updates payment status but leaves fulfillment
 
     expect($user->notifications()->count())->toBe(1)
         ->and(User::query()->where('role', 'admin')->first()->notifications()->count())->toBe(1);
+
+    Mail::assertQueued(OrderTransactionalMail::class, 1);
 });
 
 test('Midtrans callback does not update payment when gross amount does not match the order', function () {

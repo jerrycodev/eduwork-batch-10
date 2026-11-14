@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\OrderCancellationRequest;
 use App\Services\MidtransPaymentService;
+use App\Services\OrderEmailService;
 use App\Services\OrderNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -154,7 +155,9 @@ class PaymentController extends Controller
         });
 
         if ($paymentTransitioned && $paymentStatus === 'paid') {
-            app(OrderNotificationService::class)->paymentSucceeded($order->fresh());
+            $paidOrder = $order->fresh()->load('orderItems');
+            app(OrderNotificationService::class)->paymentSucceeded($paidOrder);
+            app(OrderEmailService::class)->send($paidOrder, 'payment_successful');
         }
 
         // Payment state is separate from fulfillment state. Admin controls orders.status.

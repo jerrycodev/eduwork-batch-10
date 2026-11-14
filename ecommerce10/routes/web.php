@@ -8,6 +8,7 @@ use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrderCancellationRequestController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\OrderInvoiceController;
 use App\Http\Controllers\OrderReturnRequestController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProductCategoryController;
@@ -85,6 +86,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/checkout', [OrderController::class, 'store'])->name('checkout.store');
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.customer.index');
     Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.customer.show');
+    Route::get('/orders/{order}/invoice', OrderInvoiceController::class)->name('orders.invoice');
     Route::get('/order-cancellations/{cancellationRequest}/refund-proof', [OrderCancellationRequestController::class, 'proof'])->name('order-cancellations.proof');
     Route::post('/orders/{order}/payment', [PaymentController::class, 'create'])->name('orders.payment.create');
     Route::post('/orders/{order}/confirm-received', [OrderController::class, 'confirmReceived'])->name('orders.confirm-received');

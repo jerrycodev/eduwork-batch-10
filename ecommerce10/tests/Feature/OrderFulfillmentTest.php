@@ -1,6 +1,7 @@
 <?php
 
 use App\Events\OrderStatusUpdated;
+use App\Mail\OrderTransactionalMail;
 use App\Models\Order;
 use App\Models\OrderCancellationRequest;
 use App\Models\OrderItem;
@@ -13,6 +14,7 @@ use App\Models\User;
 use App\Notifications\OrderAlert;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
 function makeFulfillmentOrder(User $owner, array $attributes = []): Order
@@ -512,4 +514,23 @@ test('only the order owner and administrators may authorize its private channel'
         'socket_id' => '1234.5678',
         'channel_name' => 'private-orders.'.$order->id,
     ])->assertOk();
+});
+
+test('order processing shipping and delivery transitions queue transactional emails', function () {
+    Mail::fake();
+    $admin = User::factory()->create(['role' => 'admin']);
+    $customer = User::factory()->create();
+    $order = makeFulfillmentOrder($customer, ['status' => 'pending']);
+
+    $this->actingAs($admin)->patch(route('orders.status.update', $order), ['status' => 'processing'])->assertRedirect();
+    $this->patch(route('orders.status.update', $order), [
+        'status' => 'shipped',
+        'tracking_number' => 'JNE-EMAIL-123',
+    ])->assertRedirect();
+    $this->patch(route('orders.status.update', $order), ['status' => 'delivered'])->assertRedirect();
+
+    Mail::assertQueued(OrderTransactionalMail::class, 3);
+    Mail::assertQueued(OrderTransactionalMail::class, fn (OrderTransactionalMail $mail): bool => $mail->type === 'order_processing');
+    Mail::assertQueued(OrderTransactionalMail::class, fn (OrderTransactionalMail $mail): bool => $mail->type === 'order_shipped' && $mail->order->tracking_number === 'JNE-EMAIL-123');
+    Mail::assertQueued(OrderTransactionalMail::class, fn (OrderTransactionalMail $mail): bool => $mail->type === 'order_delivered');
 });

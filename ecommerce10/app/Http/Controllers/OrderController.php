@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Services\BiteshipShippingService;
 use App\Services\InventoryService;
 use App\Services\MidtransPaymentService;
+use App\Services\OrderEmailService;
 use App\Services\OrderNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -256,17 +257,24 @@ class OrderController extends Controller
 
         $request->session()->forget('checkout_shipping_quote');
 
+        $paymentReady = true;
+
         try {
             $payments->createPayment($order->load('orderItems'));
-
-            return redirect()->route('orders.customer.show', $order)
-                ->with('success', 'Pesanan berhasil dibuat. Silakan selesaikan pembayaran melalui Midtrans.');
         } catch (\Throwable $exception) {
             report($exception);
-
-            return redirect()->route('orders.customer.show', $order)
-                ->with('error', 'Pesanan berhasil dibuat, tetapi pembayaran belum dapat disiapkan. Silakan coba lagi.');
+            $paymentReady = false;
         }
+
+        // The order still exists; send its invoice even if Midtrans setup needs to be retried.
+        app(OrderEmailService::class)->send($order->fresh()->load('orderItems'), 'order_created');
+
+        return redirect()->route('orders.customer.show', $order)->with(
+            $paymentReady ? 'success' : 'error',
+            $paymentReady
+                ? 'Pesanan berhasil dibuat. Invoice telah dikirim ke email Anda. Silakan selesaikan pembayaran melalui Midtrans.'
+                : 'Pesanan berhasil dibuat, tetapi pembayaran belum dapat disiapkan. Invoice telah dikirim ke email Anda. Silakan coba lagi.',
+        );
     }
 
     /** Display one order belonging to the authenticated customer. */
@@ -366,10 +374,10 @@ class OrderController extends Controller
         $order->refresh();
 
         if ($previousStatus !== $order->status || $previousTrackingNumber !== $order->tracking_number) {
-            app(OrderNotificationService::class)->statusUpdated(
-                $order,
-                $previousTrackingNumber !== $order->tracking_number,
-            );
+            $trackingChanged = $previousTrackingNumber !== $order->tracking_number;
+
+            app(OrderNotificationService::class)->statusUpdated($order, $trackingChanged);
+            app(OrderEmailService::class)->statusUpdated($order, $trackingChanged);
         }
 
         if (config('realtime.enabled') && config('realtime.order_status') && ($previousStatus !== $order->status || $previousTrackingNumber !== $order->tracking_number)) {

@@ -97,6 +97,18 @@ php artisan key:generate
 
 Never commit `.env`. Use a different key and credentials for every environment.
 
+#### Transactional order emails and invoice PDFs
+
+The application queues customer emails for order creation, verified payment, order processing, shipment (including courier and tracking number), and delivery. The order-created email includes an invoice PDF; the verified-payment email includes a payment receipt PDF. Customers can also download the current invoice/receipt from their authenticated order detail page. The invoice endpoint checks order ownership (administrators may access it for support).
+
+Emails are queued after the related database transaction commits. Keep a Laravel queue worker running in every environment; otherwise messages remain pending in the `jobs` table and are not delivered:
+
+```bash
+php artisan queue:work --tries=3 --backoff=10
+```
+
+The default queue connection is `database`. For production, supervise the queue worker with Supervisor, systemd, or the process manager used by your hosting platform. Configure a real SMTP provider using the `MAIL_*` variables below. Do not use Mailpit in production.
+
 #### Local email testing with Mailpit
 
 Mailpit captures outgoing application emails locally; it does not deliver them to real inboxes. Start a Mailpit container if one is not already available:
@@ -452,7 +464,8 @@ After HTTPS is active, confirm `APP_URL=https://shop.example.com` and `SESSION_S
 - If scheduled tasks are introduced, add a cron entry to run `php artisan schedule:run` every minute as the deployment user.
 - Keep `storage/` and `bootstrap/cache/` writable by PHP-FPM.
 - Keep uploaded files persistent between releases. Back up `storage/app/public` and the database.
-- Configure SMTP and test registration, verification, and password-reset emails.
+- Configure SMTP and test registration, verification, password-reset, and transactional order emails.
+- Verify queue workers deliver order invoices, payment receipts, and fulfillment status emails.
 
 ## 8. Release checklist
 

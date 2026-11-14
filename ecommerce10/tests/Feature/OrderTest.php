@@ -1,5 +1,6 @@
 <?php
 
+use App\Mail\OrderTransactionalMail;
 use App\Models\Cart;
 use App\Models\Order;
 use App\Models\Product;
@@ -7,6 +8,7 @@ use App\Models\ProductCategory;
 use App\Models\User;
 use App\Services\MidtransPaymentService;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 
 function makeOrderTestProduct(int $stock = 10): Product
 {
@@ -27,6 +29,7 @@ function makeOrderTestProduct(int $stock = 10): Product
 }
 
 test('checkout creates an order and order items from the cart then clears the cart and reduces stock', function () {
+    Mail::fake();
     $user = User::factory()->create();
     $product = makeOrderTestProduct(stock: 8);
     Cart::query()->create([
@@ -72,6 +75,9 @@ test('checkout creates an order and order items from the cart then clears the ca
         'reference_type' => Order::class,
         'reference_id' => $order->id,
     ]);
+
+    Mail::assertQueued(OrderTransactionalMail::class, fn (OrderTransactionalMail $mail): bool => $mail->order->is($order) && $mail->type === 'order_created'
+    );
 });
 
 test('checkout requests live Biteship rates using warehouse and destination postal codes and product weight', function () {
@@ -265,4 +271,64 @@ test('checkout prepares a Midtrans payment for the newly created order', functio
         ->and($order->payment_order_id)->toBe('PAY-'.$order->order_number.'-test')
         ->and($order->snap_token)->toBe('snap-token-test')
         ->and($order->payment_status)->toBe('pending');
+});
+
+test('customer can download their invoice PDF but cannot download another customers invoice', function () {
+    $owner = User::factory()->create();
+    $other = User::factory()->create();
+    $order = Order::query()->create([
+        'user_id' => $owner->id,
+        'cart_id' => null,
+        'user_name' => $owner->name,
+        'user_email' => $owner->email,
+        'total' => 150000,
+        'subtotal' => 125000,
+        'shipping_cost' => 25000,
+        'status' => 'pending',
+        'payment_status' => 'pending',
+    ]);
+    $product = makeOrderTestProduct();
+    $order->orderItems()->create([
+        'product_id' => $product->id,
+        'product_name' => 'PDF test product',
+        'quantity' => 1,
+        'price' => 125000,
+        'total' => 125000,
+    ]);
+
+    $this->actingAs($other)->get(route('orders.invoice', $order))->assertForbidden();
+
+    $response = $this->actingAs($owner)->get(route('orders.invoice', $order))->assertOk();
+    expect($response->headers->get('content-type'))->toContain('application/pdf')
+        ->and($response->getContent())->toStartWith('%PDF');
+});
+
+test('order-created email contains an order link and a PDF invoice attachment', function () {
+    $customer = User::factory()->create();
+    $order = Order::query()->create([
+        'user_id' => $customer->id,
+        'cart_id' => null,
+        'user_name' => $customer->name,
+        'user_email' => $customer->email,
+        'total' => 125000,
+        'subtotal' => 125000,
+        'shipping_cost' => 0,
+        'status' => 'pending',
+        'payment_status' => 'pending',
+    ]);
+
+    $mail = new OrderTransactionalMail($order, 'order_created');
+
+    $attachment = $mail->attachments()[0];
+    $pdfBytes = $attachment->attachWith(
+        fn ($path) => file_get_contents($path),
+        fn ($data) => $data(),
+    );
+
+    expect($mail->envelope()->subject)->toContain($order->order_number)
+        ->and($attachment->as)->toBe('invoice-'.$order->order_number.'.pdf')
+        ->and($attachment->mime)->toBe('application/pdf')
+        ->and($pdfBytes)->toStartWith('%PDF')
+        ->and($mail->render())->toContain('Lanjutkan Pembayaran')
+        ->and($mail->render())->toContain($order->order_number);
 });

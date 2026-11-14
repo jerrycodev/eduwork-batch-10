@@ -6,6 +6,7 @@
     @endpush
 
     <div id="order-detail-content" @if (config('realtime.enabled') && config('realtime.order_status')) data-order-realtime="{{ $order->id }}" @endif>
+        <div class="mb-4"><a href="{{ route('orders.invoice', $order) }}" class="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700"><i data-lucide="file-down" class="h-4 w-4"></i>{{ $order->payment_status === 'paid' ? 'Unduh bukti pembayaran' : 'Unduh invoice' }}</a></div>
     <div class="mb-7">
         <a href="{{ route('orders.customer.index') }}"
             class="inline-flex items-center gap-2 text-sm font-medium text-gray-500 transition hover:text-indigo-600"><i
