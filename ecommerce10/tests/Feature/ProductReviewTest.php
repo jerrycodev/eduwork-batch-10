@@ -73,7 +73,7 @@ test('customer review is stored pending and is not displayed publicly until appr
         'is_approved' => false,
     ]);
 
-    $this->get(route('product-detail', $product))
+    $this->get(route('product-detail', $product->slug))
         ->assertOk()
         ->assertDontSee('Kualitas produk sangat baik.');
 });
@@ -90,12 +90,12 @@ test('customer cannot submit more than one review for the same product', functio
     ]);
 
     $this->actingAs($customer)
-        ->from(route('product-detail', $product))
+        ->from(route('product-detail', $product->slug))
         ->post(route('product-reviews.store', $product), [
             'rating' => 5,
             'comment' => 'Mencoba mengirim ulasan kedua.',
         ])
-        ->assertRedirect(route('product-detail', $product))
+        ->assertRedirect(route('product-detail', $product->slug))
         ->assertSessionHasErrors('review');
 
     $this->assertDatabaseCount('product_reviews', 1);
@@ -121,14 +121,14 @@ test('admin can approve and hide reviews and only approved reviews affect produc
         ->assertRedirect();
     $this->assertDatabaseHas('product_reviews', ['id' => $review->id, 'is_approved' => true]);
 
-    $this->get(route('product-detail', $product))
+    $this->get(route('product-detail', $product->slug))
         ->assertOk()
         ->assertSee('Review untuk moderasi admin.')
         ->assertSee('5.0');
 
     $this->patch(route('reviews.update', $review), ['is_approved' => 0])
         ->assertRedirect();
-    $this->get(route('product-detail', $product))
+    $this->get(route('product-detail', $product->slug))
         ->assertOk()
         ->assertDontSee('Review untuk moderasi admin.');
 });
@@ -164,12 +164,12 @@ test('customer without a completed paid order cannot submit a review', function 
     $product = makeReviewTestProduct();
 
     $this->actingAs($customer)
-        ->from(route('product-detail', $product))
+        ->from(route('product-detail', $product->slug))
         ->post(route('product-reviews.store', $product), [
             'rating' => 5,
             'comment' => 'Saya belum membeli produk ini.',
         ])
-        ->assertRedirect(route('product-detail', $product))
+        ->assertRedirect(route('product-detail', $product->slug))
         ->assertSessionHasErrors('review');
 
     $this->assertDatabaseCount('product_reviews', 0);

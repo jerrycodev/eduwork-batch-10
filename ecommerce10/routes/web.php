@@ -24,7 +24,7 @@ Route::get('/cart', [CartController::class, 'index'])->name('cart');
 Route::post('/cart/{product}', [CartController::class, 'store'])->name('cart.store');
 Route::patch('/cart/{cart}', [CartController::class, 'update'])->name('cart.update');
 Route::delete('/cart/{cart}', [CartController::class, 'destroy'])->name('cart.destroy');
-Route::get('/product/{product}', [HomeController::class, 'productDetail'])->name('product-detail');
+Route::get('/product/{product:slug}', [HomeController::class, 'productDetail'])->name('product-detail');
 Route::post('/product/{product}/reviews', [ProductReviewController::class, 'store'])->middleware('auth')->name('product-reviews.store');
 Route::get('/checkout', [PaymentController::class, 'checkout'])->name('checkout');
 Route::post('/midtrans/callback', [PaymentController::class, 'callback'])->name('midtrans.callback');

@@ -120,7 +120,7 @@ test('guest is redirected to login when adding a product', function () {
     $product = makeCartProduct();
 
     $this->post(route('cart.store', $product), ['quantity' => 1])
-        ->assertRedirect(route('login', ['redirect_to' => route('product-detail', $product, absolute: false)]))
+        ->assertRedirect(route('login', ['redirect_to' => route('product-detail', $product->slug, absolute: false)]))
         ->assertSessionHas('error');
 
     $this->assertDatabaseCount('carts', 0);

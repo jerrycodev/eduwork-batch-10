@@ -28,7 +28,7 @@ test('authenticated customer can add a product to wishlist from product detail',
     $product = makeWishlistProduct();
 
     $this->actingAs($user)
-        ->get(route('product-detail', $product))
+        ->get(route('product-detail', $product->slug))
         ->assertOk()
         ->assertSee(route('wishlist.toggle', $product), false)
         ->assertSee('Tambahkan ke wishlist');

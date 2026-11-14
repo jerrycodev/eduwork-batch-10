@@ -26,15 +26,16 @@ class HomeController extends Controller
         return view('home.index', compact('products', 'categories'));
     }
 
-    public function productDetail(Product $product)
+    public function productDetail(string $product)
     {
+        $product = Product::query()->where('slug', $product)->firstOrFail();
         $session = session();
         if (! $session->has("product_{$product->id}_viewed")) {
             $product->increment('click');
             $session->put("product_{$product->id}_viewed", true);
         }
 
-        $product->load('category');
+        $product->load(['category', 'images']);
         $isWishlisted = auth()->check() && auth()->user()->role !== 'admin'
             ? auth()->user()->wishlistItems()->where('product_id', $product->id)->exists()
             : false;
@@ -45,6 +46,7 @@ class HomeController extends Controller
             ->where('category_id', $product->category_id)
             ->whereKeyNot($product->id)
             ->where('stock', '>', 0)
+            ->with('images')
             ->withAvg(['approvedReviews as average_rating' => fn ($query) => $query->where('is_approved', true)], 'rating')
             ->withCount(['approvedReviews as reviews_count' => fn ($query) => $query->where('is_approved', true)])
             ->latest()

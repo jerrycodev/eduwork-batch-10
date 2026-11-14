@@ -47,7 +47,7 @@ class CartController extends Controller
     public function store(Request $request, Product $product): RedirectResponse
     {
         if (! Auth::check()) {
-            return redirect()->route('login', ['redirect_to' => route('product-detail', $product, absolute: false)])
+            return redirect()->route('login', ['redirect_to' => route('product-detail', $product->slug, absolute: false)])
                 ->with('error', 'Silakan masuk terlebih dahulu untuk menambahkan produk ke keranjang.');
         }
 

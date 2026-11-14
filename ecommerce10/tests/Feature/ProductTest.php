@@ -93,6 +93,21 @@ test('a product and its uploaded image can be deleted', function () {
     Storage::disk('public')->assertMissing('uploads/headphones.png');
 });
 
+test('product detail URLs resolve products by slug instead of UUID', function () {
+    $product = Product::query()->create([
+        'name' => 'Slug URL Product',
+        'slug' => 'slug-url-product',
+        'description' => 'Product used to verify slug-based detail URLs.',
+        'image' => 'https://example.test/slug-product.png',
+        'price' => 100000,
+        'stock' => 5,
+        'category_id' => createProductCategory()->id,
+    ]);
+
+    $this->get('/product/slug-url-product')->assertOk();
+    $this->get('/product/'.$product->id)->assertNotFound();
+});
+
 test('visiting a product detail page increments its click counter', function () {
     $category = createProductCategory();
 
@@ -106,8 +121,8 @@ test('visiting a product detail page increments its click counter', function () 
         'category_id' => $category->id,
     ]);
 
-    $this->get(route('product-detail', $product))->assertOk();
-    $this->get(route('product-detail', $product))->assertOk();
+    $this->get(route('product-detail', $product->slug))->assertOk();
+    $this->get(route('product-detail', $product->slug))->assertOk();
 
     expect($product->fresh()->click)->toBe(1);
 });
@@ -135,9 +150,9 @@ test('viewing another product in the same session increments that product indepe
         'category_id' => $category->id,
     ]);
 
-    $this->get(route('product-detail', $firstProduct))->assertOk();
-    $this->get(route('product-detail', $secondProduct))->assertOk();
-    $this->get(route('product-detail', $firstProduct))->assertOk();
+    $this->get(route('product-detail', $firstProduct->slug))->assertOk();
+    $this->get(route('product-detail', $secondProduct->slug))->assertOk();
+    $this->get(route('product-detail', $firstProduct->slug))->assertOk();
 
     expect($firstProduct->fresh()->click)->toBe(1)
         ->and($secondProduct->fresh()->click)->toBe(1);
@@ -248,7 +263,7 @@ test('product detail shows available products from the same category before revi
         'category_id' => $category->id,
     ]);
 
-    $response = $this->get(route('product-detail', $product));
+    $response = $this->get(route('product-detail', $product->slug));
 
     $response->assertOk()
         ->assertSee('Produk Terkait')
@@ -259,7 +274,7 @@ test('product detail shows available products from the same category before revi
     $content = $response->getContent();
     expect(strpos($content, 'id="related-products"'))
         ->toBeLessThan(strpos($content, 'id="reviews"'))
-        ->and($content)->toContain(route('product-detail', $relatedProduct));
+        ->and($content)->toContain(route('product-detail', $relatedProduct->slug));
 });
 
 test('admin can upload multiple product images and choose the storefront main image', function () {
