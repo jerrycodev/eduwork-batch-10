@@ -97,6 +97,38 @@ php artisan key:generate
 
 Never commit `.env`. Use a different key and credentials for every environment.
 
+#### Local email testing with Mailpit
+
+Mailpit captures outgoing application emails locally; it does not deliver them to real inboxes. Start a Mailpit container if one is not already available:
+
+```bash
+docker run -d --name ecommerce-mailpit \
+  -p 1025:1025 \
+  -p 8025:8025 \
+  axllent/mailpit:latest
+```
+
+For Laravel running directly on the host, use these settings (they are already the defaults in `.env.example`):
+
+```dotenv
+MAIL_MAILER=smtp
+MAIL_SCHEME=
+MAIL_HOST=127.0.0.1
+MAIL_PORT=1025
+MAIL_USERNAME=
+MAIL_PASSWORD=
+MAIL_FROM_ADDRESS="noreply@ecommerce.test"
+MAIL_FROM_NAME="${APP_NAME}"
+```
+
+Open the Mailpit inbox at `http://127.0.0.1:8025`. If Laravel itself runs inside Docker on the same Docker network as Mailpit, set `MAIL_HOST` to the Mailpit service/container network alias (for example, `mailpit`) instead of `127.0.0.1`. After changing mail settings, clear cached configuration:
+
+```bash
+php artisan config:clear
+```
+
+For production, replace these local Mailpit values with the credentials and host of a real SMTP provider; see the production environment example in section 4.2.
+
 ### 2.4 Run migrations and development seeders
 
 ```bash
