@@ -58,3 +58,20 @@ test('password can be reset with valid token', function () {
         return true;
     });
 });
+
+test('password reset notification uses the ecommerce email template', function () {
+    $user = User::factory()->create(['name' => 'Jane Customer']);
+    $token = 'test-reset-token';
+
+    $mail = (new ResetPassword($token))->toMail($user);
+
+    expect($mail->subject)->toBe('Atur Ulang Password - '.config('app.name'))
+        ->and($mail->view)->toBe([
+            'html' => 'emails.password-reset',
+            'text' => 'emails.password-reset-text',
+        ])
+        ->and($mail->viewData['userName'])->toBe('Jane Customer')
+        ->and($mail->viewData['expireMinutes'])->toBe(config('auth.passwords.'.config('auth.defaults.passwords').'.expire'))
+        ->and($mail->viewData['resetUrl'])->toContain($token)
+        ->and($mail->viewData['resetUrl'])->toContain(url('/reset-password/'));
+});
