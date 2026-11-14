@@ -20,23 +20,6 @@ class OrderReturnRequestController extends Controller
         abort_unless($request->user()->role !== 'admin', 403);
         abort_unless($order->user_id === $request->user()->id, 403);
 
-        if (! in_array($order->status, ['delivered', 'completed'], true)) {
-            throw ValidationException::withMessages(['return' => 'Pengembalian hanya dapat diajukan setelah pesanan diterima.']);
-        }
-
-        if (! $order->delivered_at) {
-            throw ValidationException::withMessages(['return' => 'Tanggal penerimaan pesanan tidak tersedia sehingga pengembalian tidak dapat diajukan.']);
-        }
-
-        $returnDeadline = $order->delivered_at->copy()->addDays(7);
-        if (now()->greaterThan($returnDeadline)) {
-            throw ValidationException::withMessages(['return' => 'Batas pengajuan pengembalian 7 hari setelah pesanan diterima telah berakhir.']);
-        }
-
-        if ($order->returnRequest()->exists()) {
-            throw ValidationException::withMessages(['return' => 'Pengajuan pengembalian untuk pesanan ini sudah pernah dibuat.']);
-        }
-
         $validated = $request->validate([
             'reason' => ['required', 'in:damaged,wrong_item,incomplete,not_as_described,other'],
             'description' => ['required', 'string', 'min:10', 'max:3000'],
@@ -60,7 +43,22 @@ class OrderReturnRequestController extends Controller
         $paths = [];
         try {
             $returnRequest = DB::transaction(function () use ($request, $order, $validated, &$paths): OrderReturnRequest {
-                $returnRequest = $order->returnRequest()->create([
+                $lockedOrder = Order::query()->lockForUpdate()->findOrFail($order->id);
+
+                if (! in_array($lockedOrder->status, ['delivered', 'completed'], true)) {
+                    throw ValidationException::withMessages(['return' => 'Pengembalian hanya dapat diajukan setelah pesanan diterima.']);
+                }
+                if (! $lockedOrder->delivered_at) {
+                    throw ValidationException::withMessages(['return' => 'Tanggal penerimaan pesanan tidak tersedia sehingga pengembalian tidak dapat diajukan.']);
+                }
+                if (now()->greaterThan($lockedOrder->delivered_at->copy()->addDays(7))) {
+                    throw ValidationException::withMessages(['return' => 'Batas pengajuan pengembalian 7 hari setelah pesanan diterima telah berakhir.']);
+                }
+                if ($lockedOrder->returnRequest()->exists()) {
+                    throw ValidationException::withMessages(['return' => 'Pengajuan pengembalian untuk pesanan ini sudah pernah dibuat.']);
+                }
+
+                $returnRequest = $lockedOrder->returnRequest()->create([
                     'user_id' => $request->user()->id,
                     'reason' => $validated['reason'],
                     'description' => $validated['description'],
@@ -72,7 +70,7 @@ class OrderReturnRequestController extends Controller
                 }
 
                 $returnRequest->update(['evidence_paths' => $paths]);
-                $order->update(['auto_complete_at' => null]);
+                $lockedOrder->update(['auto_complete_at' => null]);
 
                 return $returnRequest;
             });
@@ -96,28 +94,31 @@ class OrderReturnRequestController extends Controller
 
     public function requestRevision(Request $request, OrderReturnRequest $returnRequest): RedirectResponse
     {
-        if (! in_array($returnRequest->status, ['requested', 'revision_requested'], true)) {
-            throw ValidationException::withMessages(['revision' => 'Dokumen tambahan hanya dapat diminta saat pengajuan sedang diperiksa.']);
-        }
-
         $validated = $request->validate([
             'message' => ['required', 'string', 'min:10', 'max:3000'],
             'required_documents' => ['required', 'array', 'min:1', 'max:4'],
             'required_documents.*' => ['required', 'in:video_unboxing,product_photos,packaging_photos,other'],
         ]);
 
-        $revision = $returnRequest->revisions()->create([
-            'requested_by' => $request->user()->id,
-            'message' => $validated['message'],
-            'required_documents' => array_values(array_unique($validated['required_documents'])),
-            'status' => 'requested',
-        ]);
+        DB::transaction(function () use ($request, $returnRequest, $validated): void {
+            $lockedRequest = OrderReturnRequest::query()->lockForUpdate()->findOrFail($returnRequest->id);
+            if (! in_array($lockedRequest->status, ['requested', 'revision_requested'], true)) {
+                throw ValidationException::withMessages(['revision' => 'Dokumen tambahan hanya dapat diminta saat pengajuan sedang diperiksa.']);
+            }
 
-        $returnRequest->update([
-            'status' => 'revision_requested',
-            'admin_note' => $validated['message'],
-            'reviewed_at' => now(),
-        ]);
+            $lockedRequest->revisions()->create([
+                'requested_by' => $request->user()->id,
+                'message' => $validated['message'],
+                'required_documents' => array_values(array_unique($validated['required_documents'])),
+                'status' => 'requested',
+            ]);
+
+            $lockedRequest->update([
+                'status' => 'revision_requested',
+                'admin_note' => $validated['message'],
+                'reviewed_at' => now(),
+            ]);
+        });
 
         return back()->with('success', 'Permintaan dokumen tambahan berhasil dikirim kepada pelanggan.');
     }
@@ -174,14 +175,20 @@ class OrderReturnRequestController extends Controller
             }
 
             DB::transaction(function () use ($revision, $paths, $names, $validated, $returnRequest): void {
-                $revision->update([
+                $lockedRequest = OrderReturnRequest::query()->lockForUpdate()->findOrFail($returnRequest->id);
+                $lockedRevision = OrderReturnRevision::query()->lockForUpdate()->findOrFail($revision->id);
+                if ($lockedRequest->status !== 'revision_requested' || $lockedRevision->status !== 'requested') {
+                    throw ValidationException::withMessages(['revision' => 'Revisi ini tidak lagi menunggu dokumen pelanggan.']);
+                }
+
+                $lockedRevision->update([
                     'evidence_paths' => $paths,
                     'evidence_original_names' => $names,
                     'customer_note' => $validated['customer_note'] ?? null,
                     'status' => 'submitted',
                     'submitted_at' => now(),
                 ]);
-                $returnRequest->update(['status' => 'requested']);
+                $lockedRequest->update(['status' => 'requested']);
             });
         } catch (\Throwable $exception) {
             Storage::disk('local')->delete($paths);
@@ -214,32 +221,36 @@ class OrderReturnRequestController extends Controller
             'return_instructions' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        if ($returnRequest->status !== 'requested') {
-            throw ValidationException::withMessages(['status' => 'Pengajuan ini sudah diperiksa.']);
-        }
-
         if ($validated['status'] === 'rejected' && blank($validated['admin_note'] ?? null)) {
             throw ValidationException::withMessages(['admin_note' => 'Alasan penolakan wajib diisi.']);
         }
 
-        $returnRequest->update([
-            'status' => $validated['status'],
-            'admin_note' => $validated['admin_note'] ?? null,
-            'return_recipient' => $validated['return_recipient'] ?? null,
-            'return_phone' => $validated['return_phone'] ?? null,
-            'return_address' => $validated['return_address'] ?? null,
-            'return_instructions' => $validated['return_instructions'] ?? null,
-            'reviewed_at' => now(),
-            'resolved_at' => $validated['status'] === 'rejected' ? now() : null,
-        ]);
+        DB::transaction(function () use ($returnRequest, $validated): void {
+            $lockedRequest = OrderReturnRequest::query()->lockForUpdate()->findOrFail($returnRequest->id);
+            if ($lockedRequest->status !== 'requested') {
+                throw ValidationException::withMessages(['status' => 'Pengajuan ini sudah diperiksa.']);
+            }
 
-        if ($validated['status'] === 'rejected') {
-            $returnRequest->order()->update([
-                'status' => 'completed',
-                'completed_at' => now(),
-                'auto_complete_at' => null,
+            $lockedRequest->update([
+                'status' => $validated['status'],
+                'admin_note' => $validated['admin_note'] ?? null,
+                'return_recipient' => $validated['return_recipient'] ?? null,
+                'return_phone' => $validated['return_phone'] ?? null,
+                'return_address' => $validated['return_address'] ?? null,
+                'return_instructions' => $validated['return_instructions'] ?? null,
+                'reviewed_at' => now(),
+                'resolved_at' => $validated['status'] === 'rejected' ? now() : null,
             ]);
-        }
+
+            if ($validated['status'] === 'rejected') {
+                $lockedOrder = Order::query()->lockForUpdate()->findOrFail($lockedRequest->order_id);
+                $lockedOrder->update([
+                    'status' => 'completed',
+                    'completed_at' => now(),
+                    'auto_complete_at' => null,
+                ]);
+            }
+        });
 
         return back()->with('success', $validated['status'] === 'approved'
             ? 'Pengajuan disetujui. Pelanggan dapat mengirim barang ke alamat pengembalian.'
@@ -249,16 +260,18 @@ class OrderReturnRequestController extends Controller
     public function submitReturnShipment(Request $request, OrderReturnRequest $returnRequest): RedirectResponse
     {
         abort_unless((string) $returnRequest->user_id === (string) $request->user()->id, 403);
-        if ($returnRequest->status !== 'approved' || $returnRequest->return_tracking_number) {
-            throw ValidationException::withMessages(['return' => 'Pengiriman barang kembali belum dapat dicatat.']);
-        }
-
         $validated = $request->validate([
             'return_courier' => ['required', 'string', 'max:100'],
             'return_tracking_number' => ['required', 'string', 'max:120'],
         ]);
 
-        $returnRequest->update($validated + ['status' => 'return_shipped']);
+        DB::transaction(function () use ($returnRequest, $validated): void {
+            $lockedRequest = OrderReturnRequest::query()->lockForUpdate()->findOrFail($returnRequest->id);
+            if ($lockedRequest->status !== 'approved' || $lockedRequest->return_tracking_number) {
+                throw ValidationException::withMessages(['return' => 'Pengiriman barang kembali belum dapat dicatat.']);
+            }
+            $lockedRequest->update($validated + ['status' => 'return_shipped']);
+        });
 
         return back()->with('success', 'Informasi pengiriman barang kembali berhasil dikirim.');
     }
@@ -266,25 +279,23 @@ class OrderReturnRequestController extends Controller
     public function receive(Request $request, OrderReturnRequest $returnRequest): RedirectResponse
     {
         $validated = $request->validate(['inspection_note' => ['nullable', 'string', 'max:3000']]);
-        if ($returnRequest->status !== 'return_shipped') {
-            throw ValidationException::withMessages(['status' => 'Barang harus berstatus sedang dikirim sebelum dapat diterima.']);
-        }
-
-        $returnRequest->update([
-            'status' => 'item_received',
-            'item_received_at' => now(),
-            'inspection_note' => $validated['inspection_note'] ?? null,
-        ]);
+        DB::transaction(function () use ($returnRequest, $validated): void {
+            $lockedRequest = OrderReturnRequest::query()->lockForUpdate()->findOrFail($returnRequest->id);
+            if ($lockedRequest->status !== 'return_shipped') {
+                throw ValidationException::withMessages(['status' => 'Barang harus berstatus sedang dikirim sebelum dapat diterima.']);
+            }
+            $lockedRequest->update([
+                'status' => 'item_received',
+                'item_received_at' => now(),
+                'inspection_note' => $validated['inspection_note'] ?? null,
+            ]);
+        });
 
         return back()->with('success', 'Barang retur dicatat telah diterima. Silakan pilih penyelesaian refund atau replacement.');
     }
 
     public function resolve(Request $request, OrderReturnRequest $returnRequest, MidtransPaymentService $payments): RedirectResponse
     {
-        if ($returnRequest->status !== 'item_received' || $returnRequest->resolution_status !== 'pending') {
-            throw ValidationException::withMessages(['resolution' => 'Penyelesaian hanya dapat diproses setelah barang diterima admin.']);
-        }
-
         $validated = $request->validate([
             'resolution_type' => ['required', 'in:refund,replacement'],
             'refund_method' => ['required_if:resolution_type,refund', 'nullable', 'in:midtrans,manual'],
@@ -296,112 +307,149 @@ class OrderReturnRequestController extends Controller
         ]);
 
         $order = $returnRequest->order;
-        if ($validated['resolution_type'] === 'refund') {
-            $amount = (int) $validated['refund_amount'];
-            if ($amount > (int) $order->total) {
-                throw ValidationException::withMessages(['refund_amount' => 'Nominal refund tidak boleh melebihi total pesanan.']);
+        $amount = (int) ($validated['refund_amount'] ?? 0);
+        if ($validated['resolution_type'] === 'refund' && $amount > (int) $order->total) {
+            throw ValidationException::withMessages(['refund_amount' => 'Nominal refund tidak boleh melebihi total pesanan.']);
+        }
+        if ($validated['resolution_type'] === 'refund' && $validated['refund_method'] === 'manual' && blank($validated['refund_reference'] ?? null)) {
+            throw ValidationException::withMessages(['refund_reference' => 'Referensi transaksi wajib untuk refund manual.']);
+        }
+
+        $proofData = [];
+        if ($request->hasFile('refund_proof')) {
+            $file = $request->file('refund_proof');
+            $proofData = [
+                'refund_proof_path' => $file->store('order-returns/'.$returnRequest->id.'/refund', 'local'),
+                'refund_proof_original_name' => $file->getClientOriginalName(),
+            ];
+        }
+
+        if ($validated['resolution_type'] === 'refund' && $validated['refund_method'] === 'manual' && empty($proofData) && blank($returnRequest->refund_proof_path)) {
+            throw ValidationException::withMessages(['refund_proof' => 'Bukti transfer wajib untuk refund manual.']);
+        }
+
+        // Reserve the resolution under a row lock before calling an external payment API.
+        DB::transaction(function () use ($returnRequest, $validated, $request, $order, $amount, $proofData): void {
+            $lockedRequest = OrderReturnRequest::query()->lockForUpdate()->findOrFail($returnRequest->id);
+            if ($lockedRequest->status !== 'item_received' || $lockedRequest->resolution_status !== 'pending') {
+                throw ValidationException::withMessages(['resolution' => 'Penyelesaian hanya dapat diproses setelah barang diterima admin.']);
             }
 
-            $proofData = [];
-            if ($request->hasFile('refund_proof')) {
-                $file = $request->file('refund_proof');
-                $proofData = [
-                    'refund_proof_path' => $file->store('order-returns/'.$returnRequest->id.'/refund', 'local'),
-                    'refund_proof_original_name' => $file->getClientOriginalName(),
-                ];
-            }
-
-            $refundReference = $validated['refund_reference'] ?? null;
-            if ($validated['refund_method'] === 'midtrans') {
-                try {
-                    $response = $payments->refund(
-                        $order,
-                        $amount,
-                        'Customer return '.$order->order_number,
-                        'RET-'.$returnRequest->id,
-                    );
-                    $refundReference = (string) ($response->refund_key ?? $response->refund_id ?? $refundReference ?? 'RET-'.$returnRequest->id);
-                } catch (\Throwable $exception) {
-                    report($exception);
-                    throw ValidationException::withMessages(['refund_method' => 'Refund otomatis Midtrans gagal atau tidak didukung transaksi ini. Pilih refund manual dan unggah bukti transfer.']);
+            if ($validated['resolution_type'] === 'replacement') {
+                $items = $order->orderItems()->get();
+                if ($items->isEmpty()) {
+                    throw ValidationException::withMessages(['replacement' => 'Item pesanan tidak ditemukan.']);
                 }
-            } elseif (blank($refundReference) || empty($proofData) && blank($returnRequest->refund_proof_path)) {
-                throw ValidationException::withMessages(['refund_proof' => 'Referensi transaksi dan bukti transfer wajib untuk refund manual.']);
+                foreach ($items as $item) {
+                    app(InventoryService::class)->change(
+                        productId: (string) $item->product_id,
+                        delta: -((int) $item->quantity),
+                        type: 'out',
+                        userId: (string) $request->user()->id,
+                        referenceType: OrderReturnRequest::class,
+                        referenceId: (string) $lockedRequest->id,
+                        notes: 'Replacement shipment for order '.$order->order_number,
+                    );
+                }
+                $lockedRequest->update([
+                    'resolution_type' => 'replacement',
+                    'resolution_status' => 'processing',
+                    'replacement_courier' => $validated['replacement_courier'],
+                    'replacement_tracking_number' => $validated['replacement_tracking_number'],
+                    'replacement_shipped_at' => now(),
+                ]);
+
+                return;
             }
 
-            $returnRequest->update(array_merge([
+            $lockedRequest->update(array_merge([
                 'resolution_type' => 'refund',
+                'resolution_status' => 'initiating',
+                'refund_amount' => $amount,
+                'refund_method' => $validated['refund_method'],
+            ], $proofData));
+        });
+
+        if ($validated['resolution_type'] === 'replacement') {
+            return back()->with('success', 'Pengiriman replacement dicatat. Pelanggan dapat melacak barang pengganti menggunakan nomor resi.');
+        }
+
+        $refundReference = $validated['refund_reference'] ?? null;
+        if ($validated['refund_method'] === 'midtrans') {
+            try {
+                $response = $payments->refund(
+                    $order,
+                    $amount,
+                    'Customer return '.$order->order_number,
+                    'RET-'.$returnRequest->id,
+                );
+                $refundReference = (string) ($response->refund_key ?? $response->refund_id ?? $refundReference ?? 'RET-'.$returnRequest->id);
+            } catch (\Throwable $exception) {
+                report($exception);
+                DB::transaction(function () use ($returnRequest): void {
+                    $lockedRequest = OrderReturnRequest::query()->lockForUpdate()->findOrFail($returnRequest->id);
+                    if ($lockedRequest->resolution_status === 'initiating') {
+                        $lockedRequest->update(['resolution_type' => null, 'resolution_status' => 'pending']);
+                    }
+                });
+                throw ValidationException::withMessages(['refund_method' => 'Refund otomatis Midtrans gagal atau tidak didukung transaksi ini. Pilih refund manual dan unggah bukti transfer.']);
+            }
+        }
+
+        DB::transaction(function () use ($returnRequest, $amount, $validated, $refundReference): void {
+            $lockedRequest = OrderReturnRequest::query()->lockForUpdate()->findOrFail($returnRequest->id);
+            if ($lockedRequest->resolution_status !== 'initiating') {
+                throw ValidationException::withMessages(['resolution' => 'Proses refund sudah berubah. Periksa status penyelesaian sebelum mencoba kembali.']);
+            }
+            $lockedRequest->update([
                 'resolution_status' => 'processing',
                 'refund_amount' => $amount,
                 'refund_method' => $validated['refund_method'],
                 'refund_reference' => $refundReference,
-            ], $proofData));
-
-            return back()->with('success', $validated['refund_method'] === 'midtrans'
-                ? 'Permintaan refund telah dikirim ke Midtrans. Verifikasi status refund sebelum menandai selesai.'
-                : 'Refund manual dicatat. Verifikasi transfer sebelum menandai selesai.');
-        }
-
-        $items = $order->orderItems()->get();
-        if ($items->isEmpty()) {
-            throw ValidationException::withMessages(['replacement' => 'Item pesanan tidak ditemukan.']);
-        }
-
-        DB::transaction(function () use ($items, $request, $returnRequest, $validated): void {
-            foreach ($items as $item) {
-                app(InventoryService::class)->change(
-                    productId: (string) $item->product_id,
-                    delta: -((int) $item->quantity),
-                    type: 'out',
-                    userId: (string) $request->user()->id,
-                    referenceType: OrderReturnRequest::class,
-                    referenceId: (string) $returnRequest->id,
-                    notes: 'Replacement shipment for order '.$returnRequest->order->order_number,
-                );
-            }
-
-            $returnRequest->update([
-                'resolution_type' => 'replacement',
-                'resolution_status' => 'processing',
-                'replacement_courier' => $validated['replacement_courier'],
-                'replacement_tracking_number' => $validated['replacement_tracking_number'],
-                'replacement_shipped_at' => now(),
             ]);
         });
 
-        return back()->with('success', 'Pengiriman replacement dicatat. Pelanggan dapat melacak barang pengganti menggunakan nomor resi.');
+        return back()->with('success', $validated['refund_method'] === 'midtrans'
+            ? 'Permintaan refund telah dikirim ke Midtrans. Verifikasi status refund sebelum menandai selesai.'
+            : 'Refund manual dicatat. Verifikasi transfer sebelum menandai selesai.');
     }
 
     public function completeResolution(Request $request, OrderReturnRequest $returnRequest): RedirectResponse
     {
         $validated = $request->validate(['resolution_reference' => ['nullable', 'string', 'max:150']]);
-        if ($returnRequest->status !== 'item_received' || $returnRequest->resolution_status !== 'processing') {
-            throw ValidationException::withMessages(['resolution' => 'Penyelesaian belum siap ditandai selesai.']);
-        }
-
-        if ($returnRequest->resolution_type === 'refund') {
-            if (blank($validated['resolution_reference'] ?? $returnRequest->refund_reference)) {
-                throw ValidationException::withMessages(['resolution_reference' => 'Referensi refund wajib diverifikasi.']);
+        DB::transaction(function () use ($returnRequest, $validated): void {
+            $lockedRequest = OrderReturnRequest::query()->lockForUpdate()->findOrFail($returnRequest->id);
+            if ($lockedRequest->status !== 'item_received' || $lockedRequest->resolution_status !== 'processing') {
+                throw ValidationException::withMessages(['resolution' => 'Penyelesaian belum siap ditandai selesai.']);
             }
-            $returnRequest->update(['refund_reference' => $validated['resolution_reference'] ?? $returnRequest->refund_reference]);
-            $returnRequest->order()->update(['payment_status' => (int) $returnRequest->refund_amount >= (int) $returnRequest->order->total ? 'refunded' : 'partially_refunded']);
-        } elseif ($returnRequest->resolution_type === 'replacement') {
-            $returnRequest->update(['replacement_delivered_at' => now()]);
-        } else {
-            throw ValidationException::withMessages(['resolution' => 'Jenis penyelesaian tidak valid.']);
-        }
 
-        $returnRequest->update([
-            'status' => 'completed',
-            'resolution_status' => 'completed',
-            'resolved_at' => now(),
-        ]);
+            $lockedOrder = Order::query()->lockForUpdate()->findOrFail($lockedRequest->order_id);
+            if ($lockedRequest->resolution_type === 'refund') {
+                $reference = $validated['resolution_reference'] ?? $lockedRequest->refund_reference;
+                if (blank($reference)) {
+                    throw ValidationException::withMessages(['resolution_reference' => 'Referensi refund wajib diverifikasi.']);
+                }
+                $lockedRequest->update(['refund_reference' => $reference]);
+                $lockedOrder->update([
+                    'payment_status' => (int) $lockedRequest->refund_amount >= (int) $lockedOrder->total ? 'refunded' : 'partially_refunded',
+                ]);
+            } elseif ($lockedRequest->resolution_type === 'replacement') {
+                $lockedRequest->update(['replacement_delivered_at' => now()]);
+            } else {
+                throw ValidationException::withMessages(['resolution' => 'Jenis penyelesaian tidak valid.']);
+            }
 
-        $returnRequest->order()->update([
-            'status' => 'completed',
-            'completed_at' => now(),
-            'auto_complete_at' => null,
-        ]);
+            $lockedRequest->update([
+                'status' => 'completed',
+                'resolution_status' => 'completed',
+                'resolved_at' => now(),
+            ]);
+            $lockedOrder->update([
+                'status' => 'completed',
+                'completed_at' => now(),
+                'auto_complete_at' => null,
+            ]);
+        });
 
         return back()->with('success', 'Penyelesaian pengembalian berhasil ditandai selesai.');
     }
