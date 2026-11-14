@@ -2,6 +2,8 @@
 
 use App\Models\Order;
 use App\Models\User;
+use App\Notifications\OrderAlert;
+use Illuminate\Support\Str;
 
 test('opening the legacy checkout URL redirects to the cart instead of creating a demo payment', function () {
     $this->get(route('checkout'))
@@ -47,6 +49,7 @@ test('midtrans callback endpoint is exempt from browser CSRF validation', functi
 
 test('verified Midtrans settlement updates payment status but leaves fulfillment status for admin', function () {
     $user = User::factory()->create();
+    User::factory()->create(['role' => 'admin']);
     $order = Order::query()->create([
         'user_id' => $user->id,
         'cart_id' => null,
@@ -82,6 +85,20 @@ test('verified Midtrans settlement updates payment status but leaves fulfillment
         ->and($order->transaction_id)->toBe('midtrans-transaction-123')
         ->and($order->payment_type)->toBe('gopay')
         ->and($order->paid_at)->not->toBeNull();
+
+    expect($user->notifications()->where('type', OrderAlert::class)->count())->toBe(1)
+        ->and(User::query()->where('role', 'admin')->first()->notifications()->count())->toBe(1);
+
+    // Midtrans may retry the same webhook; it must not create duplicate notifications.
+    $this->postJson(route('midtrans.callback'), [
+        'order_id' => $orderId, 'status_code' => $statusCode, 'gross_amount' => $grossAmount,
+        'signature_key' => $signature, 'transaction_status' => 'settlement',
+        'transaction_id' => 'midtrans-transaction-123', 'payment_type' => 'gopay',
+        'fraud_status' => 'accept', 'merchant_id' => 'TEST-MERCHANT',
+    ])->assertOk();
+
+    expect($user->notifications()->count())->toBe(1)
+        ->and(User::query()->where('role', 'admin')->first()->notifications()->count())->toBe(1);
 });
 
 test('Midtrans callback does not update payment when gross amount does not match the order', function () {
@@ -136,4 +153,21 @@ test('admin can set order to processing only after payment is verified', functio
     $this->patch(route('orders.status.update', $order), ['status' => 'processing'])
         ->assertRedirect(route('orders.show', $order));
     expect($order->fresh()->status)->toBe('processing');
+});
+
+test('notification routes only expose and mutate the authenticated user notifications', function () {
+    $owner = User::factory()->create();
+    $other = User::factory()->create();
+    $notification = $owner->notifications()->create([
+        'id' => (string) Str::uuid(),
+        'type' => OrderAlert::class,
+        'data' => ['title' => 'Pembayaran berhasil', 'message' => 'Tes', 'url' => route('notifications.index')],
+    ]);
+
+    $this->actingAs($other)->post(route('notifications.read', $notification->id))->assertNotFound();
+    expect($notification->fresh()->read_at)->toBeNull();
+
+    $this->actingAs($owner)->get(route('notifications.index'))->assertOk()->assertSee('Pembayaran berhasil');
+    $this->actingAs($owner)->post(route('notifications.read', $notification->id))->assertRedirect(route('notifications.index'));
+    expect($notification->fresh()->read_at)->not->toBeNull();
 });

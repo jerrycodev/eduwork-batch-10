@@ -27,3 +27,8 @@ if (!window.__livewireStarted) {
     Livewire.start();
     window.__livewireStarted = true;
 }
+
+// Realtime notifications are opt-in; do not load Echo or open a socket by default.
+if (document.querySelector('[data-realtime-notifications]')) {
+    import('./notification-realtime');
+}

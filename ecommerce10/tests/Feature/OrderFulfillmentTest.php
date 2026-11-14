@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\StockMovement;
 use App\Models\User;
+use App\Notifications\OrderAlert;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
@@ -454,17 +455,24 @@ test('customer tracking shows return request progress separately from order fulf
         ->assertDontSee('Lacak Pesanan');
 });
 
-test('customer order detail exposes its private realtime subscription identifier', function () {
+test('customer order detail only exposes its private realtime subscription when enabled', function () {
     $customer = User::factory()->create();
     $order = makeFulfillmentOrder($customer);
 
     $this->actingAs($customer)
         ->get(route('orders.customer.show', $order))
         ->assertOk()
+        ->assertDontSee('data-order-realtime', false);
+
+    config(['realtime.enabled' => true, 'realtime.order_status' => true]);
+
+    $this->get(route('orders.customer.show', $order))
+        ->assertOk()
         ->assertSee('data-order-realtime="'.$order->id.'"', false);
 });
 
 test('admin status changes broadcast to the order private channel after the update', function () {
+    config(['realtime.enabled' => true, 'realtime.order_status' => true]);
     Event::fake([OrderStatusUpdated::class]);
 
     $admin = User::factory()->create(['role' => 'admin']);
@@ -480,6 +488,8 @@ test('admin status changes broadcast to the order private channel after the upda
             && $event->orderData['status'] === 'processing'
             && $event->orderData['order_number'] === $order->order_number;
     });
+
+    expect($customer->notifications()->where('type', OrderAlert::class)->count())->toBe(1);
 });
 
 test('only the order owner and administrators may authorize its private channel', function () {

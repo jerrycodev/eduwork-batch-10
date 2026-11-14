@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Services\BiteshipShippingService;
 use App\Services\InventoryService;
 use App\Services\MidtransPaymentService;
+use App\Services\OrderNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -365,6 +366,13 @@ class OrderController extends Controller
         $order->refresh();
 
         if ($previousStatus !== $order->status || $previousTrackingNumber !== $order->tracking_number) {
+            app(OrderNotificationService::class)->statusUpdated(
+                $order,
+                $previousTrackingNumber !== $order->tracking_number,
+            );
+        }
+
+        if (config('realtime.enabled') && config('realtime.order_status') && ($previousStatus !== $order->status || $previousTrackingNumber !== $order->tracking_number)) {
             OrderStatusUpdated::dispatch((string) $order->id, [
                 'id' => (string) $order->id,
                 'order_number' => $order->order_number,

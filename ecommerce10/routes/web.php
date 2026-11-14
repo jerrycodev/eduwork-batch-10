@@ -5,6 +5,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FileUploadController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrderCancellationRequestController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OrderReturnRequestController;
@@ -54,6 +55,9 @@ Route::prefix('/dashboard')->middleware(['admin'])->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
     Route::post('/orders/returns/{returnRequest}/revisions/{revision}', [OrderReturnRequestController::class, 'submitRevision'])->name('orders.returns.revisions.submit');
     Route::get('/orders/returns/{returnRequest}/revisions/{revision}/evidence/{index}', [OrderReturnRequestController::class, 'revisionEvidence'])->whereNumber('index')->name('orders.returns.revisions.evidence');
     Route::post('/orders/returns/{returnRequest}/shipment', [OrderReturnRequestController::class, 'submitReturnShipment'])->name('orders.returns.shipment');

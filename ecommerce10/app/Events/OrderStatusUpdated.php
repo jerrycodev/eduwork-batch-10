@@ -19,6 +19,11 @@ class OrderStatusUpdated implements ShouldBroadcast, ShouldDispatchAfterCommit
         public readonly array $orderData,
     ) {}
 
+    public function broadcastWhen(): bool
+    {
+        return config('realtime.enabled') && config('realtime.order_status');
+    }
+
     public function broadcastOn(): array
     {
         return [new PrivateChannel('orders.'.$this->orderId)];

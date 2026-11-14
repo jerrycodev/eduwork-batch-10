@@ -57,6 +57,7 @@ $links = [
 
             <!-- Settings Dropdown -->
             <div class="hidden sm:ms-4 sm:flex sm:items-center lg:ms-6">
+                <x-notification-link />
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button

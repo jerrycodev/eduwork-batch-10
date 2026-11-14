@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\OrderCancellationRequest;
 use App\Services\MidtransPaymentService;
+use App\Services\OrderNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -108,19 +109,19 @@ class PaymentController extends Controller
             return response()->json(['status' => 'ignored', 'reason' => 'unsupported_status']);
         }
 
-        DB::transaction(function () use ($order, $paymentStatus, $notification): void {
+        $paymentTransitioned = DB::transaction(function () use ($order, $paymentStatus, $notification): bool {
             $lockedOrder = Order::query()->lockForUpdate()->find($order->id);
             if (! $lockedOrder) {
-                return;
+                return false;
             }
 
             // Never allow a delayed pending/failed notification to downgrade a paid order.
             if (in_array($lockedOrder->payment_status, ['refunded', 'partially_refunded'], true)) {
-                return;
+                return false;
             }
 
             if ($lockedOrder->payment_status === 'paid' && $paymentStatus !== 'refunded') {
-                return;
+                return false;
             }
 
             $lockedOrder->forceFill([
@@ -148,7 +149,13 @@ class PaymentController extends Controller
                     ],
                 );
             }
+
+            return true;
         });
+
+        if ($paymentTransitioned && $paymentStatus === 'paid') {
+            app(OrderNotificationService::class)->paymentSucceeded($order->fresh());
+        }
 
         // Payment state is separate from fulfillment state. Admin controls orders.status.
         return response()->json(['status' => 'processed']);

@@ -59,6 +59,7 @@
                     </a>
                 @endunlessadmin
                 @auth
+                    <x-notification-link />
                     <a href="{{ route('profile.edit') }}"
                         class="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-4 py-2.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100">
                         <i data-lucide="user-round" class="h-4 w-4"></i>{{ Str::limit(Auth::user()->name, 18) }}
@@ -108,6 +109,7 @@
                             'text-gray-600' => !request()->routeIs('wishlist.*'),
                         ])>Wishlist</a>
                     @endunlessadmin
+                    <x-notification-link />
                     <a href="{{ route('orders.customer.index') }}"
                         class="rounded-xl px-3 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-indigo-50 hover:text-indigo-700">Pesanan</a>
                     <a href="{{ route('profile.edit') }}"

@@ -543,3 +543,36 @@ npm run dev
 Build frontend assets for production with `npm run build`. In production, use a process supervisor for Reverb and the queue worker, configure a TLS-enabled public WebSocket endpoint, set the matching `REVERB_*` and `VITE_REVERB_*` values, and restrict Reverb allowed origins to the storefront domain rather than `*`. Restart long-running Laravel, queue, and Reverb processes after changing environment values.
 
 If Reverb or the queue worker is unavailable, the order page remains usable but will not receive live updates until the connection is restored; refreshing the page still loads the latest persisted order state.
+
+
+## Realtime and in-app notifications
+
+Realtime connections are opt-in. The application stores order notifications in the database even when realtime is disabled, so users can read them the next time they open the application. The default `.env` settings do not open WebSocket connections or broadcast order updates.
+
+```dotenv
+BROADCAST_CONNECTION=null
+REALTIME_ENABLED=false
+REALTIME_ORDER_STATUS_ENABLED=false
+REALTIME_NOTIFICATIONS_ENABLED=false
+```
+
+To enable Reverb, configure its credentials and set `BROADCAST_CONNECTION=reverb`. Then enable only the realtime features you need:
+
+```dotenv
+BROADCAST_CONNECTION=reverb
+REALTIME_ENABLED=true
+REALTIME_ORDER_STATUS_ENABLED=true
+REALTIME_NOTIFICATIONS_ENABLED=true
+```
+
+`REALTIME_ENABLED` is the master switch. `REALTIME_ORDER_STATUS_ENABLED` controls live order-detail updates, while `REALTIME_NOTIFICATIONS_ENABLED` controls live notification delivery to the authenticated user's private channel. Each feature flag is independently opt-in and requires the master switch. Database notifications remain enabled regardless of these flags.
+
+Run the Reverb server and queue worker only when realtime delivery is enabled. After changing `.env`, clear cached configuration and restart long-running Laravel, queue, Vite, and Reverb processes so they load the new values:
+
+```bash
+php artisan config:clear
+php artisan queue:restart
+php artisan reverb:start
+```
+
+Payment notifications are created only when a verified Midtrans callback transitions an order into the paid state. Repeated callbacks do not create duplicate payment-success or admin new-order notifications. Administrators receive a notification for each newly paid order; customers receive payment confirmation and subsequent fulfillment status/tracking updates.

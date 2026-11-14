@@ -1,9 +1,11 @@
 <x-layout-component>
     @push('scripts')
-        @vite('resources/js/order-realtime.js')
+        @if (config('realtime.enabled') && config('realtime.order_status'))
+            @vite('resources/js/order-realtime.js')
+        @endif
     @endpush
 
-    <div id="order-detail-content" data-order-realtime="{{ $order->id }}">
+    <div id="order-detail-content" @if (config('realtime.enabled') && config('realtime.order_status')) data-order-realtime="{{ $order->id }}" @endif>
     <div class="mb-7">
         <a href="{{ route('orders.customer.index') }}"
             class="inline-flex items-center gap-2 text-sm font-medium text-gray-500 transition hover:text-indigo-600"><i

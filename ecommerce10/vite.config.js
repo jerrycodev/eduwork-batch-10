@@ -14,6 +14,7 @@ export default defineConfig({
                 'resources/js/file_upload.form.js',
                 'resources/js/product.form.js',
                 'resources/js/order-realtime.js',
+                'resources/js/notification-realtime.js',
             ],
             refresh: true,
             fonts: [

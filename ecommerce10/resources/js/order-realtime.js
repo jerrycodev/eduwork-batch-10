@@ -1,4 +1,7 @@
-import './echo';
+if (document.querySelector('[data-order-realtime]')) {
+    const { default: initializeEcho } = await import('./echo');
+    initializeEcho();
+}
 
 let subscribedOrderId = null;
 
