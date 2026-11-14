@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -17,21 +16,34 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         if (app()->environment(['local', 'testing'])) {
-            User::factory(2)->create();
+            foreach (['demo1@ecommerce.test', 'demo2@ecommerce.test'] as $email) {
+                User::query()->firstOrCreate(
+                    ['email' => $email],
+                    User::factory()->raw(['email' => $email]),
+                );
+            }
+
+            $this->call(ProductSeeder::class);
         }
 
-        $adminEmail = env('ADMIN_EMAIL');
-        $adminPassword = env('ADMIN_PASSWORD');
+        $adminEmail = trim((string) env('ADMIN_EMAIL'));
+        $adminPassword = (string) env('ADMIN_PASSWORD');
 
-        if (filled($adminEmail) && filled($adminPassword)) {
-            User::query()->firstOrCreate(
-                ['email' => $adminEmail],
-                [
-                    'name' => env('ADMIN_NAME', 'Administrator'),
-                    'password' => Hash::make($adminPassword),
-                    'role' => 'admin',
-                ],
-            );
+        if ($adminEmail === '' || $adminPassword === '') {
+            return;
         }
+
+        $admin = User::query()->firstOrNew([
+            'email' => $adminEmail,
+        ]);
+
+        if (! $admin->exists) {
+            $admin->name = env('ADMIN_NAME', 'Administrator');
+            $admin->password = $adminPassword;
+        }
+
+        // Re-running the seeder must not reset an existing administrator's password.
+        $admin->role = 'admin';
+        $admin->save();
     }
 }

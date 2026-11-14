@@ -26,5 +26,10 @@ class AppServiceProvider extends ServiceProvider
             return Auth::check() && Auth::user()->role === 'admin';
         });
 
+        // Unlessadmin
+        Blade::if('unlessadmin', function () {
+            // Logika pengecekan: pastikan user login DAN memiliki role/guard admin
+            return ! Auth::check() || Auth::user()->role !== 'admin';
+        });
     }
 }

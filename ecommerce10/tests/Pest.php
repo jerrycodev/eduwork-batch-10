@@ -1,6 +1,9 @@
 <?php
 
+use App\Models\User;
+use App\Models\UserAddress;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /*
@@ -47,4 +50,40 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+function checkoutShippingQuote($test, User $user, UserAddress $address): array
+{
+    config([
+        'biteship.api_key' => 'biteship_test.fake-key',
+        'biteship.warehouse.postal_code' => '16431',
+        'biteship.couriers' => 'jne,sicepat,jnt',
+    ]);
+    Http::fake([
+        'api.biteship.com/v1/rates/couriers' => Http::response([
+            'success' => true,
+            'pricing' => [[
+                'courier_code' => 'jne',
+                'courier_name' => 'JNE',
+                'courier_service_code' => 'REG',
+                'courier_service_name' => 'Regular',
+                'price' => 15000,
+                'duration' => '2 - 3 days',
+            ]],
+        ], 200),
+    ]);
+
+    return $test->actingAs($user)
+        ->postJson(route('checkout.shipping-rates'), ['address_id' => $address->id])
+        ->assertOk()
+        ->json();
+}
+
+function checkoutShippingPayload(array $quote): array
+{
+    return [
+        'address_id' => $quote['address_id'] ?? null,
+        'shipping_quote_id' => $quote['quote_id'],
+        'shipping_rate_key' => $quote['rates'][0]['rate_key'],
+    ];
 }

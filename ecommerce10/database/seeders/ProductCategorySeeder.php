@@ -9,10 +9,14 @@ use Illuminate\Support\Str;
 class ProductCategorySeeder extends Seeder
 {
     /**
-     * Run the database seeds.
+     * Seed development product categories.
      */
     public function run(): void
     {
+        if (! app()->environment(['local', 'testing', 'development'])) {
+            return;
+        }
+
         $categories = [
             'Headphone',
             'Earbuds',
@@ -21,10 +25,10 @@ class ProductCategorySeeder extends Seeder
             'Keyboard',
         ];
 
-        foreach ($categories as $category) {
+        foreach ($categories as $name) {
             ProductCategory::query()->firstOrCreate(
-                ['slug' => Str::slug($category)],
-                ['name' => $category],
+                ['slug' => Str::slug($name)],
+                ['name' => $name],
             );
         }
     }

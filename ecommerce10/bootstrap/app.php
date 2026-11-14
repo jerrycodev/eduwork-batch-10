@@ -16,6 +16,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => AdminMiddleware::class,
         ]);
+
+        // Midtrans sends server-to-server POST requests without a Laravel CSRF token.
+        $middleware->validateCsrfTokens(except: [
+            'midtrans/callback',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

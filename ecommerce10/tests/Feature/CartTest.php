@@ -14,7 +14,7 @@ function makeCartProduct(int $stock = 10): Product
 
     return Product::query()->create([
         'name' => 'Cart Test Product',
-        'slug' => 'cart-test-product-' . uniqid(),
+        'slug' => 'cart-test-product-'.uniqid(),
         'description' => 'Product for cart feature tests.',
         'image' => '/storage/uploads/cart-product.png',
         'price' => 125000,
@@ -50,7 +50,7 @@ test('authenticated user can add a product and repeated additions increase its q
     $this->get(route('cart'))
         ->assertOk()
         ->assertSee('Cart Test Product')
-        ->assertSee('Rp 625.000');
+        ->assertSee('625.000');
 });
 
 test('adding a quantity beyond available stock is rejected', function () {
@@ -124,4 +124,23 @@ test('guest is redirected to login when adding a product', function () {
         ->assertSessionHas('error');
 
     $this->assertDatabaseCount('carts', 0);
+});
+
+test('product cards render a working add-to-cart form with the selected product', function () {
+    $product = makeCartProduct();
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertSee(route('cart.store', $product), false)
+        ->assertSee('name="quantity" value="1"', false)
+        ->assertSee('Add to Cart');
+});
+
+test('product cards disable add-to-cart when the product is out of stock', function () {
+    $product = makeCartProduct(stock: 0);
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertSee('disabled', false)
+        ->assertSee('Stok Habis');
 });

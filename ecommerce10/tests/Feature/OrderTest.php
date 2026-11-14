@@ -5,17 +5,19 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\User;
+use App\Services\MidtransPaymentService;
+use Illuminate\Support\Facades\Http;
 
 function makeOrderTestProduct(int $stock = 10): Product
 {
     $category = ProductCategory::query()->create([
         'name' => 'Order Category',
-        'slug' => 'order-category-' . uniqid(),
+        'slug' => 'order-category-'.uniqid(),
     ]);
 
     return Product::query()->create([
         'name' => 'Order Test Product',
-        'slug' => 'order-test-product-' . uniqid(),
+        'slug' => 'order-test-product-'.uniqid(),
         'description' => 'Product for order feature tests.',
         'image' => '/storage/uploads/order-product.png',
         'price' => 125000,
@@ -33,7 +35,9 @@ test('checkout creates an order and order items from the cart then clears the ca
         'quantity' => 2,
     ]);
 
-    $response = $this->actingAs($user)->post(route('checkout.store'));
+    $address = $user->addresses()->create(addressPayload(['is_default' => true]));
+    $quote = checkoutShippingQuote($this, $user, $address);
+    $response = $this->post(route('checkout.store'), checkoutShippingPayload($quote));
 
     $order = Order::query()->firstOrFail();
     $response->assertRedirect(route('orders.customer.show', $order));
@@ -44,7 +48,9 @@ test('checkout creates an order and order items from the cart then clears the ca
         'user_id' => $user->id,
         'user_name' => $user->name,
         'user_email' => $user->email,
-        'total' => 250000,
+        'total' => 265000,
+        'subtotal' => 250000,
+        'shipping_cost' => 15000,
         'status' => 'pending',
     ]);
     $this->assertDatabaseHas('order_items', [
@@ -57,6 +63,52 @@ test('checkout creates an order and order items from the cart then clears the ca
     ]);
     $this->assertDatabaseMissing('carts', ['user_id' => $user->id]);
     $this->assertDatabaseHas('products', ['id' => $product->id, 'stock' => 6]);
+    $this->assertDatabaseHas('stock_movements', [
+        'product_id' => $product->id,
+        'type' => 'out',
+        'quantity' => 2,
+        'stock_before' => 8,
+        'stock_after' => 6,
+        'reference_type' => Order::class,
+        'reference_id' => $order->id,
+    ]);
+});
+
+test('checkout requests live Biteship rates using warehouse and destination postal codes and product weight', function () {
+    $user = User::factory()->create();
+    $address = $user->addresses()->create(addressPayload(['postal_code' => '16515', 'is_default' => true]));
+    $product = makeOrderTestProduct();
+    $product->update(['weight_gram' => 850]);
+    Cart::query()->create(['user_id' => $user->id, 'product_id' => $product->id, 'quantity' => 2]);
+
+    $quote = checkoutShippingQuote($this, $user, $address);
+
+    expect($quote['rates'][0]['price'])->toBe(15000)
+        ->and($quote['rates'][0]['courier_code'])->toBe('jne');
+
+    Http::assertSent(fn ($request) => $request->url() === 'https://api.biteship.com/v1/rates/couriers' &&
+        $request['origin_postal_code'] === '16431' &&
+        $request['destination_postal_code'] === '16515' &&
+        $request['items'][0]['weight'] === 850 &&
+        $request['items'][0]['quantity'] === 2
+    );
+});
+
+test('checkout rejects a forged shipping rate key without creating an order', function () {
+    $user = User::factory()->create();
+    $address = $user->addresses()->create(addressPayload(['is_default' => true]));
+    $product = makeOrderTestProduct();
+    Cart::query()->create(['user_id' => $user->id, 'product_id' => $product->id, 'quantity' => 1]);
+    $quote = checkoutShippingQuote($this, $user, $address);
+    $payload = checkoutShippingPayload($quote);
+    $payload['shipping_rate_key'] = hash('sha256', 'fake|rate|1');
+
+    $this->from(route('cart'))->post(route('checkout.store'), $payload)
+        ->assertRedirect(route('cart'))
+        ->assertSessionHasErrors('shipping_rate_key');
+
+    $this->assertDatabaseCount('orders', 0);
+    $this->assertDatabaseHas('carts', ['user_id' => $user->id]);
 });
 
 test('checkout rejects an empty cart', function () {
@@ -64,7 +116,7 @@ test('checkout rejects an empty cart', function () {
 
     $this->actingAs($user)
         ->from(route('cart'))
-        ->post(route('checkout.store'))
+        ->post(route('checkout.store'), [])
         ->assertRedirect(route('cart'))
         ->assertSessionHasErrors('cart');
 
@@ -80,9 +132,10 @@ test('checkout rejects insufficient stock without creating an order or clearing 
         'quantity' => 2,
     ]);
 
-    $this->actingAs($user)
-        ->from(route('cart'))
-        ->post(route('checkout.store'))
+    $address = $user->addresses()->create(addressPayload(['is_default' => true]));
+    $quote = checkoutShippingQuote($this, $user, $address);
+    $this->from(route('cart'))
+        ->post(route('checkout.store'), checkoutShippingPayload($quote))
         ->assertRedirect(route('cart'))
         ->assertSessionHasErrors('cart');
 
@@ -106,21 +159,20 @@ test('customer can read only their own orders', function () {
     $this->actingAs($otherUser)
         ->get(route('orders.customer.index'))
         ->assertOk()
-        ->assertDontSee('#' . $order->id);
+        ->assertDontSee($order->order_number);
 
     $this->get(route('orders.customer.show', $order))->assertForbidden();
 
     $this->actingAs($owner)
         ->get(route('orders.customer.show', $order))
         ->assertOk()
-        ->assertSee('Pesanan #' . $order->id);
+        ->assertSee($order->order_number);
 });
 
- test('guest cannot access order pages or create orders', function () {
+test('guest cannot access order pages or create orders', function () {
     $this->get(route('orders.customer.index'))->assertRedirect(route('login'));
     $this->post(route('checkout.store'))->assertRedirect(route('login'));
 });
-
 
 test('admin can view the separate simple orders table', function () {
     $admin = User::factory()->create(['role' => 'admin']);
@@ -151,7 +203,6 @@ test('customer cannot access admin orders page', function () {
         ->assertRedirect(route('home'));
 });
 
-
 test('admin can view a dedicated order detail page', function () {
     $admin = User::factory()->create(['role' => 'admin']);
     $customer = User::factory()->create(['role' => 'user']);
@@ -180,4 +231,38 @@ test('admin can view a dedicated order detail page', function () {
         ->assertSee('Sample product')
         ->assertSee('Rp 250.000')
         ->assertSee(route('orders.index'));
+});
+
+test('checkout prepares a Midtrans payment for the newly created order', function () {
+    $user = User::factory()->create();
+    $product = makeOrderTestProduct(stock: 5);
+    Cart::query()->create([
+        'user_id' => $user->id,
+        'product_id' => $product->id,
+        'quantity' => 1,
+    ]);
+
+    $gateway = Mockery::mock(MidtransPaymentService::class);
+    $gateway->shouldReceive('createPayment')->once()->andReturnUsing(function (Order $order) {
+        $order->forceFill([
+            'payment_order_id' => 'PAY-'.$order->order_number.'-test',
+            'snap_token' => 'snap-token-test',
+            'snap_redirect_url' => 'https://app.sandbox.midtrans.com/snap/v2/vtweb/test',
+            'payment_status' => 'pending',
+        ])->save();
+
+        return $order->refresh();
+    });
+    $this->app->instance(MidtransPaymentService::class, $gateway);
+
+    $address = $user->addresses()->create(addressPayload(['is_default' => true]));
+    $quote = checkoutShippingQuote($this, $user, $address);
+    $response = $this->post(route('checkout.store'), checkoutShippingPayload($quote));
+
+    $order = Order::query()->firstOrFail();
+    $response->assertRedirect(route('orders.customer.show', $order));
+    expect($order->order_number)->toMatch('/^ORD-\d{8}-[A-Z0-9]{6}$/')
+        ->and($order->payment_order_id)->toBe('PAY-'.$order->order_number.'-test')
+        ->and($order->snap_token)->toBe('snap-token-test')
+        ->and($order->payment_status)->toBe('pending');
 });

@@ -14,9 +14,9 @@ class HomeController extends Controller
         $categorySlug = request('category');
 
         $products = Product::query()
-            ->when($categorySlug, fn(Builder $query, string $slug) => $query->whereHas(
+            ->when($categorySlug, fn (Builder $query, string $slug) => $query->whereHas(
                 'category',
-                fn(Builder $query) => $query->where('slug', $slug),
+                fn (Builder $query) => $query->where('slug', $slug),
             ))
             ->paginate(8)
             ->withQueryString();
@@ -29,48 +29,88 @@ class HomeController extends Controller
     public function productDetail(Product $product)
     {
         $session = session();
-        if (!$session->has("product_{$product->id}_viewed")) {
+        if (! $session->has("product_{$product->id}_viewed")) {
             $product->increment('click');
             $session->put("product_{$product->id}_viewed", true);
         }
+
         $product->load('category');
+        $isWishlisted = auth()->check() && auth()->user()->role !== 'admin'
+            ? auth()->user()->wishlistItems()->where('product_id', $product->id)->exists()
+            : false;
+        $product->loadAvg(['approvedReviews as average_rating' => fn ($query) => $query->where('is_approved', true)], 'rating');
+        $product->loadCount(['approvedReviews as reviews_count' => fn ($query) => $query->where('is_approved', true)]);
+        $reviews = $product->approvedReviews()->with(['user', 'media'])->latest()->paginate(10, ['*'], 'reviews_page');
+        $relatedProducts = Product::query()
+            ->where('category_id', $product->category_id)
+            ->whereKeyNot($product->id)
+            ->where('stock', '>', 0)
+            ->withAvg(['approvedReviews as average_rating' => fn ($query) => $query->where('is_approved', true)], 'rating')
+            ->withCount(['approvedReviews as reviews_count' => fn ($query) => $query->where('is_approved', true)])
+            ->latest()
+            ->limit(4)
+            ->get();
 
         $links = [
             ['Home', route('home')],
             ['Shop', route('shop')],
-            [$product->category->name, route('shop', ["category" => $product->category->slug])],
+            [$product->category->name, route('shop', ['category' => $product->category->slug])],
             [$product->name, route('product-detail', $product)],
         ];
 
-        return view('product.description', compact('product', 'links'));
+        return view('product.description', compact('product', 'links', 'reviews', 'relatedProducts', 'isWishlisted'));
     }
 
     public function shop(Request $request)
     {
-        $search = $request->input('search');
+        $validated = $request->validate([
+            'min_price' => ['nullable', 'numeric', 'min:0'],
+            'max_price' => ['nullable', 'numeric', 'min:0', 'gte:min_price'],
+            'sort' => ['nullable', 'in:latest,price_asc,price_desc,rating_desc,rating_asc,name_asc,name_desc'],
+        ]);
+
+        $search = trim((string) $request->input('search', ''));
         $category = $request->input('category');
-        $query = Product::query();
+        $sort = $validated['sort'] ?? 'latest';
 
-        if ($search) {
-            $query->where('name', 'like', '%' . $search . '%')
-                ->orWhere('description', 'like', '%' . $search . '%');
-        }
+        $query = Product::query()
+            ->where('stock', '>', 0)
+            ->with('category')
+            ->withAvg(['approvedReviews as reviews_avg_rating' => fn ($q) => $q->where('is_approved', true)], 'rating')
+            ->withCount(['approvedReviews as reviews_count' => fn ($q) => $q->where('is_approved', true)]);
 
-        if ($category) {
-            $category = trim($category);
-            $query->whereHas('category', function ($q) use ($category) {
-                $q->where('name', $category);
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('description', 'like', '%'.$search.'%');
             });
         }
 
-        $products = $query
-            ->where('stock', '>', 0)
-            ->with('category')
-            ->paginate(12)
-            ->withQueryString();
+        if ($category) {
+            $query->whereHas('category', fn ($q) => $q->where('slug', trim($category)));
+        }
 
-        $categories = ProductCategory::all();
+        if (isset($validated['min_price'])) {
+            $query->where('price', '>=', $validated['min_price']);
+        }
+        if (isset($validated['max_price'])) {
+            $query->where('price', '<=', $validated['max_price']);
+        }
 
-        return view('home.shop', compact('products', 'search', 'category', 'categories'));
+        match ($sort) {
+            'price_asc' => $query->orderBy('price'),
+            'price_desc' => $query->orderByDesc('price'),
+            'rating_desc' => $query->orderByDesc('reviews_avg_rating')->orderByDesc('reviews_count'),
+            'rating_asc' => $query->orderBy('reviews_avg_rating')->orderByDesc('reviews_count'),
+            'name_asc' => $query->orderBy('name'),
+            'name_desc' => $query->orderByDesc('name'),
+            default => $query->latest(),
+        };
+
+        $products = $query->paginate(12)->withQueryString();
+        $categories = ProductCategory::withCount(['products' => fn ($q) => $q->where('stock', '>', 0)])->get();
+        $priceRange = Product::query()->where('stock', '>', 0)->selectRaw('MIN(price) as min_price, MAX(price) as max_price')->first();
+
+        return view('home.shop', compact('products', 'search', 'category', 'categories', 'sort', 'priceRange'));
     }
 }
