@@ -122,7 +122,7 @@ test('Midtrans callback does not update payment when gross amount does not match
         'payment_order_id' => 'ORDER-'.uniqid(),
     ]);
     $serverKey = 'test-server-key';
-    config(['midtrans.server_key' => $serverKey]);
+    config(['midtrans.server_key' => $serverKey, 'midtrans.merchant_id' => null]);
     $orderId = $order->payment_order_id;
     $statusCode = '200';
     $grossAmount = '100000.00';
@@ -178,4 +178,73 @@ test('notification routes only expose and mutate the authenticated user notifica
     $this->actingAs($owner)->get(route('notifications.index'))->assertOk()->assertSee('Pembayaran berhasil');
     $this->actingAs($owner)->post(route('notifications.read', $notification->id))->assertRedirect(route('notifications.index'));
     expect($notification->fresh()->read_at)->not->toBeNull();
+});
+
+test('Midtrans partial refund callback preserves the partial refund state', function () {
+    $user = User::factory()->create();
+    $order = Order::query()->create([
+        'user_id' => $user->id,
+        'cart_id' => null,
+        'user_name' => $user->name,
+        'user_email' => $user->email,
+        'total' => 105000,
+        'status' => 'completed',
+        'payment_status' => 'paid',
+        'payment_order_id' => 'ORDER-'.uniqid(),
+    ]);
+    $serverKey = 'test-server-key';
+    config(['midtrans.server_key' => $serverKey, 'midtrans.merchant_id' => null]);
+    $orderId = $order->payment_order_id;
+    $statusCode = '200';
+    $grossAmount = '105000.00';
+
+    $this->postJson(route('midtrans.callback'), [
+        'order_id' => $orderId,
+        'status_code' => $statusCode,
+        'gross_amount' => $grossAmount,
+        'signature_key' => hash('sha512', $orderId.$statusCode.$grossAmount.$serverKey),
+        'transaction_status' => 'partial_refund',
+    ])->assertOk()->assertJson(['status' => 'processed']);
+
+    expect($order->fresh()->payment_status)->toBe('partially_refunded');
+});
+
+test('late pending callback cannot reopen an expired payment and malformed amount is rejected', function () {
+    $user = User::factory()->create();
+    $order = Order::query()->create([
+        'user_id' => $user->id,
+        'cart_id' => null,
+        'user_name' => $user->name,
+        'user_email' => $user->email,
+        'total' => 105000,
+        'status' => 'pending',
+        'payment_status' => 'expired',
+        'payment_order_id' => 'ORDER-'.uniqid(),
+    ]);
+    $serverKey = 'test-server-key';
+    config(['midtrans.server_key' => $serverKey, 'midtrans.merchant_id' => null]);
+    $orderId = $order->payment_order_id;
+    $statusCode = '201';
+    $grossAmount = '105000.00';
+
+    $this->postJson(route('midtrans.callback'), [
+        'order_id' => $orderId,
+        'status_code' => $statusCode,
+        'gross_amount' => $grossAmount,
+        'signature_key' => hash('sha512', $orderId.$statusCode.$grossAmount.$serverKey),
+        'transaction_status' => 'pending',
+    ])->assertOk()->assertJson(['status' => 'processed']);
+
+    expect($order->fresh()->payment_status)->toBe('expired');
+
+    $malformedAmount = '1.05e5';
+    $this->postJson(route('midtrans.callback'), [
+        'order_id' => $orderId,
+        'status_code' => $statusCode,
+        'gross_amount' => $malformedAmount,
+        'signature_key' => hash('sha512', $orderId.$statusCode.$malformedAmount.$serverKey),
+        'transaction_status' => 'settlement',
+    ])->assertOk()->assertJson(['status' => 'ignored', 'reason' => 'amount_mismatch']);
+
+    expect($order->fresh()->payment_status)->toBe('expired');
 });

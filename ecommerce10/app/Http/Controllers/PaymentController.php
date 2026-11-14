@@ -75,7 +75,14 @@ class PaymentController extends Controller
             return response()->json(['status' => 'ignored', 'reason' => 'order_not_found']);
         }
 
-        if (! is_numeric($grossAmount) || (int) round((float) $grossAmount) !== (int) $order->total) {
+        if (! preg_match('/^\\d+(?:\\.\\d{1,2})?$/D', $grossAmount)) {
+            logger()->warning('Midtrans callback ignored: invalid gross amount format.', ['order_id' => $orderId]);
+
+            return response()->json(['status' => 'ignored', 'reason' => 'amount_mismatch']);
+        }
+        [$wholeAmount, $fractionalAmount] = array_pad(explode('.', $grossAmount, 2), 2, '0');
+        $grossAmountInMinorUnits = ((int) $wholeAmount * 100) + (int) str_pad($fractionalAmount, 2, '0');
+        if ($grossAmountInMinorUnits !== ((int) $order->total * 100)) {
             logger()->warning('Midtrans callback ignored: gross amount mismatch.', ['order_id' => $orderId]);
 
             return response()->json(['status' => 'ignored', 'reason' => 'amount_mismatch']);
@@ -97,7 +104,8 @@ class PaymentController extends Controller
             'deny', 'failure' => 'failed',
             'cancel' => 'cancelled',
             'expire' => 'expired',
-            'refund', 'partial_refund' => 'refunded',
+            'refund' => 'refunded',
+            'partial_refund' => 'partially_refunded',
             default => null,
         };
 
@@ -121,7 +129,14 @@ class PaymentController extends Controller
                 return false;
             }
 
-            if ($lockedOrder->payment_status === 'paid' && $paymentStatus !== 'refunded') {
+            if ($lockedOrder->payment_status === 'paid' && ! in_array($paymentStatus, ['refunded', 'partially_refunded'], true)) {
+                return false;
+            }
+
+            // Late pending/challenge callbacks must not reopen a failed, cancelled,
+            // or expired payment attempt. A verified settlement may still arrive late.
+            if (in_array($lockedOrder->payment_status, ['failed', 'cancelled', 'expired'], true) &&
+                in_array($paymentStatus, ['pending', 'challenge'], true)) {
                 return false;
             }
 
