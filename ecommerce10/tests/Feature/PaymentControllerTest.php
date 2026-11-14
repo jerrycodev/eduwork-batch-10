@@ -248,3 +248,57 @@ test('late pending callback cannot reopen an expired payment and malformed amoun
 
     expect($order->fresh()->payment_status)->toBe('expired');
 });
+
+test('verified late settlement after expiry is recorded once without advancing fulfillment', function () {
+    Mail::fake();
+    $user = User::factory()->create();
+    $admin = User::factory()->create(['role' => 'admin']);
+    $order = Order::query()->create([
+        'user_id' => $user->id,
+        'cart_id' => null,
+        'user_name' => $user->name,
+        'user_email' => $user->email,
+        'total' => 105000,
+        'status' => 'pending',
+        'payment_status' => 'expired',
+        'payment_order_id' => 'ORDER-'.uniqid(),
+    ]);
+
+    $serverKey = 'test-server-key';
+    config(['midtrans.server_key' => $serverKey, 'midtrans.merchant_id' => null]);
+    $orderId = $order->payment_order_id;
+    $statusCode = '200';
+    $grossAmount = '105000.00';
+    $callback = [
+        'order_id' => $orderId,
+        'status_code' => $statusCode,
+        'gross_amount' => $grossAmount,
+        'signature_key' => hash('sha512', $orderId.$statusCode.$grossAmount.$serverKey),
+        'transaction_status' => 'settlement',
+        'transaction_id' => 'late-settlement-transaction',
+        'payment_type' => 'qris',
+        'fraud_status' => 'accept',
+    ];
+
+    $this->postJson(route('midtrans.callback'), $callback)
+        ->assertOk()
+        ->assertJson(['status' => 'processed']);
+
+    expect($order->fresh()->payment_status)->toBe('paid')
+        ->and($order->fresh()->status)->toBe('pending')
+        ->and($order->fresh()->paid_at)->not->toBeNull()
+        ->and($user->notifications()->where('type', OrderAlert::class)->count())->toBe(1)
+        ->and($admin->notifications()->where('type', OrderAlert::class)->count())->toBe(1);
+
+    Mail::assertQueued(OrderTransactionalMail::class, 1);
+
+    // A replay of the late settlement must not duplicate side effects.
+    $this->postJson(route('midtrans.callback'), $callback)
+        ->assertOk()
+        ->assertJson(['status' => 'processed']);
+
+    expect($user->notifications()->where('type', OrderAlert::class)->count())->toBe(1)
+        ->and($admin->notifications()->where('type', OrderAlert::class)->count())->toBe(1);
+
+    Mail::assertQueued(OrderTransactionalMail::class, 1);
+});
