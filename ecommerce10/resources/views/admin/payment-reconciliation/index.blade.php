@@ -40,6 +40,18 @@
                                     @if ($finding['order']->payment_order_id)
                                         <form method="POST" action="{{ route('payment-reconciliation.check', $finding['order']) }}" onsubmit="return confirm('Periksa status transaksi pesanan ini langsung ke Midtrans?')">@csrf<button class="w-full rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700">Check Midtrans</button></form>
                                     @endif
+                                    @if ($finding['order']->payment_order_id && in_array($finding['order']->payment_status, ['pending', 'challenge', 'failed', 'cancelled', 'expired'], true))
+                                        <details class="max-w-xs rounded-lg border border-amber-200 bg-amber-50 p-3 text-left">
+                                            <summary class="cursor-pointer text-xs font-semibold text-amber-800">Sinkronkan ke Paid</summary>
+                                            <p class="mt-2 text-xs text-amber-800">Sistem akan mengambil ulang status Midtrans dan hanya melanjutkan jika order ID, nominal, serta status pembayaran berhasil cocok. Fulfillment tidak berubah.</p>
+                                            <form method="POST" action="{{ route('payment-reconciliation.resolve', $finding['order']) }}" class="mt-3 space-y-2">@csrf
+                                                <input type="hidden" name="expected_local_status" value="{{ $finding['order']->payment_status }}">
+                                                <label class="block text-xs font-medium text-gray-700">Alasan koreksi<textarea name="reason" required minlength="10" maxlength="1000" rows="3" class="mt-1 w-full rounded-md border-gray-300 text-xs" placeholder="Jelaskan hasil verifikasi dan alasan sinkronisasi"></textarea></label>
+                                                <label class="flex items-start gap-2 text-xs text-gray-700"><input type="checkbox" name="confirm" value="1" required class="mt-0.5 rounded border-gray-300"><span>Saya sudah memeriksa dan menyetujui perubahan status pembayaran menjadi paid.</span></label>
+                                                <button class="w-full rounded-lg bg-amber-700 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-800">Verifikasi & Terapkan</button>
+                                            </form>
+                                        </details>
+                                    @endif
                                 </div>
                             </div>
                         </article>
@@ -54,6 +66,14 @@
                 <div class="overflow-x-auto"><table class="w-full min-w-[800px] divide-y divide-gray-200 text-left text-sm"><thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500"><tr><th class="px-5 py-3">Waktu</th><th class="px-5 py-3">Pesanan</th><th class="px-5 py-3">Status lokal</th><th class="px-5 py-3">Status Midtrans</th><th class="px-5 py-3">Hasil</th><th class="px-5 py-3">Catatan</th></tr></thead><tbody class="divide-y divide-gray-100">
                     @forelse ($recentChecks as $check)<tr><td class="whitespace-nowrap px-5 py-3 text-gray-500">{{ $check->checked_at->format('d M Y H:i:s') }}</td><td class="px-5 py-3 font-medium text-gray-900">{{ $check->order?->order_number ?? '—' }}</td><td class="px-5 py-3">{{ $check->local_status ?? '—' }}</td><td class="px-5 py-3">{{ $check->remote_status ?? '—' }}</td><td class="px-5 py-3"><span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ ['matched' => 'bg-green-50 text-green-700', 'mismatch' => 'bg-amber-50 text-amber-700', 'error' => 'bg-red-50 text-red-700'][$check->result] }}">{{ strtoupper($check->result) }}</span></td><td class="max-w-sm whitespace-normal px-5 py-3 text-xs text-gray-500">{{ $check->message }}</td></tr>
                     @empty<tr><td colspan="6" class="px-5 py-8 text-center text-sm text-gray-500">Belum ada pemeriksaan Midtrans.</td></tr>@endforelse
+                </tbody></table></div>
+            </section>
+
+            <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                <div class="border-b border-gray-100 px-5 py-4"><h3 class="font-semibold text-gray-900">Riwayat koreksi status pembayaran</h3><p class="mt-1 text-xs text-gray-500">Audit perubahan status yang diterapkan admin setelah verifikasi langsung ke Midtrans.</p></div>
+                <div class="overflow-x-auto"><table class="w-full min-w-[900px] divide-y divide-gray-200 text-left text-sm"><thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500"><tr><th class="px-5 py-3">Waktu</th><th class="px-5 py-3">Pesanan</th><th class="px-5 py-3">Admin</th><th class="px-5 py-3">Perubahan</th><th class="px-5 py-3">Midtrans</th><th class="px-5 py-3">Alasan</th></tr></thead><tbody class="divide-y divide-gray-100">
+                    @forelse ($recentResolutions as $resolution)<tr><td class="whitespace-nowrap px-5 py-3 text-gray-500">{{ $resolution->resolved_at->format('d M Y H:i:s') }}</td><td class="px-5 py-3 font-medium text-gray-900">{{ $resolution->order?->order_number ?? '—' }}</td><td class="px-5 py-3">{{ $resolution->admin?->name ?? 'Admin tidak tersedia' }}</td><td class="px-5 py-3">{{ $resolution->previous_status }} → <span class="font-semibold text-green-700">{{ $resolution->new_status }}</span></td><td class="px-5 py-3">{{ $resolution->remote_status }} · Rp{{ number_format((float) $resolution->remote_amount, 0, ',', '.') }}</td><td class="max-w-sm whitespace-normal px-5 py-3 text-xs text-gray-500">{{ $resolution->reason }}</td></tr>
+                    @empty<tr><td colspan="6" class="px-5 py-8 text-center text-sm text-gray-500">Belum ada koreksi status pembayaran.</td></tr>@endforelse
                 </tbody></table></div>
             </section>
         </div>

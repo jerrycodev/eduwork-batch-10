@@ -3,6 +3,7 @@
 use App\Models\Order;
 use App\Models\PaymentReconciliationAlert;
 use App\Models\PaymentReconciliationCheck;
+use App\Models\PaymentStatusResolution;
 use App\Models\User;
 use App\Notifications\OrderAlert;
 use App\Services\MidtransPaymentService;
@@ -161,4 +162,83 @@ test('scheduled reconciliation skips orders checked within the configured interv
     $this->artisan('payments:reconcile')->assertSuccessful();
 
     expect(PaymentReconciliationCheck::query()->where('order_id', $order->id)->count())->toBe(1);
+});
+
+test('admin can apply a freshly verified Midtrans settlement with an audited reason without changing fulfillment', function () {
+    Notification::fake();
+    $admin = User::factory()->create(['role' => 'admin']);
+    $order = reconciliationTestOrder($admin, [
+        'status' => 'pending',
+        'payment_status' => 'failed',
+        'transaction_id' => null,
+    ]);
+    $payments = Mockery::mock(MidtransPaymentService::class);
+    $payments->shouldReceive('fetchStatus')->once()->andReturn((object) [
+        'order_id' => $order->payment_order_id,
+        'transaction_id' => 'midtrans-verified-99',
+        'transaction_status' => 'settlement',
+        'fraud_status' => 'accept',
+        'payment_type' => 'bank_transfer',
+        'gross_amount' => '150000.00',
+    ]);
+    $this->app->instance(MidtransPaymentService::class, $payments);
+
+    $this->actingAs($admin)
+        ->post(route('payment-reconciliation.resolve', $order), [
+            'reason' => 'Settlement sudah diverifikasi langsung melalui Midtrans.',
+            'expected_local_status' => 'failed',
+            'confirm' => '1',
+        ])
+        ->assertRedirect()
+        ->assertSessionHas('status');
+
+    $resolution = PaymentStatusResolution::query()->sole();
+    expect($order->fresh()->payment_status)->toBe('paid')
+        ->and($order->fresh()->status)->toBe('pending')
+        ->and($order->fresh()->transaction_id)->toBe('midtrans-verified-99')
+        ->and($resolution->admin_id)->toBe($admin->id)
+        ->and($resolution->previous_status)->toBe('failed')
+        ->and($resolution->new_status)->toBe('paid')
+        ->and($resolution->reason)->toContain('Settlement sudah diverifikasi');
+});
+
+test('payment resolution rejects amount mismatch and unsupported remote statuses without changing the order', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $order = reconciliationTestOrder($admin, ['payment_status' => 'pending']);
+    $payments = Mockery::mock(MidtransPaymentService::class);
+    $payments->shouldReceive('fetchStatus')->once()->andReturn((object) [
+        'order_id' => $order->payment_order_id,
+        'transaction_id' => 'midtrans-invalid-1',
+        'transaction_status' => 'settlement',
+        'fraud_status' => 'accept',
+        'gross_amount' => '1.00',
+    ]);
+    $this->app->instance(MidtransPaymentService::class, $payments);
+
+    $this->actingAs($admin)
+        ->post(route('payment-reconciliation.resolve', $order), [
+            'reason' => 'Mencoba koreksi setelah pemeriksaan transaksi.',
+            'expected_local_status' => 'pending',
+            'confirm' => '1',
+        ])
+        ->assertRedirect()
+        ->assertSessionHas('error');
+
+    expect($order->fresh()->payment_status)->toBe('pending')
+        ->and(PaymentStatusResolution::query()->count())->toBe(0);
+});
+
+test('payment resolution rejects stale local status and missing admin confirmation', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $order = reconciliationTestOrder($admin, ['payment_status' => 'pending']);
+
+    $this->actingAs($admin)
+        ->post(route('payment-reconciliation.resolve', $order), [
+            'reason' => 'Status pembayaran sudah berubah sebelumnya.',
+            'expected_local_status' => 'failed',
+        ])
+        ->assertSessionHasErrors(['confirm']);
+
+    expect($order->fresh()->payment_status)->toBe('pending')
+        ->and(PaymentStatusResolution::query()->count())->toBe(0);
 });

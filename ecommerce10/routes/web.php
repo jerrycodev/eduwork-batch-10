@@ -41,6 +41,7 @@ Route::prefix('/dashboard')->middleware(['admin', LogAdminActivity::class])->gro
     Route::get('/email-delivery-logs', [EmailDeliveryLogController::class, 'index'])->name('email-delivery-logs.index');
     Route::get('/payment-reconciliation', [PaymentReconciliationController::class, 'index'])->name('payment-reconciliation.index');
     Route::post('/orders/{order}/reconcile-payment', [PaymentReconciliationController::class, 'check'])->name('payment-reconciliation.check');
+    Route::post('/orders/{order}/resolve-payment', [PaymentReconciliationController::class, 'resolve'])->name('payment-reconciliation.resolve');
     Route::post('/email-delivery-logs/{emailDeliveryLog}/retry', [EmailDeliveryLogController::class, 'retry'])->name('email-delivery-logs.retry');
     Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
     Route::post('/inventory/{product}/movements', [InventoryController::class, 'store'])->name('inventory.movements.store');
