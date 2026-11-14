@@ -71,6 +71,17 @@ function initializeCategoryForm() {
 
     createButton?.addEventListener("click", function () {
         configureForm({ mode: "create" });
+        if (dialog && !dialog.open) dialog.showModal();
+    });
+
+    dialog?.querySelectorAll("[data-dialog-close]").forEach(function (button) {
+        button.addEventListener("click", function () {
+            dialog.close();
+        });
+    });
+
+    dialog?.addEventListener("click", function (event) {
+        if (event.target === dialog) dialog.close();
     });
 
     editButtons.forEach(function (button) {
@@ -82,6 +93,7 @@ function initializeCategoryForm() {
                 slug: button.dataset.dialogSlug,
                 url: button.dataset.dialogUrl,
             });
+            if (dialog && !dialog.open) dialog.showModal();
         });
     });
 

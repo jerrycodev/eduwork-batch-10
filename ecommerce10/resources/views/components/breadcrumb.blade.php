@@ -1,23 +1,29 @@
 @props(['links' => []])
 
-<nav aria-label="Breadcrumb" class="mb-6 text-sm text-muted-foreground bg-neutral-100 px-4 py-2 rounded-xl">
-    <ol class="flex items-center space-x-2">
+<nav aria-label="Breadcrumb" {{ $attributes->class(['mb-6']) }}>
+    <ol class="flex flex-wrap items-center gap-3 text-sm">
         @foreach ($links as $link)
-            @if ($loop->last)
-                {{-- Item Terakhir (Halaman Aktif / Tidak Bisa Diklik) --}}
-                <li class="text-foreground font-medium" aria-current="page">
-                    {{ $link[0] }}
-                </li>
-            @else
-                {{-- Item Link --}}
-                <li>
-                    <a href="{{ $link[1] }}" class="hover:text-foreground transition-colors opacity-50">
-                        {{ $link[0] }}
+            @if ($loop->first)
+                <li class="flex shrink-0 items-center">
+                    <a href="{{ $link[1] ?? route('home') }}"
+                        class="inline-flex h-6 w-6 items-center justify-center text-gray-600 transition hover:text-indigo-600"
+                        aria-label="{{ __('Home') }}">
+                        <i data-lucide="house" class="h-5 w-5" aria-hidden="true"></i>
                     </a>
                 </li>
-                {{-- Pemisah / Chevron --}}
-                <li>
-                    <i data-lucide="chevron-right" class="h-4 w-4 opacity-50"></i>
+            @else
+                <li class="flex min-w-0 items-center gap-3">
+                    <i data-lucide="chevron-right" class="h-4 w-4 shrink-0 text-gray-300" aria-hidden="true"></i>
+                    @if ($loop->last)
+                        <span class="truncate font-medium text-indigo-600" aria-current="page">
+                            {{ $link[0] }}
+                        </span>
+                    @else
+                        <a href="{{ $link[1] }}"
+                            class="truncate text-gray-500 transition hover:text-indigo-600">
+                            {{ $loop->iteration === 2 ? 'E-Commerce' : 'Product' }}
+                        </a>
+                    @endif
                 </li>
             @endif
         @endforeach

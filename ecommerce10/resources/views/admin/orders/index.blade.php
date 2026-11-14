@@ -1,56 +1,11 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">{{ __('Orders') }}</h2>
-    </x-slot>
-
-    <div class="py-6 sm:py-8 lg:py-10">
-        <div class="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 sm:px-6 lg:px-8">
-            @if (session('success'))
-                <x-alert class="bg-green-200 border-green-400">{{ session('success') }}</x-alert>
-            @endif
-
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="w-full overflow-x-auto">
-                    <table class="table min-w-[760px]">
-                        <thead>
-                            <tr class="table-row">
-                                <th class="table-cell">Order ID</th>
-                                <th class="table-cell">Customer</th>
-                                <th class="table-cell">Email</th>
-                                <th class="table-cell">Date</th>
-                                <th class="table-cell">Items</th>
-                                <th class="table-cell">Total</th>
-                                <th class="table-cell">Status</th>
-                                <th class="table-cell" style="text-align:right">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse ($orders as $order)
-                                <tr class="table-row">
-                                    <td class="table-cell">#{{ $order->id }}</td>
-                                    <td class="table-cell">{{ $order->user_name }}</td>
-                                    <td class="table-cell">{{ $order->user_email }}</td>
-                                    <td class="table-cell">{{ $order->created_at->format('d M Y, H:i') }}</td>
-                                    <td class="table-cell">{{ $order->order_items_count }}</td>
-                                    <td class="table-cell">Rp {{ number_format($order->total, 0, ',', '.') }}</td>
-                                    <td class="table-cell">{{ ucfirst($order->status) }}</td>
-                                    <td class="table-cell">
-                                        <div class="flex justify-end">
-                                            <a href="{{ route('orders.show', $order) }}" class="text-indigo-400 underline">Detail</a>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr class="table-row">
-                                    <td class="table-cell text-center" colspan="8">Belum ada pesanan.</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div>{{ $orders->links() }}</div>
-        </div>
-    </div>
+    <x-slot name="header"><div><h2 class="text-xl font-bold tracking-tight text-gray-900">Orders</h2><p class="mt-1 text-sm text-gray-500">Review customer orders and their current status.</p></div></x-slot>
+    <div class="py-8"><div class="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 sm:px-6 lg:px-8">
+        @if (session('success'))<x-alert class="border border-green-200 bg-green-50 text-green-800">{{ session('success') }}</x-alert>@endif
+        <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"><div class="border-b border-gray-100 px-5 py-4"><h3 class="font-semibold text-gray-900">All orders</h3><p class="mt-0.5 text-sm text-gray-500">{{ $orders->total() }} orders</p></div>
+            <div class="overflow-x-auto"><table class="w-full min-w-[960px] divide-y divide-gray-200 text-left text-sm"><thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500"><tr><th class="px-5 py-3.5 font-semibold">Order ID</th><th class="px-5 py-3.5 font-semibold">Customer</th><th class="px-5 py-3.5 font-semibold">Date</th><th class="px-5 py-3.5 font-semibold">Items</th><th class="px-5 py-3.5 font-semibold">Total</th><th class="px-5 py-3.5 font-semibold">Order Status</th><th class="px-5 py-3.5 font-semibold">Payment</th><th class="px-5 py-3.5 text-right font-semibold">Action</th></tr></thead>
+                <tbody class="divide-y divide-gray-100">@forelse ($orders as $order)<tr class="transition hover:bg-gray-50/80"><td class="px-5 py-4 font-semibold text-gray-900">{{ $order->order_number }}</td><td class="px-5 py-4"><p class="font-medium text-gray-900">{{ $order->user_name }}</p><p class="mt-0.5 text-xs text-gray-500">{{ $order->user_email }}</p></td><td class="whitespace-nowrap px-5 py-4 text-gray-600">{{ $order->created_at->format('d M Y, H:i') }}</td><td class="px-5 py-4 text-gray-600">{{ $order->order_items_count }}</td><td class="whitespace-nowrap px-5 py-4 font-semibold text-gray-900">Rp {{ number_format($order->total, 0, ',', '.') }}</td><td class="px-5 py-4"><span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {{ in_array($order->status, ['completed', 'success'], true) ? 'bg-green-50 text-green-700' : (in_array($order->status, ['shipped', 'processing'], true) ? 'bg-blue-50 text-blue-700' : ($order->status === 'delivered' ? 'bg-cyan-50 text-cyan-700' : ($order->status === 'cancelled' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'))) }}">{{ str($order->status)->replace('_', ' ')->title() }}</span>@if ($order->cancellationRequest && in_array($order->cancellationRequest->status, ['requested', 'approved'], true))<span class="mt-1 inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800">{{ $order->cancellationRequest->status === 'requested' ? 'Cancellation review' : 'Refund pending' }}</span>@endif</td><td class="px-5 py-4 text-xs font-medium text-gray-600">{{ ucfirst($order->payment_status ?? 'unpaid') }}</td><td class="px-5 py-4 text-right"><a href="{{ route('orders.show', $order) }}" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700">View details<i data-lucide="arrow-up-right" class="h-3.5 w-3.5"></i></a></td></tr>@empty<tr><td colspan="8" class="px-5 py-16 text-center"><p class="font-semibold text-gray-900">No orders yet</p><p class="mt-1 text-sm text-gray-500">Customer orders will appear here.</p></td></tr>@endforelse</tbody></table></div>
+            @if ($orders->hasPages())<div class="border-t border-gray-100 px-5 py-4">{{ $orders->links() }}</div>@endif
+        </section>
+    </div></div>
 </x-app-layout>

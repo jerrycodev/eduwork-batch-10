@@ -11,9 +11,19 @@ $links = [
         'active' => request()->routeIs('products.*'),
     ],
     [
+        'label' => 'Inventory',
+        'route' => route('inventory.index'),
+        'active' => request()->routeIs('inventory.*'),
+    ],
+    [
         'label' => 'Product Categories',
         'route' => route('product-categories.index'),
         'active' => request()->routeIs('product-categories.*'),
+    ],
+    [
+        'label' => 'Reviews',
+        'route' => route('reviews.index'),
+        'active' => request()->routeIs('reviews.*'),
     ],
     [
         'label' => 'Orders',
@@ -30,33 +40,18 @@ $links = [
             <div class="flex">
                 <!-- Logo -->
                 <div class="flex shrink-0 items-center">
-                    <a href="{{ route('dashboard') }}"
-                        class="flex items-center gap-2 text-lg font-semibold sm:gap-4 sm:text-xl">
-                        <x-application-logo class="block h-9 w-auto text-gray-800" />
-                        <span>Ecommerce</span>
-                    </a>
+                    <x-logo />
                 </div>
 
                 <!-- Navigation Links -->
                 <div class="hidden items-center gap-4 sm:-my-px sm:ms-6 sm:flex lg:gap-8">
-                    {{-- @admin
-                        <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                            {{ __('Dashboard') }}
-                        </x-nav-link>
-
-                        <x-nav-link :href="route('products.index')" :active="request()->routeIs('products.*')">
-                            {{ __('Products') }}
-                        </x-nav-link>
-
-                        <x-nav-link :href="route('product-categories.index')" :active="request()->routeIs('product-categories.*')">
-                            {{ __('Product Categories') }}
-                        </x-nav-link>
-                    @endadmin --}}
-                    @foreach ($links as $item)
-                        <x-nav-link :href="$item['route']" :active="$item['active']">
-                            {{ $item['label'] }}
-                        </x-nav-link>
-                    @endforeach
+                    @admin
+                        @foreach ($links as $item)
+                            <x-nav-link :href="$item['route']" :active="$item['active']">
+                                {{ $item['label'] }}
+                            </x-nav-link>
+                        @endforeach
+                    @endadmin
                 </div>
             </div>
 
@@ -89,7 +84,8 @@ $links = [
                             @csrf
 
                             <button type="submit"
-                                class="block w-full px-4 py-2 text-start text-sm leading-5 text-gray-700 transition duration-150 ease-in-out hover:bg-gray-100 focus:bg-gray-100 focus:outline-none">
+                                class="block w-full rounded-lg px-3 py-2 text-start text-sm text-gray-600 transition hover:bg-indigo-50 hover:text-indigo-700 focus:bg-indigo-50 focus:text-indigo-700 focus:outline-none"
+                                onclick="return confirm('Apakah Anda yakin ingin keluar?')">
                                 {{ __('Log Out') }}
                             </button>
                         </form>
@@ -124,8 +120,14 @@ $links = [
                 <x-responsive-nav-link :href="route('products.index')" :active="request()->routeIs('products.*')">
                     {{ __('Products') }}
                 </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('inventory.index')" :active="request()->routeIs('inventory.*')">
+                    {{ __('Inventory') }}
+                </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('product-categories.index')" :active="request()->routeIs('product-categories.*')">
                     {{ __('Product Categories') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('reviews.index')" :active="request()->routeIs('reviews.*')">
+                    {{ __('Reviews') }}
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('orders.index')" :active="request()->routeIs('orders.index')">
                     {{ __('Orders') }}

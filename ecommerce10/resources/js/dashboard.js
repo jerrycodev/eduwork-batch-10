@@ -135,6 +135,28 @@ function createOrderStatusChart(canvas, statuses) {
 }
 
 function initializeDashboard() {
+    const periodSelect = document.getElementById("dashboard-period");
+    const dateInput = document.getElementById("dashboard-date");
+    const dateLabel = document.querySelector('label[for="dashboard-date"]');
+
+    if (periodSelect && dateInput && !periodSelect.dataset.bound) {
+        periodSelect.dataset.bound = "true";
+        periodSelect.addEventListener("change", () => {
+            const period = periodSelect.value;
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, "0");
+            const day = String(now.getDate()).padStart(2, "0");
+
+            dateInput.type = period === "day" ? "date" : period === "month" ? "month" : "number";
+            dateInput.value = period === "day" ? `${year}-${month}-${day}` : period === "month" ? `${year}-${month}` : String(year);
+            dateInput.min = period === "year" ? "2000" : "";
+            dateInput.max = period === "year" ? "2100" : "";
+            dateInput.placeholder = period === "year" ? "YYYY" : "";
+            if (dateLabel) dateLabel.textContent = `Select ${period.charAt(0).toUpperCase()}${period.slice(1)}`;
+        });
+    }
+
     const data = getDashboardData();
 
     if (!data) return;

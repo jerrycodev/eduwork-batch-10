@@ -1,0 +1,16 @@
+/* 1. Progress bar color and thickness */
+#nprogress .bar {
+    background: var(--color-indigo-500) !important;
+    height: 3px !important;
+}
+
+/* 2. Glowing tip at the leading edge of the bar */
+#nprogress .peg {
+    box-shadow: 0 0 10px var(--color-indigo-500), 0 0 5px var(--color-indigo-500) !important;
+}
+
+/* 3. Spinner border color (if showSpinner is true) */
+#nprogress .spinner-icon {
+    border-top-color: var(--color-indigo-500) !important;
+    border-left-color: var(--color-indigo-500) !important;
+}

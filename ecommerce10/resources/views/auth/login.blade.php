@@ -30,7 +30,7 @@
         <div class="mt-4 block">
             <label for="remember_me" class="inline-flex items-center">
                 <input id="remember_me" type="checkbox"
-                    class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" name="remember">
+                    class="rounded border-gray-300 text-gray-600 shadow-sm focus:ring-indigo-500" name="remember">
                 <span class="ms-2 text-sm text-gray-600">{{ __('Remember me') }}</span>
             </label>
         </div>
@@ -50,8 +50,8 @@
             </x-primary-button>
 
             <a href="{{ route('register', ['redirect_to' => request()->query('redirect_to')]) }}"
-                class="w-full inline-flex items-center justify-center rounded-md border border-transparent bg-gray-800 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white transition duration-150 ease-in-out hover:bg-gray-700 focus:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 active:bg-gray-900">
-                {{ __('Create Account') }}
+                class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gray-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
+                {{ __('Register') }}
             </a>
         </div>
     </form>

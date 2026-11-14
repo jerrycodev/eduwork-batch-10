@@ -1,27 +1,23 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace("_", "-", app()->getLocale()) }}">
-
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>{{ $title ?? 'My Ecommerce' }}</title>
-    <meta name="author" content="{{ $author ?? 'My Ecommerce' }}">
-    <meta name="keywords" content="{{ $keywords ?? 'e-commerce, online shopping, store' }}">
-    <meta name="description" content="{{ $description ?? 'My Ecommerce Site' }}">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="description" content="{{ $description ?? 'Temukan produk pilihan dengan pengalaman belanja yang mudah dan nyaman.' }}">
+    <meta name="theme-color" content="#4f46e5">
+    <title>{{ $title ?? config('app.name', 'Ecommerce') }}</title>
     @vite(['resources/css/app.css'])
     @stack('head')
     @stack('styles')
 </head>
-
-<body data-boost="true">
+<body class="min-h-screen bg-white font-sans text-gray-900 antialiased">
     @include('components.header')
-    <main class="mx-auto min-h-[calc(100vh-5rem)] w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
+    <main class="mx-auto min-h-[calc(100vh-5rem)] w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-9 lg:px-8">
         {{ $slot }}
     </main>
     @include('components.footer')
     @vite(['resources/js/app.js'])
     @stack('scripts')
 </body>
-
 </html>
