@@ -1,67 +1,442 @@
-# Deployment Preparation
+# Development and Production Deployment
 
-This project is a Laravel 13 application. The repository is intentionally kept hosting-provider agnostic until the deployment target is selected.
+This guide covers a native Ubuntu/Linux deployment using **Nginx + PHP-FPM**. Docker, Docker Compose, Coolify, and Nixpacks are not required.
 
-## 1. Runtime requirements
+The application is built with Laravel 13, PHP 8.3+, Composer, Vite, and MySQL/MariaDB.
 
-- PHP 8.3 or newer, with the PHP extensions required by Laravel 13 and the selected database driver.
-- Composer 2.
-- Node.js compatible with the Vite version in `package-lock.json` and npm.
-- MySQL or MariaDB with a dedicated application database and user.
-- A web server or managed Laravel runtime whose document root points to this repository's `public/` directory.
-- HTTPS for the temporary public URL.
+## 1. Requirements
 
-Confirm exact PHP extensions and runtime versions on the selected host before deployment.
+### Development machine
 
-## 2. Production environment
+- Git
+- PHP 8.3 or newer and the PHP extensions listed below
+- Composer 2
+- Node.js and npm (use the versions supported by the lockfile/Vite)
+- MySQL 8+ or a compatible MariaDB server
 
-1. Create the production environment file from `.env.production.example` (copy it to `.env` on the server).
-2. Replace the temporary URL, database credentials, and SMTP credentials with real values from the host.
-3. Generate `APP_KEY` once on the production server if it is empty. Never regenerate it on an existing installation because encrypted data and sessions may become unreadable.
-4. Keep `APP_ENV=production` and `APP_DEBUG=false`.
-5. Keep `.env` outside version control and do not expose it through the web root.
-6. Configure the host's TLS certificate before enabling `SESSION_SECURE_COOKIE=true` and accepting public traffic.
+Required PHP extensions for a typical Laravel + MySQL installation:
 
-Do not copy the development machine's `.env` or its `public/storage` symlink to the server.
+- ctype, curl, dom, fileinfo, filter, hash, mbstring, openssl
+- pdo, pdo_mysql, session, tokenizer, xml
+- bcmath, gd, intl, zip
 
-## 3. Build and install
+Check your local runtime:
 
-Run from the project root on the deployment environment (or build assets in CI and publish `public/build`):
+```bash
+php -v
+composer --version
+node --version
+npm --version
+php -m
+```
+
+### Production server
+
+- Ubuntu 22.04/24.04 (or another supported Linux distribution)
+- Nginx
+- PHP-FPM 8.3 or newer with the required extensions
+- Composer 2
+- Node.js/npm for building frontend assets (or build assets in CI)
+- MySQL/MariaDB
+- A DNS name pointing to the server and a TLS certificate
+
+Keep PHP CLI and PHP-FPM on compatible PHP versions. The Nginx example below uses the PHP 8.3 FPM socket; change it if the installed PHP version differs.
+
+## 2. Development setup from Git clone
+
+### 2.1 Clone the repository
+
+Replace the URL and branch with the actual repository values:
+
+```bash
+git clone https://github.com/jerrycodev/eduwork-batch-10
+cd eduwork-batch-10/ecommerce10
+```
+
+### 2.2 Install dependencies
+
+```bash
+composer install
+npm ci
+```
+
+### 2.3 Configure the environment
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and configure at least:
+
+```dotenv
+APP_NAME="Ecommerce"
+APP_ENV=local
+APP_DEBUG=true
+APP_URL=http://127.0.0.1:8000
+APP_TIMEZONE=Asia/Jakarta
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=ecommerce10
+DB_USERNAME=root
+DB_PASSWORD=your-local-database-password
+
+SESSION_DRIVER=database
+CACHE_STORE=database
+QUEUE_CONNECTION=database
+FILESYSTEM_DISK=public
+SESSION_SECURE_COOKIE=false
+```
+
+Generate the local application key:
+
+```bash
+php artisan key:generate
+```
+
+Never commit `.env`. Use a different key and credentials for every environment.
+
+### 2.4 Run migrations and development seeders
+
+```bash
+php artisan migrate
+php artisan db:seed
+php artisan storage:link
+```
+
+The default seeder behaves differently by environment:
+
+- In `local` and `testing`, it creates two stable demo users (`demo1@ecommerce.test` and `demo2@ecommerce.test`) only when they do not already exist, plus the sample product catalog (five categories and 16 products).
+- Sample categories and products are created only when missing. Re-running the seeder does not reset existing product stock, images, prices, or descriptions.
+- In production, sample users and sample catalog data are skipped.
+- An administrator is created/promoted only when both `ADMIN_EMAIL` and `ADMIN_PASSWORD` are supplied. An existing administrator's password is not reset by re-running the seeder.
+
+To provision a local administrator, add these values to your local `.env` before running `php artisan db:seed`:
+
+```dotenv
+ADMIN_NAME="Administrator"
+ADMIN_EMAIL=admin@example.test
+ADMIN_PASSWORD=use-a-unique-local-password
+```
+
+Remove the temporary password from `.env` after the administrator has been created.
+
+### 2.5 Build assets and run the application
+
+For normal frontend development, run Vite in one terminal:
+
+```bash
+npm run dev
+```
+
+Run Laravel in another terminal:
+
+```bash
+php artisan serve
+```
+
+Open http://127.0.0.1:8000.
+
+To create a production-style frontend build locally:
+
+```bash
+npm run build
+```
+
+### 2.6 Run tests
+
+```bash
+php artisan test
+```
+
+Run the test suite before pushing changes. Tests should use the isolated testing database configured in `phpunit.xml`, not a production database.
+
+## 3. Prepare the Ubuntu production server
+
+The commands below assume a deployment user named `deploy`, an application path of `/var/www/ecommerce10`, and a domain such as `shop.example.com`. Replace these placeholders with your actual values.
+
+Install the server packages (package names can vary by Ubuntu release and PHP repository):
+
+```bash
+sudo apt update
+sudo apt install -y nginx mysql-server git unzip curl acl
+sudo apt install -y php8.3-fpm php8.3-cli php8.3-common \
+  php8.3-mysql php8.3-mbstring php8.3-xml php8.3-curl \
+  php8.3-bcmath php8.3-gd php8.3-intl php8.3-zip
+```
+
+Install Composer 2 and a supported Node.js/npm release using their official installation instructions. Verify the versions:
+
+```bash
+php -v
+php-fpm8.3 -v
+composer --version
+node --version
+npm --version
+nginx -v
+```
+
+Create a deployment user if one does not already exist:
+
+```bash
+sudo adduser --disabled-password --gecos "" deploy
+sudo usermod -aG www-data deploy
+```
+
+Provision a dedicated MySQL database and least-privilege application user. Do not use the MySQL root account in the Laravel `.env` file:
+
+```sql
+CREATE DATABASE ecommerce10 CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'ecommerce10'@'localhost' IDENTIFIED BY 'replace-with-a-strong-production-password';
+GRANT ALL PRIVILEGES ON ecommerce10.* TO 'ecommerce10'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+## 4. Deploy the application
+
+### 4.1 Clone the repository
+
+Run these commands from your sudo-capable administrator account. The clone itself runs as the deployment user:
+
+```bash
+sudo mkdir -p /var/www
+sudo chown deploy:www-data /var/www
+sudo -u deploy -H git clone <repository-url> /var/www/ecommerce10
+sudo -iu deploy
+cd /var/www/ecommerce10
+```
+
+For subsequent releases, fetch and update the intended branch instead of cloning again:
+
+```bash
+git fetch origin
+git checkout <production-branch>
+git pull --ff-only origin <production-branch>
+```
+
+Do not run `git reset --hard` on a working deployment directory. Keep server configuration and uploaded files out of Git.
+
+### 4.2 Configure production environment
+
+Create the environment file and edit it on the server:
+
+```bash
+cp .env.example .env
+nano .env
+```
+
+Set production values (replace every example value):
+
+```dotenv
+APP_NAME="Ecommerce"
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://shop.example.com
+APP_TIMEZONE=Asia/Jakarta
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=ecommerce10
+DB_USERNAME=ecommerce10
+DB_PASSWORD=replace-with-a-strong-production-password
+
+SESSION_DRIVER=database
+SESSION_SECURE_COOKIE=true
+CACHE_STORE=database
+QUEUE_CONNECTION=database
+FILESYSTEM_DISK=public
+
+MAIL_MAILER=smtp
+MAIL_HOST=your-smtp-host
+MAIL_PORT=587
+MAIL_USERNAME=your-smtp-username
+MAIL_PASSWORD=your-smtp-password
+MAIL_SCHEME=tls
+MAIL_FROM_ADDRESS=noreply@example.com
+MAIL_FROM_NAME="${APP_NAME}"
+```
+
+Generate `APP_KEY` once on the server:
+
+```bash
+php artisan key:generate
+```
+
+Keep the generated key for every future release. **Never regenerate the key on an existing installation.** Never commit or expose `.env`, database credentials, SMTP credentials, or production keys.
+
+### 4.3 Install dependencies and build frontend assets
 
 ```bash
 composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
 npm ci
 npm run build
-php artisan key:generate --force # only for a brand-new installation with an empty APP_KEY
-php artisan storage:link
-php artisan migrate --force
-php artisan optimize
 ```
 
-Do not run `key:generate --force` on a deployment that already has an APP_KEY. Back up the database before migrations. Review migration changes before applying them to an existing production database.
+If Node.js is not installed on the production host, build `public/build` in a trusted CI/build environment using the lockfile and deploy the resulting assets with the release.
 
-The `composer setup` script is for local project setup and runs migrations automatically; do not use it as a production release command.
+### 4.4 Run migrations and create storage link
 
-## 4. Web process and writable paths
+Back up the database before applying migrations, especially on an existing installation:
 
-- Configure the web server document root to `public/`, never the repository root.
-- Allow the PHP process to write to `storage/` and `bootstrap/cache/`.
-- Run `php artisan storage:link` on the target host so the symlink points to that host's own `storage/app/public` directory.
-- Do not make the whole repository writable by the web process.
-- Ensure uploaded product images persist across releases and are included in backups.
+```bash
+php artisan migrate --force
+php artisan storage:link
+```
 
-## 5. Database, queue, scheduler, and mail
+Do not run `migrate:fresh` or `db:wipe` on production. Do not run the sample product seeder in production.
 
-- Provision the database and least-privilege credentials before running migrations.
-- The current environment template uses database-backed sessions, cache, and queues. Confirm the corresponding Laravel migrations exist and have run.
-- If queued jobs are introduced, configure a persistent worker with a process supervisor and a restart strategy. If no queue jobs are dispatched, a worker is not needed yet.
-- If scheduled tasks are added, configure the host scheduler to invoke `php artisan schedule:run` every minute.
-- Configure a real SMTP provider and test registration, email verification, and password-reset delivery. The `log` mailer is only suitable for development.
-- The default seeder no longer creates demo users or a predictable default admin password in production. To provision the first administrator, temporarily provide `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and optionally `ADMIN_NAME` in the server environment, run `php artisan db:seed --class=DatabaseSeeder --force`, then remove the temporary password variable. Never use a sample/default password.
+To create the first administrator, temporarily set `ADMIN_NAME`, `ADMIN_EMAIL`, and a strong unique `ADMIN_PASSWORD` in the server environment (or export them for the one command), then run:
 
-## 6. Release verification
+```bash
+ADMIN_NAME="Administrator" \
+ADMIN_EMAIL="admin@your-real-domain.com" \
+ADMIN_PASSWORD="replace-with-a-unique-strong-password" \
+php artisan db:seed --class=DatabaseSeeder --force
+```
 
-Before exposing the temporary URL:
+Remove the temporary password from the shell environment or server configuration immediately after provisioning. Re-running this command will not reset an existing administrator's password.
+
+### 4.5 Set file permissions
+
+Before continuing, leave the deployment-user shell with `exit` and return to your sudo-capable administrator account.
+
+Nginx/PHP-FPM must be able to read the application, while only Laravel's runtime directories need to be writable:
+
+```bash
+sudo chown -R deploy:www-data /var/www/ecommerce10
+sudo find /var/www/ecommerce10 -type d -exec chmod 755 {} \;
+sudo find /var/www/ecommerce10 -type f -exec chmod 644 {} \;
+sudo find /var/www/ecommerce10/storage /var/www/ecommerce10/bootstrap/cache -type d -exec chmod 2775 {} \;
+sudo find /var/www/ecommerce10/storage /var/www/ecommerce10/bootstrap/cache -type f -exec chmod 664 {} \;
+```
+
+Do not make the entire project writable by the web server. Keep `.env` readable only by the deployment user and the required privileged processes; for example:
+
+```bash
+chmod 640 /var/www/ecommerce10/.env
+```
+
+Ensure uploaded files under `storage/app/public` are persistent and included in backups.
+
+### 4.6 Optimize Laravel for production
+
+Run these commands from your sudo-capable administrator account; Artisan runs as the deployment user:
+
+```bash
+sudo -u deploy -H bash -lc 'cd /var/www/ecommerce10 && php artisan optimize'
+```
+
+When changing environment values or configuration during a release, rebuild the configuration cache:
+
+```bash
+sudo -u deploy -H bash -lc 'cd /var/www/ecommerce10 && php artisan optimize:clear && php artisan optimize'
+```
+
+## 5. Configure Nginx
+
+Create an Nginx server block:
+
+```bash
+sudo nano /etc/nginx/sites-available/ecommerce10
+```
+
+Use the following configuration. Replace the domain and confirm that the PHP-FPM socket matches the installed PHP version:
+
+```nginx
+server {
+    listen 80;
+    listen [::]:80;
+    server_name shop.example.com;
+
+    root /var/www/ecommerce10/public;
+    index index.php;
+
+    charset utf-8;
+    client_max_body_size 20M;
+
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options SAMEORIGIN always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+
+    error_page 404 /index.php;
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+
+    location ~* ^/(?:\.env|composer\.(?:json|lock)|package(?:-lock)?\.json|artisan) {
+        deny all;
+    }
+}
+```
+
+Enable the site and validate the configuration:
+
+```bash
+sudo ln -s /etc/nginx/sites-available/ecommerce10 /etc/nginx/sites-enabled/ecommerce10
+sudo nginx -t
+sudo systemctl reload nginx
+sudo systemctl enable --now nginx php8.3-fpm
+```
+
+If the default Nginx site conflicts with this domain, disable it after confirming it is not serving another application:
+
+```bash
+sudo rm /etc/nginx/sites-enabled/default
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+**Important:** The Nginx document root must be `/var/www/ecommerce10/public`, never the repository root. Do not expose `.env`, `vendor/`, `storage/`, or other application internals over HTTP.
+
+## 6. Enable HTTPS
+
+Point the domain's DNS A/AAAA records to the server and make sure ports 80 and 443 are reachable. Then install Certbot using the official instructions for your Ubuntu release and issue the certificate:
+
+```bash
+sudo certbot --nginx -d shop.example.com
+sudo certbot renew --dry-run
+```
+
+After HTTPS is active, confirm `APP_URL=https://shop.example.com` and `SESSION_SECURE_COOKIE=true`. Keep `APP_DEBUG=false` in production.
+
+## 7. Queue, scheduler, and storage operations
+
+- The current environment template uses database-backed sessions, cache, and queues. Confirm the standard Laravel database migrations have run.
+- If the application dispatches queued jobs, run a persistent worker under Supervisor or systemd and restart it after deployments with `php artisan queue:restart`. If no jobs are dispatched, a worker is not needed yet.
+- If scheduled tasks are introduced, add a cron entry to run `php artisan schedule:run` every minute as the deployment user.
+- Keep `storage/` and `bootstrap/cache/` writable by PHP-FPM.
+- Keep uploaded files persistent between releases. Back up `storage/app/public` and the database.
+- Configure SMTP and test registration, verification, and password-reset emails.
+
+## 8. Release checklist
+
+For each release:
+
+1. Put the application into maintenance mode if the release requires downtime.
+2. Back up the database and uploaded files.
+3. Fetch the intended Git branch and install locked dependencies.
+4. Build frontend assets.
+5. Run reviewed database migrations with `php artisan migrate --force`.
+6. Run `php artisan optimize`.
+7. Restart queue workers if configured.
+8. Reload Nginx only when its configuration changes.
+9. Verify the site and exit maintenance mode.
+
+Useful verification commands:
 
 ```bash
 composer audit --no-dev
@@ -69,38 +444,35 @@ php artisan migrate:status
 php artisan route:list --except-vendor
 php artisan about
 php artisan test
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+sudo nginx -t
+sudo systemctl status nginx php8.3-fpm --no-pager
 ```
 
-Also verify HTTPS redirects/cookies, login and registration, product browsing, image upload and display, cart, checkout, customer order isolation, admin authorization, and email delivery in a browser on the actual host.
+Verify in a browser:
 
-## 7. Backups and operations
+- HTTPS, redirects, and secure cookies
+- Login, registration, and administrator authorization
+- Product listing, product details, and category filtering
+- Product image upload and display
+- Cart and checkout
+- Customer order isolation and admin order management
+- Email delivery
+
+## 9. Backups, security, and troubleshooting
 
 - Back up the database and uploaded files before each release and migration.
-- Keep deployment logs and application logs accessible to the operator.
-- Have a rollback plan for both code and database changes; not every schema migration can be safely reversed after real orders have been created.
-- Never commit production credentials, APP_KEY, database dumps, or uploaded customer data.
+- Never commit `.env`, `APP_KEY`, production credentials, database dumps, or customer uploads.
+- Do not use demo credentials in production. Use a unique administrator password and rotate it through the application's supported account flow.
+- Do not run `php artisan db:seed` in production unless you intend to provision the administrator with the explicit environment variables described above. Development sample users and products are guarded by the application environment.
+- Do not use `migrate:fresh`, `db:wipe`, or `key:generate` on an existing production installation.
+- Inspect Laravel logs in `storage/logs/`, Nginx logs in `/var/log/nginx/`, and PHP-FPM logs when diagnosing errors.
+- A 502 response usually indicates PHP-FPM is stopped, the configured socket is incorrect, or Nginx cannot access it.
+- A 500 response should be investigated in Laravel logs; do not enable `APP_DEBUG` on a public production server.
+- A 404 for uploaded images often means the storage symlink is missing or the uploaded files were not persisted.
 
-## 8. Current known limitations
+## 10. Deployment assumptions and project-specific notes
 
-- The Coolify/Nixpacks build configuration is prepared, but the public GitHub repository URL, branch, Coolify instance, and temporary hostname still need to be entered in Coolify.
-- Browser-based end-to-end testing against a deployed instance has not yet been performed.
-- Configure and verify SMTP credentials before treating transactional email as production-ready.
-
-## 9. Coolify deployment from a public GitHub repository (Nixpacks)
-
-The repository root contains `nixpacks.toml`. In Coolify:
-
-1. Create a new **Public Repository** application and enter the GitHub HTTPS repository URL. Select the intended branch.
-2. Set **Build Pack / Build Strategy** to `Nixpacks`, **Base Directory** to `/ecommerce10` (the Laravel project is a subdirectory of the Git repository), and **Output Type / Site Type** to a web application (not Static/SPA).
-3. Set **Ports Exposes** / internal port to `80`. Nixpacks' PHP provider runs Nginx + PHP-FPM; do not set the app port to Laravel's development server port `8000`.
-4. Add the production environment variables from `.env.production.example` in Coolify. Generate a unique `APP_KEY` once (`php artisan key:generate --show` locally or `php artisan key:generate` in a secure one-off server shell) and set the resulting value as `APP_KEY` in Coolify. Never commit it.
-5. Create a MySQL resource in Coolify (or use an external MySQL server) and set `DB_CONNECTION=mysql`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD` to the connection details Coolify provides. Do not use `127.0.0.1` unless MySQL is in the same container (it should normally be a separate resource).
-6. Use a persistent volume for uploaded public files, mounted at `/app/storage/app/public`. `nixpacks.toml` creates the `public/storage` symlink during build. Do not mount over `/app` or `/app/public`.
-7. Set `APP_URL` to the temporary Coolify domain (including `https://`), keep `APP_ENV=production`, `APP_DEBUG=false`, and `SESSION_SECURE_COOKIE=true` once HTTPS is active. Configure SMTP values before testing registration, verification, or password reset.
-8. Configure the domain in Coolify, enable its HTTPS certificate, deploy, and inspect build/runtime logs.
-9. After the first deploy, run `php artisan migrate --force` once using Coolify's terminal/execute-command feature. Back up the database before every later migration. Do not run `db:seed` without explicitly provisioning the initial admin via `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
-
-`nixpacks.toml` installs Composer production dependencies and Node dependencies, builds Vite assets, and configures Laravel's `public/` document root. It intentionally does not run migrations or generate an application key during image build.
+- This project is a Laravel application, not a static website. Nginx serves files from `public/` and forwards PHP requests to PHP-FPM.
+- The sample product catalog is development/test data. Create real production catalog records through the application/admin workflow.
+- Browser-based end-to-end testing on the actual production domain must be performed after deployment.
+- Confirm PHP-FPM's installed version and socket path before enabling the Nginx site.
