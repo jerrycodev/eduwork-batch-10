@@ -4,12 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Cart;
 use App\Models\Product;
+use App\Models\UserAddress;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\View\View;
 
 class CartController extends Controller
 {
@@ -26,14 +27,18 @@ class CartController extends Controller
                 ->get()
                 ->filter(fn (Cart $item) => $item->product !== null)
                 ->values()
-            : new Collection();
+            : new Collection;
 
         $totalQuantity = $cartItems->sum('quantity');
         $totalPrice = $cartItems->sum(
             fn (Cart $item) => $item->quantity * $item->product->price
         );
 
-        return view('cart.index', compact('cartItems', 'totalQuantity', 'totalPrice'));
+        $addresses = Auth::check()
+            ? UserAddress::query()->where('user_id', Auth::id())->orderByDesc('is_default')->orderBy('label')->get()
+            : collect();
+
+        return view('cart.index', compact('cartItems', 'totalQuantity', 'totalPrice', 'addresses'));
     }
 
     /**
@@ -137,6 +142,6 @@ class CartController extends Controller
     private function authorizeCartItem(Cart $cart): void
     {
         abort_unless(Auth::check(), 401);
-        abort_unless((int) $cart->user_id === (int) Auth::id(), 403);
+        abort_unless((string) $cart->user_id === (string) Auth::id(), 403);
     }
 }

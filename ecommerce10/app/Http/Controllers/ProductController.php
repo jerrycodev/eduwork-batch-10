@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Services\InventoryService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -17,7 +19,7 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         $products = Product::when($request->search, function ($query, $search) {
-            $query->where('name', 'like', '%' . $search . '%');
+            $query->where('name', 'like', '%'.$search.'%');
         })
             ->when($request->category_id, function ($query, $category_id) {
                 $query->where('category_id', $category_id);
@@ -63,7 +65,7 @@ class ProductController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, InventoryService $inventory): RedirectResponse
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -72,10 +74,25 @@ class ProductController extends Controller
             'image' => ['required', 'string', 'max:255'],
             'price' => ['required', 'integer', 'min:0'],
             'stock' => ['required', 'integer', 'min:0'],
-            'category_id' => ['required', 'integer', 'exists:product_categories,id'],
+            'weight_gram' => ['required', 'integer', 'min:1', 'max:1000000'],
+            'category_id' => ['required', 'uuid', 'exists:product_categories,id'],
         ]);
 
-        Product::create($validated);
+        DB::transaction(function () use ($validated, $request, $inventory): void {
+            $initialStock = (int) $validated['stock'];
+            $validated['stock'] = 0;
+            $product = Product::query()->create($validated);
+
+            if ($initialStock > 0) {
+                $inventory->change(
+                    productId: (string) $product->id,
+                    delta: $initialStock,
+                    type: 'in',
+                    userId: (string) $request->user()->id,
+                    notes: 'Initial stock when product was created',
+                );
+            }
+        });
 
         return redirect()
             ->route('products.index')
@@ -96,25 +113,41 @@ class ProductController extends Controller
     public function edit(Product $product)
     {
         $categories = ProductCategory::all();
+
         return view('admin.products.edit', compact('product', 'categories'));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Product $product)
+    public function update(Request $request, Product $product, InventoryService $inventory)
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'slug' => ['required', 'string', 'max:255', 'unique:products,slug,' . $product->id],
+            'slug' => ['required', 'string', 'max:255', 'unique:products,slug,'.$product->id],
             'description' => ['required', 'string', 'max:255'],
             'image' => ['required', 'string', 'max:255'],
             'price' => ['required', 'integer', 'min:0'],
             'stock' => ['required', 'integer', 'min:0'],
-            'category_id' => ['required', 'integer', 'exists:product_categories,id'],
+            'weight_gram' => ['required', 'integer', 'min:1', 'max:1000000'],
+            'category_id' => ['required', 'uuid', 'exists:product_categories,id'],
         ]);
 
-        $product->update($validated);
+        DB::transaction(function () use ($validated, $product, $inventory, $request): void {
+            $lockedProduct = Product::query()->lockForUpdate()->findOrFail($product->id);
+            $targetStock = (int) $validated['stock'];
+            unset($validated['stock']);
+            $lockedProduct->update($validated);
+
+            if ((int) $lockedProduct->stock !== $targetStock) {
+                $inventory->adjustTo(
+                    productId: (string) $lockedProduct->id,
+                    target: $targetStock,
+                    userId: (string) $request->user()->id,
+                    notes: 'Stock adjusted from product edit form',
+                );
+            }
+        });
 
         return redirect()
             ->route('products.index')

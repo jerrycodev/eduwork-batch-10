@@ -12,9 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('orders', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained();
-            $table->foreignId('cart_id')->constrained();
+            $table->uuid('id')->primary();
+            $table->foreignUuid('user_id')->constrained();
+            $table->foreignUuid('cart_id')->constrained();
             $table->string('user_name');
             $table->string('user_email');
             $table->string('user_phone');

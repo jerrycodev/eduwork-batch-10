@@ -1,21 +1,22 @@
 <?php
 
+use App\Models\Cart;
+use App\Models\Order;
+use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 
 test('the dashboard renders database-backed order and product metrics', function () {
     $admin = User::factory()->create(['role' => 'admin']);
     $customer = User::factory()->create(['role' => 'user']);
     $now = now();
 
-    $categoryId = DB::table('product_categories')->insertGetId([
+    $category = ProductCategory::query()->create([
         'name' => 'Dashboard Category',
         'slug' => 'dashboard-category',
-        'created_at' => $now,
-        'updated_at' => $now,
     ]);
 
-    $productId = DB::table('products')->insertGetId([
+    $product = Product::query()->create([
         'name' => 'Dashboard Product',
         'slug' => 'dashboard-product',
         'description' => 'Product for dashboard metrics.',
@@ -23,22 +24,19 @@ test('the dashboard renders database-backed order and product metrics', function
         'price' => 150000,
         'stock' => 10,
         'click' => 4,
-        'category_id' => $categoryId,
-        'created_at' => $now,
-        'updated_at' => $now,
+        'category_id' => $category->id,
     ]);
 
-    $cartId = DB::table('carts')->insertGetId([
+    $cart = Cart::query()->create([
         'user_id' => $customer->id,
-        'product_id' => $productId,
+        'product_id' => $product->id,
         'quantity' => 1,
-        'created_at' => $now,
-        'updated_at' => $now,
     ]);
 
-    DB::table('orders')->insert([
+    $order = Order::query()->create([
+        'order_number' => 'ORD-'.$now->format('Ymd').'-DASH01',
         'user_id' => $customer->id,
-        'cart_id' => $cartId,
+        'cart_id' => $cart->id,
         'user_name' => $customer->name,
         'user_email' => $customer->email,
         'user_phone' => '08123456789',
@@ -49,8 +47,6 @@ test('the dashboard renders database-backed order and product metrics', function
         'country' => 'Indonesia',
         'total' => 150000,
         'status' => 'pending',
-        'created_at' => $now,
-        'updated_at' => $now,
     ]);
 
     $this->actingAs($admin);
@@ -58,10 +54,11 @@ test('the dashboard renders database-backed order and product metrics', function
     $response = $this->get(route('dashboard'));
 
     $response->assertOk()
-        ->assertSee('Total Products')
-        ->assertSee('Total Product Clicks')
-        ->assertSee('Total Categories')
-        ->assertSee('Total Orders')
+        ->assertSee('Products Created')
+        ->assertSee('Product Clicks (All Time)')
+        ->assertSee('Categories Created')
+        ->assertSee('Orders')
+        ->assertSee('Filter Dashboard')
         ->assertSee('Orders This Year')
         ->assertSee('Order Status')
         ->assertSee('Pending')
@@ -69,12 +66,31 @@ test('the dashboard renders database-backed order and product metrics', function
         ->assertSee('dashboard-chart-data', false)
         ->assertSee('orders-chart', false)
         ->assertSee('order-status-chart', false)
-        ->assertSee('Products Clicks')
-        ->assertSee('Total Clicks')
-        ->assertSee('4')
+        ->assertSee('Latest Orders')
+        ->assertSee('ORD-'.$now->format('Ymd').'-DASH01')
+        ->assertSee('View details')
+        ->assertSee(route('orders.show', $order), false)
+        ->assertDontSee('Products Clicks')
+        ->assertDontSee('Total Clicks')
         ->assertSee('action="'.route('logout').'"', false)
         ->assertSee('method="POST"', false)
         ->assertSee('<button type="submit"', false)
         ->assertDontSee('href="'.route('logout').'"', false)
         ->assertDontSee('Operating System');
+
+    $this->get(route('dashboard', ['period' => 'day', 'date' => $now->format('Y-m-d')]))
+        ->assertOk()
+        ->assertSee('Orders Today')
+        ->assertSee('Product Clicks (All Time)')
+        ->assertSee('ORD-'.$now->format('Ymd').'-DASH01')
+        ->assertSee('"labels":["00:00","01:00"', false);
+
+    $this->get(route('dashboard', ['period' => 'month', 'date' => $now->format('Y-m')]))
+        ->assertOk()
+        ->assertSee('Orders This Month')
+        ->assertSee('"labels":["1","2","3"', false);
+
+    $this->get(route('dashboard', ['period' => 'year', 'date' => $now->format('Y')]))
+        ->assertOk()
+        ->assertSee('Orders This Year');
 });

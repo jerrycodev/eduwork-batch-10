@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            $table->foreignId('cart_id')->nullable()->change();
+            $table->foreignUuid('cart_id')->nullable()->change();
         });
     }
 
