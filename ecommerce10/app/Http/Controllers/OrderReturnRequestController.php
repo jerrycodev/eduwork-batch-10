@@ -308,8 +308,10 @@ class OrderReturnRequestController extends Controller
 
         $order = $returnRequest->order;
         $amount = (int) ($validated['refund_amount'] ?? 0);
-        if ($validated['resolution_type'] === 'refund' && $amount > (int) $order->total) {
-            throw ValidationException::withMessages(['refund_amount' => 'Nominal refund tidak boleh melebihi total pesanan.']);
+        $alreadyRefunded = (int) round((float) data_get($order->payment_payload, 'refund_amount', 0));
+        $remainingRefundable = max(0, (int) $order->total - $alreadyRefunded);
+        if ($validated['resolution_type'] === 'refund' && $amount > $remainingRefundable) {
+            throw ValidationException::withMessages(['refund_amount' => 'Nominal refund melebihi sisa pembayaran yang dapat dikembalikan.']);
         }
         if ($validated['resolution_type'] === 'refund' && $validated['refund_method'] === 'manual' && blank($validated['refund_reference'] ?? null)) {
             throw ValidationException::withMessages(['refund_reference' => 'Referensi transaksi wajib untuk refund manual.']);
@@ -330,9 +332,20 @@ class OrderReturnRequestController extends Controller
 
         // Reserve the resolution under a row lock before calling an external payment API.
         DB::transaction(function () use ($returnRequest, $validated, $request, $order, $amount, $proofData): void {
+            $lockedOrder = Order::query()->lockForUpdate()->findOrFail($order->id);
             $lockedRequest = OrderReturnRequest::query()->lockForUpdate()->findOrFail($returnRequest->id);
             if ($lockedRequest->status !== 'item_received' || $lockedRequest->resolution_status !== 'pending') {
                 throw ValidationException::withMessages(['resolution' => 'Penyelesaian hanya dapat diproses setelah barang diterima admin.']);
+            }
+            if ($validated['resolution_type'] === 'refund') {
+                $alreadyRefunded = (int) round((float) data_get($lockedOrder->payment_payload, 'refund_amount', 0));
+                $remainingRefundable = max(0, (int) $lockedOrder->total - $alreadyRefunded);
+                if ($amount < 1 || $amount > $remainingRefundable) {
+                    throw ValidationException::withMessages(['refund_amount' => 'Nominal refund melebihi sisa pembayaran yang dapat dikembalikan.']);
+                }
+                if ($validated['refund_method'] === 'midtrans' && $lockedOrder->payment_status !== 'paid') {
+                    throw ValidationException::withMessages(['refund_method' => 'Refund otomatis hanya dapat dimulai dari pembayaran berstatus paid.']);
+                }
             }
 
             if ($validated['resolution_type'] === 'replacement') {
@@ -414,9 +427,30 @@ class OrderReturnRequestController extends Controller
             : 'Refund manual dicatat. Verifikasi transfer sebelum menandai selesai.');
     }
 
-    public function completeResolution(Request $request, OrderReturnRequest $returnRequest): RedirectResponse
+    public function completeResolution(Request $request, OrderReturnRequest $returnRequest, MidtransPaymentService $payments): RedirectResponse
     {
         $validated = $request->validate(['resolution_reference' => ['nullable', 'string', 'max:150']]);
+        $returnRequest->loadMissing('order');
+        if ($returnRequest->resolution_type === 'refund' && $returnRequest->refund_method === 'midtrans') {
+            try {
+                $remote = (array) $payments->fetchStatus($returnRequest->order);
+                $remoteRefundAmount = (int) round((float) ($remote['refund_amount'] ?? 0));
+                $expectedRefundAmount = (int) $returnRequest->refund_amount;
+                if (
+                    ! in_array($remote['transaction_status'] ?? null, ['refund', 'partial_refund'], true) ||
+                    (string) ($remote['order_id'] ?? '') !== (string) $returnRequest->order->payment_order_id ||
+                    (string) ($remote['transaction_id'] ?? '') !== (string) $returnRequest->order->transaction_id ||
+                    $remoteRefundAmount < $expectedRefundAmount
+                ) {
+                    throw ValidationException::withMessages(['resolution' => 'Status refund Midtrans belum terverifikasi sesuai nominal dan transaksi.']);
+                }
+            } catch (ValidationException $exception) {
+                throw $exception;
+            } catch (\Throwable $exception) {
+                report($exception);
+                throw ValidationException::withMessages(['resolution' => 'Status refund Midtrans belum dapat diverifikasi. Coba lagi setelah status transaksi tersedia.']);
+            }
+        }
         DB::transaction(function () use ($returnRequest, $validated): void {
             $lockedRequest = OrderReturnRequest::query()->lockForUpdate()->findOrFail($returnRequest->id);
             if ($lockedRequest->status !== 'item_received' || $lockedRequest->resolution_status !== 'processing') {

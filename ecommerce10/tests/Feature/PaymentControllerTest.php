@@ -302,3 +302,47 @@ test('verified late settlement after expiry is recorded once without advancing f
 
     Mail::assertQueued(OrderTransactionalMail::class, 1);
 });
+
+test('repeated partial refund callback keeps the highest cumulative refund without changing fulfillment', function () {
+    $user = User::factory()->create();
+    $order = Order::query()->create([
+        'user_id' => $user->id,
+        'cart_id' => null,
+        'user_name' => $user->name,
+        'user_email' => $user->email,
+        'total' => 105000,
+        'status' => 'completed',
+        'payment_status' => 'partially_refunded',
+        'payment_order_id' => 'ORDER-'.uniqid(),
+        'payment_payload' => ['transaction_status' => 'partial_refund', 'refund_amount' => '25000.00'],
+    ]);
+    $serverKey = 'test-server-key';
+    config(['midtrans.server_key' => $serverKey, 'midtrans.merchant_id' => null]);
+    $orderId = $order->payment_order_id;
+    $statusCode = '200';
+    $grossAmount = '105000.00';
+
+    $this->postJson(route('midtrans.callback'), [
+        'order_id' => $orderId,
+        'status_code' => $statusCode,
+        'gross_amount' => $grossAmount,
+        'signature_key' => hash('sha512', $orderId.$statusCode.$grossAmount.$serverKey),
+        'transaction_status' => 'partial_refund',
+        'refund_amount' => '40000.00',
+    ])->assertOk()->assertJson(['status' => 'processed']);
+
+    expect($order->fresh()->payment_status)->toBe('partially_refunded')
+        ->and(data_get($order->fresh()->payment_payload, 'refund_amount'))->toBe('40000.00')
+        ->and($order->fresh()->status)->toBe('completed');
+
+    $this->postJson(route('midtrans.callback'), [
+        'order_id' => $orderId,
+        'status_code' => $statusCode,
+        'gross_amount' => $grossAmount,
+        'signature_key' => hash('sha512', $orderId.$statusCode.$grossAmount.$serverKey),
+        'transaction_status' => 'partial_refund',
+        'refund_amount' => '20000.00',
+    ])->assertOk();
+
+    expect(data_get($order->fresh()->payment_payload, 'refund_amount'))->toBe('40000.00');
+});

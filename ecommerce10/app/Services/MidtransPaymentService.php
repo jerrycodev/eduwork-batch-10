@@ -106,8 +106,10 @@ class MidtransPaymentService
             throw new RuntimeException('Refund otomatis hanya tersedia untuk transaksi Midtrans berstatus settlement. Gunakan refund manual.');
         }
 
-        if ($amount < 1 || $amount > (int) $order->total) {
-            throw new RuntimeException('Nominal refund tidak valid.');
+        $alreadyRefunded = (int) round((float) data_get($order->payment_payload, 'refund_amount', 0));
+        $remainingAmount = max(0, (int) $order->total - $alreadyRefunded);
+        if ($amount < 1 || $amount > $remainingAmount) {
+            throw new RuntimeException('Nominal refund melebihi sisa pembayaran yang dapat dikembalikan.');
         }
 
         $this->configure();

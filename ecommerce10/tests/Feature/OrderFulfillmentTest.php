@@ -12,6 +12,7 @@ use App\Models\ProductCategory;
 use App\Models\StockMovement;
 use App\Models\User;
 use App\Notifications\OrderAlert;
+use App\Services\MidtransPaymentService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Mail;
@@ -574,4 +575,73 @@ test('order processing shipping and delivery transitions queue transactional ema
     Mail::assertQueued(OrderTransactionalMail::class, fn (OrderTransactionalMail $mail): bool => $mail->type === 'order_processing');
     Mail::assertQueued(OrderTransactionalMail::class, fn (OrderTransactionalMail $mail): bool => $mail->type === 'order_shipped' && $mail->order->tracking_number === 'JNE-EMAIL-123');
     Mail::assertQueued(OrderTransactionalMail::class, fn (OrderTransactionalMail $mail): bool => $mail->type === 'order_delivered');
+});
+
+test('refund resolution rejects an amount above the remaining refundable balance', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $owner = User::factory()->create();
+    $order = makeFulfillmentOrder($owner, [
+        'total' => 105000,
+        'payment_payload' => ['transaction_status' => 'settlement', 'refund_amount' => '100000.00'],
+    ]);
+    $returnRequest = OrderReturnRequest::query()->create([
+        'order_id' => $order->id,
+        'user_id' => $owner->id,
+        'reason' => 'damaged',
+        'description' => 'Produk mengalami kerusakan pada bagian casing.',
+        'status' => 'item_received',
+        'item_received_at' => now(),
+    ]);
+
+    $this->actingAs($admin)
+        ->post(route('order-returns.resolve', $returnRequest), [
+            'resolution_type' => 'refund',
+            'refund_method' => 'midtrans',
+            'refund_amount' => 6000,
+        ])
+        ->assertSessionHasErrors('refund_amount');
+
+    expect($returnRequest->fresh()->resolution_status)->toBe('pending')
+        ->and($order->fresh()->payment_status)->toBe('paid');
+});
+
+test('Midtrans refund completion requires matching remote transaction and refund amount', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $owner = User::factory()->create();
+    $order = makeFulfillmentOrder($owner, [
+        'total' => 105000,
+        'payment_order_id' => 'PAY-ORDER-VERIFY',
+        'transaction_id' => 'midtrans-verify-transaction',
+        'payment_payload' => ['transaction_status' => 'settlement'],
+    ]);
+    $returnRequest = OrderReturnRequest::query()->create([
+        'order_id' => $order->id,
+        'user_id' => $owner->id,
+        'reason' => 'damaged',
+        'description' => 'Produk mengalami kerusakan pada bagian casing.',
+        'status' => 'item_received',
+        'item_received_at' => now(),
+        'resolution_type' => 'refund',
+        'resolution_status' => 'processing',
+        'refund_amount' => 50000,
+        'refund_method' => 'midtrans',
+        'refund_reference' => 'RET-VERIFY',
+    ]);
+
+    $payments = Mockery::mock(MidtransPaymentService::class);
+    $payments->shouldReceive('fetchStatus')->once()->with(Mockery::on(fn ($candidate) => $candidate->is($order)))
+        ->andReturn((object) [
+            'order_id' => 'PAY-ORDER-VERIFY',
+            'transaction_id' => 'midtrans-verify-transaction',
+            'transaction_status' => 'partial_refund',
+            'refund_amount' => '49999.00',
+        ]);
+    $this->app->instance(MidtransPaymentService::class, $payments);
+
+    $this->actingAs($admin)
+        ->post(route('order-returns.complete', $returnRequest))
+        ->assertSessionHasErrors('resolution');
+
+    expect($returnRequest->fresh()->resolution_status)->toBe('processing')
+        ->and($order->fresh()->payment_status)->toBe('paid');
 });

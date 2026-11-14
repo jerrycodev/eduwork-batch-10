@@ -126,6 +126,21 @@ class PaymentController extends Controller
 
             // Never allow a delayed pending/failed notification to downgrade a paid order.
             if (in_array($lockedOrder->payment_status, ['refunded', 'partially_refunded'], true)) {
+                // Refund callbacks can be retried or report a larger cumulative partial
+                // refund. Keep the most advanced state and never emit payment-success side effects.
+                if (in_array($paymentStatus, ['refunded', 'partially_refunded'], true)) {
+                    $existingRefund = (int) round((float) data_get($lockedOrder->payment_payload, 'refund_amount', 0));
+                    $incomingRefund = (int) round((float) ($notification['refund_amount'] ?? 0));
+                    if ($incomingRefund >= $existingRefund && $incomingRefund <= (int) $lockedOrder->total) {
+                        $lockedOrder->forceFill([
+                            'payment_status' => $paymentStatus === 'refunded' || $lockedOrder->payment_status === 'refunded'
+                                ? 'refunded'
+                                : 'partially_refunded',
+                            'payment_payload' => $notification,
+                        ])->save();
+                    }
+                }
+
                 return false;
             }
 
