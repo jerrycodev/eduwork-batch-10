@@ -302,60 +302,58 @@ class OrderController extends Controller
             'tracking_number' => ['nullable', 'string', 'max:100'],
         ]);
 
-        $previousStatus = $order->status;
-        $previousTrackingNumber = $order->tracking_number;
-        $nextStatus = $validated['status'];
-        $allowedTransitions = [
-            'pending' => ['processing', 'cancelled'],
-            'processing' => ['shipped', 'cancelled'],
-            'shipped' => ['delivered'],
-            'delivered' => [],
-            'completed' => [],
-            'cancelled' => [],
-            'success' => [],
-        ];
+        $result = DB::transaction(function () use ($order, $validated): array {
+            $lockedOrder = Order::query()->lockForUpdate()->findOrFail($order->id);
+            $previousStatus = $lockedOrder->status;
+            $previousTrackingNumber = $lockedOrder->tracking_number;
+            $nextStatus = $validated['status'];
+            $allowedTransitions = [
+                'pending' => ['processing', 'cancelled'],
+                'processing' => ['shipped', 'cancelled'],
+                'shipped' => ['delivered'],
+                'delivered' => [],
+                'completed' => [],
+                'cancelled' => [],
+                'success' => [],
+            ];
 
-        if ($nextStatus !== $order->status && ! in_array($nextStatus, $allowedTransitions[$order->status] ?? [], true)) {
-            return back()->withErrors(['status' => 'Perubahan status pesanan tidak diizinkan.']);
-        }
+            if ($nextStatus !== $lockedOrder->status && ! in_array($nextStatus, $allowedTransitions[$lockedOrder->status] ?? [], true)) {
+                throw ValidationException::withMessages(['status' => 'Perubahan status pesanan tidak diizinkan.']);
+            }
 
-        if (in_array($nextStatus, ['processing', 'shipped', 'delivered'], true) && $order->payment_status !== 'paid') {
-            return back()->withErrors(['status' => 'Pesanan hanya dapat diproses setelah pembayaran berhasil diverifikasi.']);
-        }
+            if (in_array($nextStatus, ['processing', 'shipped', 'delivered'], true) && $lockedOrder->payment_status !== 'paid') {
+                throw ValidationException::withMessages(['status' => 'Pesanan hanya dapat diproses setelah pembayaran berhasil diverifikasi.']);
+            }
 
-        if ($nextStatus === 'cancelled' && $order->payment_status === 'paid') {
-            return back()->withErrors(['status' => 'Pesanan yang sudah dibayar harus dibatalkan melalui pengajuan pembatalan customer agar refund tercatat.']);
-        }
+            if ($nextStatus === 'cancelled' && $lockedOrder->payment_status === 'paid') {
+                throw ValidationException::withMessages(['status' => 'Pesanan yang sudah dibayar harus dibatalkan melalui pengajuan pembatalan customer agar refund tercatat.']);
+            }
 
-        if (in_array($nextStatus, ['processing', 'shipped', 'delivered'], true) && $order->cancellationRequest()->whereIn('status', ['requested', 'approved'])->exists()) {
-            return back()->withErrors(['status' => 'Pesanan sedang dalam proses pembatalan dan fulfillment ditahan sampai pengajuan ditolak atau diselesaikan.']);
-        }
+            if (in_array($nextStatus, ['processing', 'shipped', 'delivered'], true) && $lockedOrder->cancellationRequest()->whereIn('status', ['requested', 'approved'])->exists()) {
+                throw ValidationException::withMessages(['status' => 'Pesanan sedang dalam proses pembatalan dan fulfillment ditahan sampai pengajuan ditolak atau diselesaikan.']);
+            }
 
-        if ($nextStatus === 'shipped' && blank($validated['tracking_number'] ?? null) && blank($order->tracking_number)) {
-            return back()->withErrors(['tracking_number' => 'Nomor resi wajib diisi sebelum pesanan ditandai dikirim.']);
-        }
+            if ($nextStatus === 'shipped' && blank($validated['tracking_number'] ?? null) && blank($lockedOrder->tracking_number)) {
+                throw ValidationException::withMessages(['tracking_number' => 'Nomor resi wajib diisi sebelum pesanan ditandai dikirim.']);
+            }
 
-        $updates = ['status' => $nextStatus];
-        if ($nextStatus === 'shipped') {
-            $updates['tracking_number'] = $validated['tracking_number'] ?? $order->tracking_number;
-            $updates['shipped_at'] = $order->shipped_at ?? now();
-        }
-        if ($nextStatus === 'delivered') {
-            $updates['delivered_at'] = $order->delivered_at ?? now();
-            $updates['auto_complete_at'] = now()->addDays(3);
-        }
-        if ($nextStatus === 'cancelled') {
-            $updates['auto_complete_at'] = null;
-        }
+            $updates = ['status' => $nextStatus];
+            if ($nextStatus === 'shipped') {
+                $updates['tracking_number'] = $validated['tracking_number'] ?? $lockedOrder->tracking_number;
+                $updates['shipped_at'] = $lockedOrder->shipped_at ?? now();
+            }
+            if ($nextStatus === 'delivered') {
+                $updates['delivered_at'] = $lockedOrder->delivered_at ?? now();
+                $updates['auto_complete_at'] = now()->addDays(3);
+            }
+            if ($nextStatus === 'cancelled') {
+                $updates['auto_complete_at'] = null;
+            }
 
-        $order->update($updates);
+            $lockedOrder->update($updates);
 
-        if ($nextStatus === 'cancelled' && ! $order->stock_restored_at) {
-            DB::transaction(function () use ($order): void {
-                $lockedOrder = Order::query()->lockForUpdate()->findOrFail($order->id);
-                if ($lockedOrder->stock_restored_at) {
-                    return;
-                }
+            // Status and stock restoration must commit or roll back together.
+            if ($nextStatus === 'cancelled' && ! $lockedOrder->stock_restored_at) {
                 $inventory = app(InventoryService::class);
                 foreach ($lockedOrder->orderItems()->get() as $item) {
                     $inventory->change(
@@ -368,8 +366,18 @@ class OrderController extends Controller
                     );
                 }
                 $lockedOrder->update(['stock_restored_at' => now()]);
-            });
-        }
+            }
+
+            return [
+                'order' => $lockedOrder->fresh(),
+                'previous_status' => $previousStatus,
+                'previous_tracking_number' => $previousTrackingNumber,
+            ];
+        });
+
+        $order = $result['order'];
+        $previousStatus = $result['previous_status'];
+        $previousTrackingNumber = $result['previous_tracking_number'];
 
         $order->refresh();
 
@@ -402,20 +410,24 @@ class OrderController extends Controller
         abort_unless($request->user()->role !== 'admin', 403);
         abort_unless($order->user_id === $request->user()->id, 403);
 
-        if ($order->status !== 'delivered') {
-            return back()->withErrors(['order' => 'Pesanan hanya dapat dikonfirmasi setelah berstatus Delivered.']);
-        }
+        DB::transaction(function () use ($order): void {
+            $lockedOrder = Order::query()->lockForUpdate()->findOrFail($order->id);
 
-        if ($order->returnRequest()->exists()) {
-            return back()->withErrors(['order' => 'Pesanan dengan pengajuan pengembalian aktif tidak dapat dikonfirmasi selesai.']);
-        }
+            if ($lockedOrder->status !== 'delivered') {
+                throw ValidationException::withMessages(['order' => 'Pesanan hanya dapat dikonfirmasi setelah berstatus Delivered.']);
+            }
 
-        $order->update([
-            'status' => 'completed',
-            'confirmed_at' => now(),
-            'completed_at' => now(),
-            'auto_complete_at' => null,
-        ]);
+            if ($lockedOrder->returnRequest()->exists()) {
+                throw ValidationException::withMessages(['order' => 'Pesanan dengan pengajuan pengembalian aktif tidak dapat dikonfirmasi selesai.']);
+            }
+
+            $lockedOrder->update([
+                'status' => 'completed',
+                'confirmed_at' => now(),
+                'completed_at' => now(),
+                'auto_complete_at' => null,
+            ]);
+        });
 
         return back()->with('success', 'Terima kasih! Pesanan berhasil dikonfirmasi selesai.');
     }

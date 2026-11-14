@@ -51,6 +51,47 @@ test('admin must add tracking number before marking order shipped', function () 
         ->and($order->fresh()->shipped_at)->not->toBeNull();
 });
 
+test('admin cancellation restores stock in the same order transition and does not restore it twice', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $customer = User::factory()->create();
+    $category = ProductCategory::query()->create([
+        'name' => 'Fulfillment Cancellation Category',
+        'slug' => 'fulfillment-cancel-'.uniqid(),
+    ]);
+    $product = Product::query()->create([
+        'name' => 'Fulfillment Cancellation Product',
+        'slug' => 'fulfillment-cancel-product-'.uniqid(),
+        'description' => 'Product used for fulfillment cancellation tests.',
+        'image' => 'products/test.jpg',
+        'price' => 150000,
+        'stock' => 2,
+        'category_id' => $category->id,
+    ]);
+    $order = makeFulfillmentOrder($customer, ['payment_status' => 'pending']);
+    $order->orderItems()->create([
+        'product_id' => $product->id,
+        'product_name' => $product->name,
+        'quantity' => 1,
+        'price' => 150000,
+        'total' => 150000,
+    ]);
+
+    $this->actingAs($admin)
+        ->patch(route('orders.status.update', $order), ['status' => 'cancelled'])
+        ->assertRedirect(route('orders.show', $order));
+
+    expect($order->fresh()->status)->toBe('cancelled')
+        ->and($order->fresh()->stock_restored_at)->not->toBeNull()
+        ->and($product->fresh()->stock)->toBe(3);
+    $this->assertDatabaseCount('stock_movements', 1);
+
+    $this->patch(route('orders.status.update', $order), ['status' => 'cancelled'])
+        ->assertRedirect(route('orders.show', $order));
+
+    expect($product->fresh()->stock)->toBe(3);
+    $this->assertDatabaseCount('stock_movements', 1);
+});
+
 test('admin cannot skip shipping steps or complete an order directly', function () {
     $admin = User::factory()->create(['role' => 'admin']);
     $customer = User::factory()->create();
