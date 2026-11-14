@@ -1,10 +1,13 @@
 <?php
 
 use App\Models\Order;
+use App\Models\PaymentReconciliationAlert;
 use App\Models\PaymentReconciliationCheck;
 use App\Models\User;
+use App\Notifications\OrderAlert;
 use App\Services\MidtransPaymentService;
 use App\Services\PaymentReconciliationService;
+use Illuminate\Support\Facades\Notification;
 
 function reconciliationTestOrder(User $user, array $attributes = []): Order
 {
@@ -114,4 +117,48 @@ test('admin can open payment reconciliation dashboard and see local findings', f
         ->assertSee('Payment Reconciliation')
         ->assertSee('Fulfillment tanpa pembayaran terverifikasi')
         ->assertSee($order->order_number);
+});
+
+test('scheduled reconciliation checks recent Midtrans payments and notifies admins once per unchanged anomaly', function () {
+    Notification::fake();
+    $admin = User::factory()->create(['role' => 'admin']);
+    $order = reconciliationTestOrder($admin, ['payment_status' => 'pending']);
+    $payments = Mockery::mock(MidtransPaymentService::class);
+    $payments->shouldReceive('fetchStatus')->twice()->andReturn((object) [
+        'order_id' => $order->payment_order_id,
+        'transaction_id' => 'midtrans-scheduled-1',
+        'transaction_status' => 'settlement',
+        'fraud_status' => 'accept',
+        'gross_amount' => '150000.00',
+    ]);
+    $this->app->instance(MidtransPaymentService::class, $payments);
+
+    $this->artisan('payments:reconcile')->assertSuccessful();
+    $this->travel(7)->hours();
+    $this->artisan('payments:reconcile')->assertSuccessful();
+
+    expect(PaymentReconciliationCheck::query()->where('order_id', $order->id)->count())->toBe(2)
+        ->and($order->fresh()->payment_status)->toBe('pending')
+        ->and(PaymentReconciliationAlert::query()->where('order_id', $order->id)->count())->toBe(1);
+
+    Notification::assertSentToTimes($admin, OrderAlert::class, 1);
+});
+
+test('scheduled reconciliation skips orders checked within the configured interval', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $order = reconciliationTestOrder($admin);
+    PaymentReconciliationCheck::query()->create([
+        'order_id' => $order->id,
+        'result' => 'matched',
+        'local_status' => 'pending',
+        'checked_at' => now()->subHour(),
+    ]);
+
+    $payments = Mockery::mock(MidtransPaymentService::class);
+    $payments->shouldNotReceive('fetchStatus');
+    $this->app->instance(MidtransPaymentService::class, $payments);
+
+    $this->artisan('payments:reconcile')->assertSuccessful();
+
+    expect(PaymentReconciliationCheck::query()->where('order_id', $order->id)->count())->toBe(1);
 });

@@ -9,3 +9,7 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('orders:auto-complete')->hourly();
+
+Schedule::command('payments:reconcile --limit=50 --interval=6')
+    ->everyTenMinutes()
+    ->withoutOverlapping();
