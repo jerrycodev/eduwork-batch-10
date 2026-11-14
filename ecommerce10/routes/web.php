@@ -37,6 +37,11 @@ Route::prefix('/dashboard')->middleware(['admin'])->group(function () {
     Route::get('/orders/{order}', [OrderController::class, 'adminShow'])->name('orders.show');
     Route::patch('/orders/{order}/status', [OrderController::class, 'updateStatus'])->name('orders.status.update');
     Route::patch('/order-returns/{returnRequest}', [OrderReturnRequestController::class, 'update'])->name('order-returns.update');
+    Route::post('/order-returns/{returnRequest}/revisions', [OrderReturnRequestController::class, 'requestRevision'])->name('order-returns.revisions.request');
+    Route::get('/order-returns/{returnRequest}/revisions/{revision}/evidence/{index}', [OrderReturnRequestController::class, 'revisionEvidence'])->whereNumber('index')->name('order-returns.revisions.evidence');
+    Route::post('/order-returns/{returnRequest}/receive', [OrderReturnRequestController::class, 'receive'])->name('order-returns.receive');
+    Route::post('/order-returns/{returnRequest}/resolve', [OrderReturnRequestController::class, 'resolve'])->name('order-returns.resolve');
+    Route::post('/order-returns/{returnRequest}/complete', [OrderReturnRequestController::class, 'completeResolution'])->name('order-returns.complete');
     Route::patch('/order-cancellations/{cancellationRequest}', [OrderCancellationRequestController::class, 'update'])->name('order-cancellations.update');
     Route::get('/order-returns/{returnRequest}/evidence/{index}', [OrderReturnRequestController::class, 'evidence'])->whereNumber('index')->name('order-returns.evidence');
     Route::resource('products', ProductController::class);
@@ -49,6 +54,10 @@ Route::prefix('/dashboard')->middleware(['admin'])->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+    Route::post('/orders/returns/{returnRequest}/revisions/{revision}', [OrderReturnRequestController::class, 'submitRevision'])->name('orders.returns.revisions.submit');
+    Route::get('/orders/returns/{returnRequest}/revisions/{revision}/evidence/{index}', [OrderReturnRequestController::class, 'revisionEvidence'])->whereNumber('index')->name('orders.returns.revisions.evidence');
+    Route::post('/orders/returns/{returnRequest}/shipment', [OrderReturnRequestController::class, 'submitReturnShipment'])->name('orders.returns.shipment');
+    Route::get('/order-returns/{returnRequest}/refund-proof', [OrderReturnRequestController::class, 'refundProof'])->name('order-returns.refund-proof');
     Route::prefix('wilayah')->name('wilayah.')->group(function () {
         Route::get('/provinces', [WilayahController::class, 'provinces'])->name('provinces');
         Route::get('/regencies', [WilayahController::class, 'regencies'])->name('regencies');

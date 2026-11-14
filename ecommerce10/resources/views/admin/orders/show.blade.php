@@ -182,16 +182,15 @@
                         <div><label for="cancellation-admin-note" class="mb-1 block text-sm font-medium text-gray-700">Catatan admin {{ $order->payment_status === 'paid' ? '(wajib saat refund selesai)' : '(wajib saat menolak)' }}</label><textarea id="cancellation-admin-note" name="admin_note" rows="2" class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm" placeholder="Alasan keputusan / referensi refund">{{ old('admin_note') }}</textarea>@error('admin_note')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror</div>
                         @if ($order->cancellationRequest->status === 'approved' && $order->payment_status === 'paid')
                             <div class="sm:col-span-2">
-                                @include('admin.products._file_upload', [
-                                    'fileUploadId' => 'refund-proof-upload-'.$order->cancellationRequest->id,
-                                    'fileUploadLabel' => 'Bukti transaksi refund',
-                                    'fileUploadName' => 'refund_proof',
-                                    'fileUploadAccept' => 'image/jpeg,image/png,image/webp,application/pdf',
-                                    'fileUploadHelpText' => 'JPG, PNG, WEBP, or PDF',
-                                    'fileUploadMaxSize' => 5,
-                                    'fileUploadMode' => 'deferred',
-                                    'fileUploadMultiple' => false,
-                                ])
+                                <x-file-upload
+                                    id="refund-proof-upload-{{ $order->cancellationRequest->id }}"
+                                    label="Bukti transaksi refund"
+                                    name="refund_proof"
+                                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                                    help-text="JPG, PNG, WEBP, or PDF"
+                                    :max-size="5"
+                                    mode="deferred"
+                                />
                                 @error('refund_proof')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                             </div>
                         @endif
@@ -217,39 +216,91 @@
                 @if ($order->returnRequest->evidence_paths)
                     <div class="mt-3 flex flex-wrap gap-3">
                         @foreach ($order->returnRequest->evidence_paths as $path)
-                            <a href="{{ route('order-returns.evidence', [$order->returnRequest, $loop->index]) }}"
-                                target="_blank" rel="noopener noreferrer"
-                                class="rounded-lg border px-3 py-2 text-sm font-medium text-indigo-700">Lihat bukti
-                                {{ $loop->iteration }}</a>
+                            @php($evidenceUrl = route('order-returns.evidence', [$order->returnRequest, $loop->index]))
+                            @if (in_array(strtolower(pathinfo($path, PATHINFO_EXTENSION)), ['mp4', 'mov', 'webm'], true))
+                                <div class="w-full max-w-lg rounded-xl border border-gray-200 p-3">
+                                    <p class="mb-2 text-sm font-medium text-gray-700">Video unboxing {{ $loop->iteration }}</p>
+                                    <video controls preload="metadata" class="w-full rounded-lg bg-black">
+                                        <source src="{{ $evidenceUrl }}">
+                                        Browser tidak mendukung pemutaran video. <a href="{{ $evidenceUrl }}" class="underline">Buka video</a>.
+                                    </video>
+                                </div>
+                            @else
+                                <a href="{{ $evidenceUrl }}" target="_blank" rel="noopener noreferrer"
+                                    class="rounded-lg border px-3 py-2 text-sm font-medium text-indigo-700">Lihat foto {{ $loop->iteration }}</a>
+                            @endif
                         @endforeach
                     </div>
                 @endif
                 @if ($order->returnRequest->admin_note)
                     <p class="mt-3 text-sm text-gray-600">Catatan admin: {{ $order->returnRequest->admin_note }}</p>
                 @endif
-                @if (!in_array($order->returnRequest->status, ['rejected', 'completed'], true))
-                    <form action="{{ route('order-returns.update', $order->returnRequest) }}" method="POST"
-                        class="mt-4 grid gap-3 sm:grid-cols-2">@csrf @method('PATCH')
-                        <div><label for="return-status"
-                                class="mb-1 block text-sm font-medium text-gray-700">Tindakan</label><select
-                                id="return-status" name="status"
-                                class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm">
-                                @if ($order->returnRequest->status === 'requested')
-                                    <option value="approved">Setujui pengembalian</option>
-                                    <option value="rejected">Tolak pengajuan</option>
-                                    @endif @if ($order->returnRequest->status === 'approved')
-                                        <option value="completed">Tandai selesai (refund sudah diproses)</option>
-                                    @endif
-                            </select></div>
-                        <div><label for="admin-note" class="mb-1 block text-sm font-medium text-gray-700">Catatan
-                                admin (wajib untuk penolakan)</label>
-                            <textarea id="admin-note" name="admin_note" rows="2"
-                                class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm"></textarea>
+                @if ($order->returnRequest->revisions->isNotEmpty())
+                    <div class="mt-4 space-y-3">
+                        <h4 class="text-sm font-semibold text-gray-900">Riwayat permintaan dokumen</h4>
+                        @foreach ($order->returnRequest->revisions as $revision)
+                            <div class="rounded-lg border border-gray-200 p-3 text-sm">
+                                <div class="flex flex-wrap items-center justify-between gap-2"><strong>Revisi {{ $loop->iteration }}</strong><span class="rounded-full bg-gray-100 px-2 py-1 text-xs">{{ ucfirst($revision->status) }}</span></div>
+                                <p class="mt-2 whitespace-pre-line">{{ $revision->message }}</p>
+                                <p class="mt-1 text-xs text-gray-500">Dokumen diminta: {{ collect($revision->required_documents)->map(fn ($doc) => ['video_unboxing' => 'Video unboxing', 'product_photos' => 'Foto produk', 'packaging_photos' => 'Foto kemasan', 'other' => 'Dokumen lainnya'][$doc] ?? $doc)->join(', ') }}</p>
+                                @if ($revision->customer_note)<p class="mt-2">Catatan pelanggan: {{ $revision->customer_note }}</p>@endif
+                                @foreach ($revision->evidence_paths ?? [] as $path)
+                                    <a class="mt-2 mr-2 inline-block text-indigo-700 underline" href="{{ route('order-returns.revisions.evidence', [$order->returnRequest, $revision, $loop->index]) }}">{{ $revision->evidence_original_names[$loop->index] ?? 'Lampiran '.$loop->iteration }}</a>
+                                @endforeach
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+                @if ($order->returnRequest->status === 'requested')
+                    <form action="{{ route('order-returns.revisions.request', $order->returnRequest) }}" method="POST" class="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3">@csrf
+                        <h4 class="font-semibold text-amber-900">Minta dokumen tambahan</h4>
+                        <p class="text-xs text-amber-800">Pilih dokumen yang wajib dilengkapi pelanggan. Pengajuan tidak ditolak dan dapat diperiksa kembali setelah dokumen dikirim.</p>
+                        <div class="grid gap-2 sm:grid-cols-2 text-sm">
+                            <label class="flex items-center gap-2"><input type="checkbox" name="required_documents[]" value="video_unboxing" class="rounded border-gray-300"> Video unboxing</label>
+                            <label class="flex items-center gap-2"><input type="checkbox" name="required_documents[]" value="product_photos" class="rounded border-gray-300"> Foto kondisi produk</label>
+                            <label class="flex items-center gap-2"><input type="checkbox" name="required_documents[]" value="packaging_photos" class="rounded border-gray-300"> Foto kemasan</label>
+                            <label class="flex items-center gap-2"><input type="checkbox" name="required_documents[]" value="other" class="rounded border-gray-300"> Dokumen lainnya</label>
                         </div>
-                        <div class="sm:col-span-2"><button type="submit"
-                                class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white">Simpan
-                                keputusan</button></div>
+                        <textarea name="message" required minlength="10" maxlength="3000" rows="3" class="w-full rounded-lg border-gray-300 text-sm" placeholder="Jelaskan dokumen yang harus dilengkapi dan alasannya..."></textarea>
+                        <button class="rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-900">Minta dokumen tambahan</button>
                     </form>
+                    <form action="{{ route('order-returns.update', $order->returnRequest) }}" method="POST" class="mt-4 grid gap-3 sm:grid-cols-2">@csrf @method('PATCH')
+                        <input type="hidden" name="status" value="approved">
+                        <div class="sm:col-span-2 rounded-lg bg-indigo-50 p-3 text-sm font-semibold text-indigo-900">Alamat tujuan pengembalian (wajib saat menyetujui)</div>
+                        <div><label class="mb-1 block text-sm font-medium">Nama penerima</label><input name="return_recipient" required class="w-full rounded-lg border-gray-300 text-sm" placeholder="Nama toko / gudang"></div>
+                        <div><label class="mb-1 block text-sm font-medium">Nomor telepon</label><input name="return_phone" required class="w-full rounded-lg border-gray-300 text-sm" placeholder="08xxxxxxxxxx"></div>
+                        <div class="sm:col-span-2"><label class="mb-1 block text-sm font-medium">Alamat lengkap</label><textarea name="return_address" required rows="3" class="w-full rounded-lg border-gray-300 text-sm"></textarea></div>
+                        <div class="sm:col-span-2"><label class="mb-1 block text-sm font-medium">Instruksi pengiriman</label><textarea name="return_instructions" rows="2" class="w-full rounded-lg border-gray-300 text-sm" placeholder="Contoh: Cantumkan nomor pesanan pada paket."></textarea></div>
+                        <div class="sm:col-span-2"><label class="mb-1 block text-sm font-medium">Catatan admin</label><textarea name="admin_note" rows="2" class="w-full rounded-lg border-gray-300 text-sm"></textarea></div>
+                        <div class="sm:col-span-2 flex flex-wrap gap-2"><button class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white">Setujui & kirim alamat</button></div>
+                    </form>
+                    <form action="{{ route('order-returns.update', $order->returnRequest) }}" method="POST" class="mt-3 flex flex-wrap gap-2">@csrf @method('PATCH')<input type="hidden" name="status" value="rejected"><input name="admin_note" required class="min-w-0 flex-1 rounded-lg border-gray-300 text-sm" placeholder="Alasan penolakan wajib diisi"><button class="rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-700">Tolak pengajuan</button></form>
+                @elseif ($order->returnRequest->status === 'approved')
+                    <div class="mt-4 rounded-lg border border-indigo-100 bg-indigo-50 p-4 text-sm"><p class="font-semibold text-indigo-900">Menunggu pelanggan mengirim barang kembali</p><p class="mt-1">{{ $order->returnRequest->return_recipient }} · {{ $order->returnRequest->return_phone }}</p><p class="mt-1 whitespace-pre-line">{{ $order->returnRequest->return_address }}</p></div>
+                @elseif ($order->returnRequest->status === 'return_shipped')
+                    <div class="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm"><p class="font-semibold">Barang sedang dikirim pelanggan</p><p>{{ $order->returnRequest->return_courier }} · {{ $order->returnRequest->return_tracking_number }}</p></div>
+                    <form action="{{ route('order-returns.receive', $order->returnRequest) }}" method="POST" class="mt-3 space-y-2">@csrf<label class="block text-sm font-medium">Catatan pemeriksaan (opsional)</label><textarea name="inspection_note" rows="2" class="w-full rounded-lg border-gray-300 text-sm"></textarea><button class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white">Konfirmasi barang diterima</button></form>
+                @elseif ($order->returnRequest->status === 'item_received')
+                    <div class="mt-4 rounded-lg border border-green-200 bg-green-50 p-3 text-sm"><p class="font-semibold text-green-900">Barang diterima {{ $order->returnRequest->item_received_at?->format('d M Y, H:i') }}</p><p class="mt-1">{{ $order->returnRequest->inspection_note }}</p></div>
+                    @if ($order->returnRequest->resolution_status === 'pending')
+                        <div class="mt-4 grid gap-4 lg:grid-cols-2">
+                            <form action="{{ route('order-returns.resolve', $order->returnRequest) }}" method="POST" enctype="multipart/form-data" class="rounded-lg border border-gray-200 p-4 space-y-3">@csrf<input type="hidden" name="resolution_type" value="refund"><h4 class="font-semibold">Refund pelanggan</h4><div><label class="mb-1 block text-sm font-medium">Nominal refund (maks. Rp {{ number_format($order->total, 0, ',', '.') }})</label><input type="number" name="refund_amount" min="1" max="{{ $order->total }}" value="{{ $order->total }}" required class="w-full rounded-lg border-gray-300 text-sm"></div><div><label class="mb-1 block text-sm font-medium">Metode refund</label><select name="refund_method" class="w-full rounded-lg border-gray-300 text-sm"><option value="midtrans" @disabled(!$order->transaction_id || data_get($order->payment_payload, 'transaction_status') !== 'settlement')>Otomatis via Midtrans @if(!$order->transaction_id || data_get($order->payment_payload, 'transaction_status') !== 'settlement')(tidak tersedia untuk transaksi ini)@endif</option><option value="manual">Transfer manual</option></select></div><div><label class="mb-1 block text-sm font-medium">Referensi refund manual</label><input name="refund_reference" class="w-full rounded-lg border-gray-300 text-sm"></div><div><label class="mb-1 block text-sm font-medium">Bukti transfer (wajib untuk manual)</label><input type="file" name="refund_proof" accept="image/jpeg,image/png,image/webp,application/pdf" class="w-full text-sm"></div><button class="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white">Proses refund</button></form>
+                            <form action="{{ route('order-returns.resolve', $order->returnRequest) }}" method="POST" class="rounded-lg border border-gray-200 p-4 space-y-3">@csrf<input type="hidden" name="resolution_type" value="replacement"><h4 class="font-semibold">Kirim barang pengganti</h4><p class="text-xs text-gray-500">Menggunakan item dan jumlah dari pesanan asli. Stok akan dikurangi dan dicatat sebagai stock movement.</p><div><label class="mb-1 block text-sm font-medium">Kurir</label><input name="replacement_courier" required class="w-full rounded-lg border-gray-300 text-sm" placeholder="JNE, J&T, SiCepat..."></div><div><label class="mb-1 block text-sm font-medium">Nomor resi</label><input name="replacement_tracking_number" required class="w-full rounded-lg border-gray-300 text-sm"></div><button class="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white">Catat pengiriman replacement</button></form>
+                        </div>
+                    @elseif ($order->returnRequest->resolution_status === 'processing')
+                        <div class="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm"><p class="font-semibold">Penyelesaian: {{ ucfirst($order->returnRequest->resolution_type) }} · Processing</p>
+                        @if ($order->returnRequest->resolution_type === 'refund')<p class="mt-1">Nominal: Rp {{ number_format($order->returnRequest->refund_amount, 0, ',', '.') }} · {{ ucfirst($order->returnRequest->refund_method) }} · Referensi: {{ $order->returnRequest->refund_reference }}</p>@if($order->returnRequest->refund_proof_path)<a class="text-indigo-700 underline" href="{{ route('order-returns.refund-proof', $order->returnRequest) }}">Lihat bukti refund</a>@endif<p class="mt-2 text-xs">Verifikasi dana benar-benar telah dikembalikan sebelum menyelesaikan.</p>
+                        @else<p class="mt-1">{{ $order->returnRequest->replacement_courier }} · {{ $order->returnRequest->replacement_tracking_number }}</p><p class="mt-2 text-xs">Pastikan barang pengganti sudah diterima pelanggan sebelum menyelesaikan.</p>@endif
+                        <form action="{{ route('order-returns.complete', $order->returnRequest) }}" method="POST" class="mt-3 flex flex-wrap gap-2">
+                            @csrf
+                            @if ($order->returnRequest->resolution_type === 'refund')
+                                <input name="resolution_reference" value="{{ $order->returnRequest->refund_reference }}" required class="min-w-0 flex-1 rounded-lg border-gray-300 text-sm" placeholder="Referensi refund terverifikasi">
+                            @endif
+                            <button class="rounded-lg bg-green-700 px-4 py-2.5 text-sm font-semibold text-white">Konfirmasi penyelesaian</button>
+                        </form></div>
+                    @endif
+                @elseif ($order->returnRequest->status === 'completed')
+                    <div class="mt-4 rounded-lg bg-green-50 p-3 text-sm text-green-800">Pengembalian selesai melalui {{ ucfirst($order->returnRequest->resolution_type ?? 'proses admin') }}.</div>
                 @endif
             </div>
         </section>

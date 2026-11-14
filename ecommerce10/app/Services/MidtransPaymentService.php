@@ -6,6 +6,7 @@ use App\Models\Order;
 use Illuminate\Support\Str;
 use Midtrans\Config as MidtransConfig;
 use Midtrans\Snap;
+use Midtrans\Transaction;
 use RuntimeException;
 
 class MidtransPaymentService
@@ -70,6 +71,30 @@ class MidtransPaymentService
         ])->save();
 
         return $order->refresh();
+    }
+
+    public function refund(Order $order, int $amount, string $reason, string $refundKey): object
+    {
+        if (! $order->transaction_id) {
+            throw new RuntimeException('ID transaksi Midtrans tidak tersedia untuk refund otomatis.');
+        }
+
+        $transactionStatus = data_get($order->payment_payload, 'transaction_status');
+        if ($transactionStatus !== 'settlement') {
+            throw new RuntimeException('Refund otomatis hanya tersedia untuk transaksi Midtrans berstatus settlement. Gunakan refund manual.');
+        }
+
+        if ($amount < 1 || $amount > (int) $order->total) {
+            throw new RuntimeException('Nominal refund tidak valid.');
+        }
+
+        $this->configure();
+
+        return (object) Transaction::refund($order->transaction_id, [
+            'refund_key' => $refundKey,
+            'amount' => $amount,
+            'reason' => $reason,
+        ]);
     }
 
     public function configure(): void

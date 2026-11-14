@@ -115,7 +115,7 @@ class PaymentController extends Controller
             }
 
             // Never allow a delayed pending/failed notification to downgrade a paid order.
-            if (in_array($lockedOrder->payment_status, ['refunded'], true)) {
+            if (in_array($lockedOrder->payment_status, ['refunded', 'partially_refunded'], true)) {
                 return;
             }
 

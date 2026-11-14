@@ -2,7 +2,12 @@
 
 use App\Models\Order;
 use App\Models\OrderCancellationRequest;
+use App\Models\OrderItem;
 use App\Models\OrderReturnRequest;
+use App\Models\OrderReturnRevision;
+use App\Models\Product;
+use App\Models\ProductCategory;
+use App\Models\StockMovement;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -119,15 +124,19 @@ test('customer can submit a return request with photo evidence and admin can rev
         ->post(route('orders.returns.store', $order), [
             'reason' => 'damaged',
             'description' => 'Produk mengalami kerusakan pada bagian casing.',
-            'evidence' => [UploadedFile::fake()->image('damage.jpg')],
+            'evidence' => [
+                UploadedFile::fake()->image('damage.jpg'),
+                UploadedFile::fake()->create('unboxing.mp4', 1024, 'video/mp4'),
+            ],
         ])
         ->assertRedirect();
 
     $returnRequest = OrderReturnRequest::query()->firstOrFail();
     expect($returnRequest->status)->toBe('requested')
-        ->and($returnRequest->evidence_paths)->toHaveCount(1)
+        ->and($returnRequest->evidence_paths)->toHaveCount(2)
         ->and($order->fresh()->auto_complete_at)->toBeNull();
     Storage::disk('local')->assertExists($returnRequest->evidence_paths[0]);
+    Storage::disk('local')->assertExists($returnRequest->evidence_paths[1]);
 
     $this->actingAs($admin)
         ->get(route('order-returns.evidence', [$returnRequest, 0]))
@@ -136,11 +145,167 @@ test('customer can submit a return request with photo evidence and admin can rev
     $this->actingAs($admin)
         ->patch(route('order-returns.update', $returnRequest), [
             'status' => 'approved',
-            'admin_note' => 'Pengajuan disetujui. Silakan kirim barang kembali.',
+            'admin_note' => 'Silakan kirim barang kembali.',
+            'return_recipient' => 'Gudang Toko',
+            'return_phone' => '081234567890',
+            'return_address' => 'Jl. Contoh No. 10, Jakarta',
+            'return_instructions' => 'Cantumkan nomor pesanan.',
         ])
         ->assertRedirect();
 
-    expect($returnRequest->fresh()->status)->toBe('approved');
+    expect($returnRequest->fresh()->status)->toBe('approved')
+        ->and($returnRequest->fresh()->return_address)->toBe('Jl. Contoh No. 10, Jakarta');
+
+    $this->actingAs($owner)
+        ->post(route('orders.returns.shipment', $returnRequest), [
+            'return_courier' => 'JNE',
+            'return_tracking_number' => 'RET123456',
+        ])->assertRedirect();
+    expect($returnRequest->fresh()->status)->toBe('return_shipped');
+
+    $this->actingAs($admin)
+        ->post(route('order-returns.receive', $returnRequest), ['inspection_note' => 'Barang diterima dan diperiksa.'])
+        ->assertRedirect();
+    expect($returnRequest->fresh()->status)->toBe('item_received');
+
+    $this->actingAs($admin)
+        ->post(route('order-returns.resolve', $returnRequest), [
+            'resolution_type' => 'refund',
+            'refund_method' => 'manual',
+            'refund_amount' => 150000,
+            'refund_reference' => 'TRF-REFUND-001',
+            'refund_proof' => UploadedFile::fake()->image('refund-proof.jpg'),
+        ])->assertRedirect();
+    expect($returnRequest->fresh()->resolution_status)->toBe('processing');
+
+    $this->actingAs($admin)
+        ->post(route('order-returns.complete', $returnRequest), ['resolution_reference' => 'TRF-REFUND-001'])
+        ->assertRedirect();
+    expect($returnRequest->fresh()->status)->toBe('completed')
+        ->and($order->fresh()->payment_status)->toBe('refunded');
+});
+
+test('admin can request additional return documents and customer can submit a video revision', function () {
+    Storage::fake('local');
+    $admin = User::factory()->create(['role' => 'admin']);
+    $owner = User::factory()->create();
+    $order = makeFulfillmentOrder($owner, [
+        'status' => 'delivered',
+        'delivered_at' => now()->subDay(),
+        'auto_complete_at' => now()->addDays(2),
+    ]);
+
+    $this->actingAs($owner)->post(route('orders.returns.store', $order), [
+        'reason' => 'damaged',
+        'description' => 'Produk mengalami kerusakan pada bagian casing.',
+    ])->assertRedirect();
+    $returnRequest = OrderReturnRequest::query()->firstOrFail();
+
+    $this->actingAs($admin)
+        ->post(route('order-returns.revisions.request', $returnRequest), [
+            'message' => 'Mohon lampirkan video unboxing yang memperlihatkan paket saat dibuka.',
+            'required_documents' => ['video_unboxing'],
+        ])->assertRedirect();
+
+    $revision = OrderReturnRevision::query()->firstOrFail();
+    expect($returnRequest->fresh()->status)->toBe('revision_requested')
+        ->and($revision->status)->toBe('requested');
+
+    $this->actingAs($owner)
+        ->post(route('orders.returns.revisions.submit', [$returnRequest, $revision]), [
+            'evidence' => [UploadedFile::fake()->image('not-a-video.jpg')],
+        ])->assertSessionHasErrors('evidence');
+
+    $this->actingAs($owner)
+        ->post(route('orders.returns.revisions.submit', [$returnRequest, $revision]), [
+            'customer_note' => 'Berikut video saat paket dibuka.',
+            'evidence' => [UploadedFile::fake()->create('unboxing.mp4', 2048, 'video/mp4')],
+        ])->assertRedirect();
+
+    $revision->refresh();
+    expect($returnRequest->fresh()->status)->toBe('requested')
+        ->and($revision->status)->toBe('submitted')
+        ->and($revision->evidence_paths)->toHaveCount(1)
+        ->and($revision->evidence_original_names)->toBe(['unboxing.mp4']);
+    Storage::disk('local')->assertExists($revision->evidence_paths[0]);
+
+    $this->actingAs($admin)
+        ->get(route('order-returns.revisions.evidence', [$returnRequest, $revision, 0]))
+        ->assertOk();
+});
+
+test('admin can send replacement against the original order and inventory is recorded', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $owner = User::factory()->create();
+    $category = ProductCategory::query()->create(['name' => 'Replacement test', 'slug' => 'replacement-test']);
+    $product = Product::query()->create([
+        'name' => 'Replacement item',
+        'slug' => 'replacement-item',
+        'description' => 'Replacement item description.',
+        'price' => 50000,
+        'stock' => 8,
+        'weight_gram' => 300,
+        'category_id' => $category->id,
+    ]);
+    $order = makeFulfillmentOrder($owner, ['status' => 'delivered', 'delivered_at' => now()->subDay()]);
+    OrderItem::query()->create([
+        'order_id' => $order->id,
+        'product_id' => $product->id,
+        'product_name' => $product->name,
+        'quantity' => 2,
+        'price' => 50000,
+        'total' => 100000,
+    ]);
+    $returnRequest = OrderReturnRequest::query()->create([
+        'order_id' => $order->id,
+        'user_id' => $owner->id,
+        'reason' => 'damaged',
+        'description' => 'Produk mengalami kerusakan pada casing.',
+        'status' => 'item_received',
+        'item_received_at' => now(),
+    ]);
+
+    $this->actingAs($admin)
+        ->post(route('order-returns.resolve', $returnRequest), [
+            'resolution_type' => 'replacement',
+            'replacement_courier' => 'JNE',
+            'replacement_tracking_number' => 'REPLACE123',
+        ])->assertRedirect();
+
+    expect($returnRequest->fresh()->resolution_status)->toBe('processing')
+        ->and($returnRequest->fresh()->replacement_tracking_number)->toBe('REPLACE123')
+        ->and($product->fresh()->stock)->toBe(6)
+        ->and(StockMovement::query()->where('reference_type', OrderReturnRequest::class)->where('reference_id', $returnRequest->id)->count())->toBe(1)
+        ->and(Order::query()->count())->toBe(1);
+
+    $this->actingAs($admin)
+        ->post(route('order-returns.complete', $returnRequest))
+        ->assertRedirect();
+
+    expect($returnRequest->fresh()->status)->toBe('completed')
+        ->and($returnRequest->fresh()->replacement_delivered_at)->not->toBeNull();
+});
+
+test('return request accepts at most one unboxing video', function () {
+    Storage::fake('local');
+    $owner = User::factory()->create();
+    $order = makeFulfillmentOrder($owner, [
+        'status' => 'delivered',
+        'delivered_at' => now()->subDay(),
+    ]);
+
+    $this->actingAs($owner)
+        ->post(route('orders.returns.store', $order), [
+            'reason' => 'damaged',
+            'description' => 'Produk mengalami kerusakan pada bagian casing.',
+            'evidence' => [
+                UploadedFile::fake()->create('unboxing-one.mp4', 1024, 'video/mp4'),
+                UploadedFile::fake()->create('unboxing-two.mp4', 1024, 'video/mp4'),
+            ],
+        ])
+        ->assertSessionHasErrors('evidence');
+
+    $this->assertDatabaseCount('order_return_requests', 0);
 });
 
 test('customer cannot confirm an order while a return request is active', function () {
