@@ -1,4 +1,9 @@
 <x-layout-component>
+    @push('scripts')
+        @vite('resources/js/order-realtime.js')
+    @endpush
+
+    <div id="order-detail-content" data-order-realtime="{{ $order->id }}">
     <div class="mb-7">
         <a href="{{ route('orders.customer.index') }}"
             class="inline-flex items-center gap-2 text-sm font-medium text-gray-500 transition hover:text-indigo-600"><i
@@ -579,4 +584,5 @@
         @endpush
     @endif
 
+    </div>
 </x-layout-component>

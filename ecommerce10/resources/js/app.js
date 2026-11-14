@@ -6,6 +6,7 @@ import {
 
 import "./nprogress";
 import "./address.form";
+
 /**
  * Render Lucide icons before revealing their placeholders.
  * The page-ready hook also covers body swaps performed by Boost navigation.

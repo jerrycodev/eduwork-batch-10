@@ -1,5 +1,6 @@
 <?php
 
+use App\Events\OrderStatusUpdated;
 use App\Models\Order;
 use App\Models\OrderCancellationRequest;
 use App\Models\OrderItem;
@@ -10,6 +11,7 @@ use App\Models\ProductCategory;
 use App\Models\StockMovement;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 
 function makeFulfillmentOrder(User $owner, array $attributes = []): Order
@@ -450,4 +452,54 @@ test('customer tracking shows return request progress separately from order fulf
         ->assertSee('Disetujui Admin')
         ->assertSee('Pengembalian disetujui')
         ->assertDontSee('Lacak Pesanan');
+});
+
+test('customer order detail exposes its private realtime subscription identifier', function () {
+    $customer = User::factory()->create();
+    $order = makeFulfillmentOrder($customer);
+
+    $this->actingAs($customer)
+        ->get(route('orders.customer.show', $order))
+        ->assertOk()
+        ->assertSee('data-order-realtime="'.$order->id.'"', false);
+});
+
+test('admin status changes broadcast to the order private channel after the update', function () {
+    Event::fake([OrderStatusUpdated::class]);
+
+    $admin = User::factory()->create(['role' => 'admin']);
+    $customer = User::factory()->create();
+    $order = makeFulfillmentOrder($customer, ['status' => 'pending']);
+
+    $this->actingAs($admin)
+        ->patch(route('orders.status.update', $order), ['status' => 'processing'])
+        ->assertRedirect(route('orders.show', $order));
+
+    Event::assertDispatched(OrderStatusUpdated::class, function (OrderStatusUpdated $event) use ($order): bool {
+        return $event->orderId === (string) $order->id
+            && $event->orderData['status'] === 'processing'
+            && $event->orderData['order_number'] === $order->order_number;
+    });
+});
+
+test('only the order owner and administrators may authorize its private channel', function () {
+    $owner = User::factory()->create();
+    $otherCustomer = User::factory()->create();
+    $admin = User::factory()->create(['role' => 'admin']);
+    $order = makeFulfillmentOrder($owner);
+
+    $this->actingAs($owner)->postJson('/broadcasting/auth', [
+        'socket_id' => '1234.5678',
+        'channel_name' => 'private-orders.'.$order->id,
+    ])->assertOk();
+
+    $this->actingAs($otherCustomer)->postJson('/broadcasting/auth', [
+        'socket_id' => '1234.5678',
+        'channel_name' => 'private-orders.'.$order->id,
+    ])->assertForbidden();
+
+    $this->actingAs($admin)->postJson('/broadcasting/auth', [
+        'socket_id' => '1234.5678',
+        'channel_name' => 'private-orders.'.$order->id,
+    ])->assertOk();
 });

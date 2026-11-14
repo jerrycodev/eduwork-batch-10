@@ -508,3 +508,38 @@ Verify in a browser:
 - The sample product catalog is development/test data. Create real production catalog records through the application/admin workflow.
 - Browser-based end-to-end testing on the actual production domain must be performed after deployment.
 - Confirm PHP-FPM's installed version and socket path before enabling the Nginx site.
+
+
+## Realtime order updates (Laravel Reverb)
+
+Order detail pages subscribe to a private `orders.{orderId}` channel. When an administrator changes fulfillment status or tracking number, Laravel broadcasts `order.status.updated` after the database transaction commits. Only the order owner and administrators can authorize that private channel.
+
+For local development, configure the following in `.env` (the values below are local-only examples):
+
+```dotenv
+BROADCAST_CONNECTION=reverb
+REVERB_APP_ID=local-app-id
+REVERB_APP_KEY=local-app-key
+REVERB_APP_SECRET=local-app-secret
+REVERB_HOST=127.0.0.1
+REVERB_PORT=8080
+REVERB_SCHEME=http
+REVERB_ALLOWED_ORIGINS=localhost,127.0.0.1
+VITE_REVERB_APP_KEY="${REVERB_APP_KEY}"
+VITE_REVERB_HOST="${REVERB_HOST}"
+VITE_REVERB_PORT="${REVERB_PORT}"
+VITE_REVERB_SCHEME="${REVERB_SCHEME}"
+QUEUE_CONNECTION=database
+```
+
+Run the WebSocket server and queue worker alongside the Laravel application:
+
+```bash
+php artisan reverb:start
+php artisan queue:work
+npm run dev
+```
+
+Build frontend assets for production with `npm run build`. In production, use a process supervisor for Reverb and the queue worker, configure a TLS-enabled public WebSocket endpoint, set the matching `REVERB_*` and `VITE_REVERB_*` values, and restrict Reverb allowed origins to the storefront domain rather than `*`. Restart long-running Laravel, queue, and Reverb processes after changing environment values.
+
+If Reverb or the queue worker is unavailable, the order page remains usable but will not receive live updates until the connection is restored; refreshing the page still loads the latest persisted order state.

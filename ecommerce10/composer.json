@@ -12,6 +12,7 @@
         "php": "^8.3",
         "aliziodev/laravel-wilayah": "^1.0",
         "laravel/framework": "^13.17",
+        "laravel/reverb": "^1.0",
         "laravel/tinker": "^3.0",
         "livewire/livewire": "^4.4",
         "midtrans/midtrans-php": "^2.6"

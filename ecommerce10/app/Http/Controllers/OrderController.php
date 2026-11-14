@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\OrderStatusUpdated;
 use App\Models\Cart;
 use App\Models\Order;
 use App\Models\Product;
@@ -292,6 +293,8 @@ class OrderController extends Controller
             'tracking_number' => ['nullable', 'string', 'max:100'],
         ]);
 
+        $previousStatus = $order->status;
+        $previousTrackingNumber = $order->tracking_number;
         $nextStatus = $validated['status'];
         $allowedTransitions = [
             'pending' => ['processing', 'cancelled'],
@@ -357,6 +360,21 @@ class OrderController extends Controller
                 }
                 $lockedOrder->update(['stock_restored_at' => now()]);
             });
+        }
+
+        $order->refresh();
+
+        if ($previousStatus !== $order->status || $previousTrackingNumber !== $order->tracking_number) {
+            OrderStatusUpdated::dispatch((string) $order->id, [
+                'id' => (string) $order->id,
+                'order_number' => $order->order_number,
+                'status' => $order->status,
+                'tracking_number' => $order->tracking_number,
+                'payment_status' => $order->payment_status,
+                'shipped_at' => $order->shipped_at?->toIso8601String(),
+                'delivered_at' => $order->delivered_at?->toIso8601String(),
+                'updated_at' => $order->updated_at?->toIso8601String(),
+            ]);
         }
 
         return redirect()->route('orders.show', $order)->with('success', 'Status pesanan berhasil diperbarui.');
