@@ -84,6 +84,17 @@ class MidtransPaymentService
         });
     }
 
+    public function fetchStatus(Order $order): object
+    {
+        if (! $order->payment_order_id) {
+            throw new RuntimeException('Order ID pembayaran Midtrans tidak tersedia.');
+        }
+
+        $this->configure();
+
+        return (object) Transaction::status($order->payment_order_id);
+    }
+
     public function refund(Order $order, int $amount, string $reason, string $refundKey): object
     {
         if (! $order->transaction_id) {

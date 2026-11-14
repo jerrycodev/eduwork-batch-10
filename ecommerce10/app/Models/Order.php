@@ -64,6 +64,11 @@ class Order extends Model
         return $this->hasOne(OrderReturnRequest::class);
     }
 
+    public function paymentReconciliationChecks(): HasMany
+    {
+        return $this->hasMany(PaymentReconciliationCheck::class)->latest('checked_at');
+    }
+
     public function orderItems(): HasMany
     {
         return $this->hasMany(OrderItem::class);

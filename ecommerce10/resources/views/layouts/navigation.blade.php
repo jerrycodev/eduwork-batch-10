@@ -31,6 +31,11 @@ $links = [
         'active' => request()->routeIs('orders.*'),
     ],
     [
+        'label' => 'Payment Audit',
+        'route' => route('payment-reconciliation.index'),
+        'active' => request()->routeIs('payment-reconciliation.*'),
+    ],
+    [
         'label' => 'Email Logs',
         'route' => route('email-delivery-logs.index'),
         'active' => request()->routeIs('email-delivery-logs.*'),
@@ -142,6 +147,9 @@ $links = [
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('orders.index')" :active="request()->routeIs('orders.index')">
                     {{ __('Orders') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('payment-reconciliation.index')" :active="request()->routeIs('payment-reconciliation.*')">
+                    {{ __('Payment Audit') }}
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('email-delivery-logs.index')" :active="request()->routeIs('email-delivery-logs.*')">
                     {{ __('Email Logs') }}

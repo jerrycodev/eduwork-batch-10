@@ -13,6 +13,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OrderInvoiceController;
 use App\Http\Controllers\OrderReturnRequestController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PaymentReconciliationController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductReviewController;
@@ -38,6 +39,8 @@ Route::prefix('/dashboard')->middleware(['admin', LogAdminActivity::class])->gro
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/activity-logs', [AdminActivityLogController::class, 'index'])->name('activity-logs.index');
     Route::get('/email-delivery-logs', [EmailDeliveryLogController::class, 'index'])->name('email-delivery-logs.index');
+    Route::get('/payment-reconciliation', [PaymentReconciliationController::class, 'index'])->name('payment-reconciliation.index');
+    Route::post('/orders/{order}/reconcile-payment', [PaymentReconciliationController::class, 'check'])->name('payment-reconciliation.check');
     Route::post('/email-delivery-logs/{emailDeliveryLog}/retry', [EmailDeliveryLogController::class, 'retry'])->name('email-delivery-logs.retry');
     Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
     Route::post('/inventory/{product}/movements', [InventoryController::class, 'store'])->name('inventory.movements.store');
