@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Models\Order;
+use App\Services\EmailDeliveryTracker;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -10,7 +11,9 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Mail\Mailables\Headers;
 use Illuminate\Queue\SerializesModels;
+use Throwable;
 
 class OrderTransactionalMail extends Mailable implements ShouldQueue
 {
@@ -19,8 +22,23 @@ class OrderTransactionalMail extends Mailable implements ShouldQueue
     public function __construct(
         public Order $order,
         public string $type,
+        public ?string $deliveryLogId = null,
     ) {
         $this->afterCommit();
+    }
+
+    public function headers(): Headers
+    {
+        return new Headers(
+            text: $this->deliveryLogId ? ['X-Email-Delivery-Log-ID' => $this->deliveryLogId] : [],
+        );
+    }
+
+    public function failed(Throwable $exception): void
+    {
+        if ($this->deliveryLogId) {
+            app(EmailDeliveryTracker::class)->failed($this->deliveryLogId, $exception);
+        }
     }
 
     public function envelope(): Envelope

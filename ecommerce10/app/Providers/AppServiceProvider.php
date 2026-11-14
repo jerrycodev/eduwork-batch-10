@@ -2,10 +2,14 @@
 
 namespace App\Providers;
 
+use App\Services\EmailDeliveryTracker;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Mail\Events\MessageSending;
+use Illuminate\Mail\Events\MessageSent;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -23,6 +27,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Event::listen(MessageSending::class, [EmailDeliveryTracker::class, 'sending']);
+        Event::listen(MessageSent::class, [EmailDeliveryTracker::class, 'sent']);
+
         ResetPassword::toMailUsing(function ($notifiable, string $token): MailMessage {
             $resetUrl = url(route('password.reset', [
                 'token' => $token,

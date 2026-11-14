@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdminActivityLogController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EmailDeliveryLogController;
 use App\Http\Controllers\FileUploadController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InventoryController;
@@ -36,6 +37,8 @@ Route::post('/midtrans/callback', [PaymentController::class, 'callback'])->name(
 Route::prefix('/dashboard')->middleware(['admin', LogAdminActivity::class])->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/activity-logs', [AdminActivityLogController::class, 'index'])->name('activity-logs.index');
+    Route::get('/email-delivery-logs', [EmailDeliveryLogController::class, 'index'])->name('email-delivery-logs.index');
+    Route::post('/email-delivery-logs/{emailDeliveryLog}/retry', [EmailDeliveryLogController::class, 'retry'])->name('email-delivery-logs.retry');
     Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
     Route::post('/inventory/{product}/movements', [InventoryController::class, 'store'])->name('inventory.movements.store');
     Route::get('/orders', [OrderController::class, 'adminIndex'])->name('orders.index');

@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Mail\OrderTransactionalMail;
+use App\Models\EmailDeliveryLog;
 use App\Models\Order;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
 
@@ -15,17 +17,54 @@ class OrderEmailService
             return;
         }
 
+        $log = EmailDeliveryLog::query()->create([
+            'order_id' => $order->id,
+            'recipient' => $order->user_email,
+            'type' => $type,
+            'status' => 'queued',
+            'queued_at' => now(),
+        ]);
+
+        $this->queue($order, $log);
+    }
+
+    public function retry(EmailDeliveryLog $log): void
+    {
+        $log = DB::transaction(function () use ($log): EmailDeliveryLog {
+            $locked = EmailDeliveryLog::query()->lockForUpdate()->findOrFail($log->id);
+            abort_unless($locked->status === 'failed', 409, 'Only failed emails can be retried.');
+
+            $locked->forceFill([
+                'status' => 'queued',
+                'retry_count' => $locked->retry_count + 1,
+                'queued_at' => now(),
+                'failed_at' => null,
+                'last_error' => null,
+            ])->save();
+
+            return $locked;
+        });
+
+        $order = $log->order;
+
+        if (! $order) {
+            app(EmailDeliveryTracker::class)->failed($log->id, new \RuntimeException('Order no longer exists.'));
+
+            return;
+        }
+
+        $this->queue($order, $log);
+    }
+
+    private function queue(Order $order, EmailDeliveryLog $log): void
+    {
         try {
-            Mail::to($order->user_email)->queue(
-                new OrderTransactionalMail($order->loadMissing('orderItems'), $type),
+            Mail::to($log->recipient)->queue(
+                new OrderTransactionalMail($order->loadMissing('orderItems'), $log->type, $log->id),
             );
         } catch (Throwable $exception) {
+            app(EmailDeliveryTracker::class)->failed($log->id, $exception);
             report($exception);
-            logger()->error('Unable to queue transactional order email.', [
-                'order_id' => $order->id,
-                'type' => $type,
-                'exception' => $exception->getMessage(),
-            ]);
         }
     }
 

@@ -31,6 +31,11 @@ $links = [
         'active' => request()->routeIs('orders.*'),
     ],
     [
+        'label' => 'Email Logs',
+        'route' => route('email-delivery-logs.index'),
+        'active' => request()->routeIs('email-delivery-logs.*'),
+    ],
+    [
         'label' => 'Activity Logs',
         'route' => route('activity-logs.index'),
         'active' => request()->routeIs('activity-logs.*'),
@@ -137,6 +142,9 @@ $links = [
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('orders.index')" :active="request()->routeIs('orders.index')">
                     {{ __('Orders') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('email-delivery-logs.index')" :active="request()->routeIs('email-delivery-logs.*')">
+                    {{ __('Email Logs') }}
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('activity-logs.index')" :active="request()->routeIs('activity-logs.*')">
                     {{ __('Activity Logs') }}
