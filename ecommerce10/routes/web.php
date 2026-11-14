@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminActivityLogController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FileUploadController;
@@ -18,6 +19,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserAddressController;
 use App\Http\Controllers\WilayahController;
 use App\Http\Controllers\WishlistController;
+use App\Http\Middleware\LogAdminActivity;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
@@ -31,8 +33,9 @@ Route::post('/product/{product}/reviews', [ProductReviewController::class, 'stor
 Route::get('/checkout', [PaymentController::class, 'checkout'])->name('checkout');
 Route::post('/midtrans/callback', [PaymentController::class, 'callback'])->name('midtrans.callback');
 
-Route::prefix('/dashboard')->middleware(['admin'])->group(function () {
+Route::prefix('/dashboard')->middleware(['admin', LogAdminActivity::class])->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/activity-logs', [AdminActivityLogController::class, 'index'])->name('activity-logs.index');
     Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
     Route::post('/inventory/{product}/movements', [InventoryController::class, 'store'])->name('inventory.movements.store');
     Route::get('/orders', [OrderController::class, 'adminIndex'])->name('orders.index');

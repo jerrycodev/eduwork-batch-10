@@ -30,6 +30,11 @@ $links = [
         'route' => route('orders.index'),
         'active' => request()->routeIs('orders.*'),
     ],
+    [
+        'label' => 'Activity Logs',
+        'route' => route('activity-logs.index'),
+        'active' => request()->routeIs('activity-logs.*'),
+    ],
 ];
 ?>
 
@@ -44,7 +49,7 @@ $links = [
                 </div>
 
                 <!-- Navigation Links -->
-                <div class="hidden items-center gap-4 sm:-my-px sm:ms-6 sm:flex lg:gap-8">
+                <div class="hidden items-center gap-4 lg:-my-px lg:ms-6 lg:flex lg:gap-8">
                     @admin
                         @foreach ($links as $item)
                             <x-nav-link :href="$item['route']" :active="$item['active']">
@@ -56,7 +61,7 @@ $links = [
             </div>
 
             <!-- Settings Dropdown -->
-            <div class="hidden sm:ms-4 sm:flex sm:items-center lg:ms-6">
+            <div class="hidden lg:flex lg:items-center lg:gap-3 lg:ms-6">
                 <x-notification-link />
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
@@ -95,7 +100,7 @@ $links = [
             </div>
 
             <!-- Hamburger -->
-            <div class="-me-2 flex items-center sm:hidden">
+            <div class="-me-2 flex items-center lg:hidden">
                 <button @click="open = ! open"
                     class="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-none">
                     <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
@@ -111,7 +116,7 @@ $links = [
     </div>
 
     <!-- Responsive Navigation Menu -->
-    <div :class="{ 'block': open, 'hidden': !open }" class="hidden sm:hidden">
+    <div :class="{ 'block': open, 'hidden': !open }" class="hidden lg:hidden">
 
         @admin
             <div class="space-y-1 px-2 pb-3 pt-2">
@@ -132,6 +137,9 @@ $links = [
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('orders.index')" :active="request()->routeIs('orders.index')">
                     {{ __('Orders') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('activity-logs.index')" :active="request()->routeIs('activity-logs.*')">
+                    {{ __('Activity Logs') }}
                 </x-responsive-nav-link>
             </div>
         @endadmin
