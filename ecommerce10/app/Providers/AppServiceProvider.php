@@ -31,7 +31,9 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(MessageSent::class, [EmailDeliveryTracker::class, 'sent']);
 
         ResetPassword::toMailUsing(function ($notifiable, string $token): MailMessage {
-            $resetUrl = url(route('password.reset', [
+            $isAdmin = $notifiable->role === 'admin';
+            $resetRoute = $isAdmin ? 'admin.password.reset' : 'password.reset';
+            $resetUrl = url(route($resetRoute, [
                 'token' => $token,
                 'email' => $notifiable->getEmailForPasswordReset(),
             ], false));
@@ -40,7 +42,7 @@ class AppServiceProvider extends ServiceProvider
                 'appName' => $appName,
                 'userName' => $notifiable->name ?: 'Pelanggan',
                 'resetUrl' => $resetUrl,
-                'expireMinutes' => config('auth.passwords.'.config('auth.defaults.passwords').'.expire'),
+                'expireMinutes' => config('auth.passwords.'.($isAdmin ? 'admins' : 'customers').'.expire'),
             ];
 
             return (new MailMessage)
