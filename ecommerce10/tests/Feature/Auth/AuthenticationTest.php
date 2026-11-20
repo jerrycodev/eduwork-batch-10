@@ -8,6 +8,14 @@ test('login screen can be rendered', function () {
     $response->assertStatus(200);
 });
 
+test('authenticated customers visiting the login page are redirected to storefront home', function () {
+    $customer = User::factory()->create(['role' => 'customer']);
+
+    $this->actingAs($customer, 'customer')
+        ->get('/login')
+        ->assertRedirect(route('home'));
+});
+
 test('users can authenticate using the login screen', function () {
     $user = User::factory()->create();
 
@@ -17,7 +25,33 @@ test('users can authenticate using the login screen', function () {
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $response->assertRedirect(route('account', absolute: false));
+});
+
+test('customer login ignores stale admin intended URLs', function () {
+    $customer = User::factory()->create(['role' => 'customer']);
+
+    $response = $this->withSession(['url.intended' => '/admin/login'])
+        ->post('/login', [
+            'email' => $customer->email,
+            'password' => 'password',
+        ]);
+
+    $this->assertAuthenticatedAs($customer, 'customer');
+    $response->assertRedirect(route('account', absolute: false));
+});
+
+test('customer login rejects admin destinations supplied as redirect_to', function () {
+    $customer = User::factory()->create(['role' => 'customer']);
+
+    $response = $this->post('/login', [
+        'email' => $customer->email,
+        'password' => 'password',
+        'redirect_to' => '/admin/login',
+    ]);
+
+    $this->assertAuthenticatedAs($customer, 'customer');
+    $response->assertRedirect(route('account', absolute: false));
 });
 
 test('users can not authenticate with invalid password', function () {
@@ -34,12 +68,11 @@ test('users can not authenticate with invalid password', function () {
 test('users can logout', function () {
     $user = User::factory()->create();
 
-    $response = $this->actingAs($user)->post('/logout');
+    $response = $this->actingAs($user, 'customer')->post('/logout');
 
     $this->assertGuest();
     $response->assertRedirect('/');
 });
-
 
 test('users are redirected to the requested local path after login', function () {
     $user = User::factory()->create();
@@ -64,5 +97,5 @@ test('external redirect destinations are ignored after login', function () {
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $response->assertRedirect(route('account', absolute: false));
 });

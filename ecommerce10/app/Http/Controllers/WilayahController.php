@@ -11,6 +11,9 @@ use Illuminate\Http\Request;
 
 class WilayahController extends Controller
 {
+    /**
+     * Menyediakan daftar provinsi untuk pilihan alamat.
+     */
     public function provinces(): JsonResponse
     {
         return response()->json(Province::query()->orderBy('name')->get(['code', 'name'])->map(
@@ -18,6 +21,9 @@ class WilayahController extends Controller
         ));
     }
 
+    /**
+     * Menyediakan daftar kabupaten/kota berdasarkan provinsi yang dipilih.
+     */
     public function regencies(Request $request): JsonResponse
     {
         $validated = $request->validate(['province' => ['required', 'string', 'exists:provinces,code']]);
@@ -28,6 +34,9 @@ class WilayahController extends Controller
         ));
     }
 
+    /**
+     * Menyediakan daftar kecamatan berdasarkan kabupaten/kota yang dipilih.
+     */
     public function districts(Request $request): JsonResponse
     {
         $validated = $request->validate(['regency' => ['required', 'string', 'exists:regencies,code']]);
@@ -38,6 +47,9 @@ class WilayahController extends Controller
         ));
     }
 
+    /**
+     * Menyediakan daftar desa/kelurahan berdasarkan kecamatan yang dipilih.
+     */
     public function villages(Request $request): JsonResponse
     {
         $validated = $request->validate(['district' => ['required', 'string', 'exists:districts,code']]);

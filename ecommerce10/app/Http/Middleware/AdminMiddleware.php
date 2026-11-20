@@ -10,16 +10,22 @@ use Symfony\Component\HttpFoundation\Response;
 class AdminMiddleware
 {
     /**
-     * Handle an incoming request.
+     * Ensure the active request uses an authenticated administrator guard.
      *
      * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if(Auth::check() && Auth::user()->role === 'admin') {
-            return $next($request);
+        $guard = Auth::guard('admin');
+
+        if (! $guard->check() || $guard->user()->role !== 'admin') {
+            $guard->logout();
+
+            return redirect()->route('admin.login');
         }
-        
-        return redirect()->route('home')->with('error', 'You are not authorized to access this page.');
+
+        Auth::shouldUse('admin');
+
+        return $next($request);
     }
 }

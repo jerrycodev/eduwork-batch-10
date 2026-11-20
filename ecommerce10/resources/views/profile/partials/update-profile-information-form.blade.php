@@ -9,33 +9,38 @@
         </p>
     </header>
 
+    @php($precognitive = ($profileUpdateRoute ?? 'profile.update') === 'profile.update')
+
     <form id="send-verification" method="post" action="{{ route('verification.send') }}">
         @csrf
     </form>
 
-    <form method="post" action="{{ route('profile.update') }}" class="mt-6 space-y-6">
+    <form method="post" action="{{ route($profileUpdateRoute ?? 'profile.update') }}" class="mt-6 space-y-6"
+        @if ($precognitive) x-data="{ form: $form('patch', '{{ route($profileUpdateRoute ?? 'profile.update') }}', { name: @js(old('name', $user->name)), email: @js(old('email', $user->email)) }).setValidationTimeout(500) }" @endif>
         @csrf
         @method('patch')
 
         <div>
             <x-input-label for="name" :value="__('Name')" />
-            <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $user->name)" required autofocus autocomplete="name" />
-            <x-input-error class="mt-2" :messages="$errors->get('name')" />
+            <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $user->name)" @if ($precognitive) x-model="form.name" @change="form.validate('name')" @endif required autofocus autocomplete="name" />
+            @if ($precognitive)<x-ui.input-error field="name" class="mt-2" :messages="$errors->get('name')" />@else<x-input-error class="mt-2" :messages="$errors->get('name')" />@endif
         </div>
 
         <div>
             <x-input-label for="email" :value="__('Email')" />
-            <x-text-input id="email" name="email" type="email" class="mt-1 block w-full" :value="old('email', $user->email)" required autocomplete="username" />
-            <x-input-error class="mt-2" :messages="$errors->get('email')" />
+            <x-text-input id="email" name="email" type="email" class="mt-1 block w-full" :value="old('email', $user->email)" @if ($precognitive) x-model="form.email" @change="form.validate('email')" @endif required autocomplete="username" />
+            @if ($precognitive)<x-ui.input-error field="email" class="mt-2" :messages="$errors->get('email')" />@else<x-input-error class="mt-2" :messages="$errors->get('email')" />@endif
 
             @if ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && ! $user->hasVerifiedEmail())
                 <div>
                     <p class="text-sm mt-2 text-gray-800">
                         {{ __('Your email address is unverified.') }}
 
-                        <button form="send-verification" class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                            {{ __('Click here to re-send the verification email.') }}
-                        </button>
+                        @if ($precognitive)
+                            <x-ui.button type="submit" form="send-verification" variant="ghost" size="sm" class="underline">{{ __('Click here to re-send the verification email.') }}</x-ui.button>
+                        @else
+                            <button form="send-verification" class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">{{ __('Click here to re-send the verification email.') }}</button>
+                        @endif
                     </p>
 
                     @if (session('status') === 'verification-link-sent')
@@ -48,7 +53,11 @@
         </div>
 
         <div class="flex items-center gap-4">
-            <x-primary-button>{{ __('Save') }}</x-primary-button>
+            @if ($precognitive)
+                <x-ui.button type="submit">{{ __('Save') }}</x-ui.button>
+            @else
+                <x-primary-button>{{ __('Save') }}</x-primary-button>
+            @endif
 
             @if (session('status') === 'profile-updated')
                 <p

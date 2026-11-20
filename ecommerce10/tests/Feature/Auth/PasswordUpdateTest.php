@@ -7,7 +7,7 @@ test('password can be updated', function () {
     $user = User::factory()->create();
 
     $response = $this
-        ->actingAs($user)
+        ->actingAs($user, 'customer')
         ->from('/profile')
         ->put('/password', [
             'current_password' => 'password',
@@ -26,7 +26,7 @@ test('correct password must be provided to update password', function () {
     $user = User::factory()->create();
 
     $response = $this
-        ->actingAs($user)
+        ->actingAs($user, 'customer')
         ->from('/profile')
         ->put('/password', [
             'current_password' => 'wrong-password',

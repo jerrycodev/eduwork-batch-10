@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -12,33 +13,51 @@ use Illuminate\View\View;
 class ProfileController extends Controller
 {
     /**
-     * Display the user's profile form.
+     * Menyiapkan halaman perubahan data yang sudah ada.
      */
-    public function edit(Request $request): View
+    public function edit(Request $request): View|RedirectResponse
     {
-        return view('profile.edit', [
+        if ($request->user()->role === 'admin') {
+            return redirect()->route('admin.profile.edit');
+        }
+
+        return view('profile.customer.edit', [
             'user' => $request->user(),
+            'profileUpdateRoute' => 'profile.update',
+            'profileDestroyRoute' => 'profile.destroy',
+        ]);
+    }
+
+    public function adminEdit(Request $request): View
+    {
+        return view('profile.admin.edit', [
+            'user' => $request->user(),
+            'profileUpdateRoute' => 'admin.profile.update',
+            'profileDestroyRoute' => 'admin.profile.destroy',
         ]);
     }
 
     /**
-     * Update the user's profile information.
+     * Memvalidasi dan menyimpan perubahan data dengan tetap menjaga aturan bisnis.
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        $user = $request->user();
+        $user->fill($request->validated());
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
+        if ($user->isDirty('email')) {
+            $user->email_verified_at = null;
         }
 
-        $request->user()->save();
+        $user->save();
 
-        return Redirect::route('profile.edit')->with('status', 'profile-updated');
+        $route = $user->role === 'admin' ? 'admin.profile.edit' : 'profile.edit';
+
+        return Redirect::route($route)->with('status', 'profile-updated');
     }
 
     /**
-     * Delete the user's account.
+     * Memeriksa ketentuan penghapusan lalu menghapus data yang diizinkan.
      */
     public function destroy(Request $request): RedirectResponse
     {
@@ -48,11 +67,14 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
-        Auth::logout();
+        if ($user->role === 'admin' && User::query()->where('role', 'admin')->count() <= 1) {
+            return back()->with('error', 'Administrator terakhir tidak dapat menghapus akunnya. Tambahkan administrator lain terlebih dahulu.');
+        }
 
+        Auth::guard($user->role === 'admin' ? 'admin' : 'customer')->logout();
         $user->delete();
 
-        $request->session()->invalidate();
+        $request->session()->regenerate();
         $request->session()->regenerateToken();
 
         return Redirect::to('/');

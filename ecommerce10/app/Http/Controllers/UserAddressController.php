@@ -2,19 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use Aliziodev\Wilayah\Models\District;
-use Aliziodev\Wilayah\Models\Province;
-use Aliziodev\Wilayah\Models\Regency;
-use Aliziodev\Wilayah\Models\Village;
+use App\Http\Requests\UserAddressRequest;
 use App\Models\UserAddress;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class UserAddressController extends Controller
 {
+    /**
+     * Menampilkan daftar data dengan filter dan relasi yang diperlukan untuk kebutuhan operasional.
+     */
     public function index(Request $request): View
     {
         $addresses = $request->user()->addresses()->orderByDesc('is_default')->orderByDesc('updated_at')->get();
@@ -22,14 +21,20 @@ class UserAddressController extends Controller
         return view('addresses.index', compact('addresses'));
     }
 
+    /**
+     * Menyiapkan halaman pembuatan data baru.
+     */
     public function create(): View
     {
         return view('addresses.create', ['address' => new UserAddress]);
     }
 
-    public function store(Request $request): RedirectResponse
+    /**
+     * Memvalidasi dan memproses permintaan pembuatan data baru sesuai aturan bisnis.
+     */
+    public function store(UserAddressRequest $request): RedirectResponse
     {
-        $validated = $this->validateAddress($request);
+        $validated = $request->validatedAddress();
         $user = $request->user();
 
         DB::transaction(function () use ($user, $validated): void {
@@ -44,6 +49,9 @@ class UserAddressController extends Controller
         return redirect()->route('addresses.index')->with('success', 'Alamat berhasil ditambahkan.');
     }
 
+    /**
+     * Menyiapkan halaman perubahan data yang sudah ada.
+     */
     public function edit(Request $request, UserAddress $address): View
     {
         $this->ensureOwner($request, $address);
@@ -51,10 +59,13 @@ class UserAddressController extends Controller
         return view('addresses.edit', compact('address'));
     }
 
-    public function update(Request $request, UserAddress $address): RedirectResponse
+    /**
+     * Memvalidasi dan menyimpan perubahan data dengan tetap menjaga aturan bisnis.
+     */
+    public function update(UserAddressRequest $request, UserAddress $address): RedirectResponse
     {
         $this->ensureOwner($request, $address);
-        $validated = $this->validateAddress($request);
+        $validated = $request->validatedAddress();
         $user = $request->user();
 
         DB::transaction(function () use ($address, $user, $validated): void {
@@ -69,6 +80,9 @@ class UserAddressController extends Controller
         return redirect()->route('addresses.index')->with('success', 'Alamat berhasil diperbarui.');
     }
 
+    /**
+     * Memeriksa ketentuan penghapusan lalu menghapus data yang diizinkan.
+     */
     public function destroy(Request $request, UserAddress $address): RedirectResponse
     {
         $this->ensureOwner($request, $address);
@@ -97,50 +111,6 @@ class UserAddressController extends Controller
         });
 
         return redirect()->route('addresses.index')->with('success', 'Alamat utama berhasil diubah.');
-    }
-
-    private function validateAddress(Request $request): array
-    {
-        $validated = $request->validate([
-            'label' => ['required', 'string', 'max:50'],
-            'recipient_name' => ['required', 'string', 'max:255'],
-            'phone' => ['required', 'string', 'max:30'],
-            'address_line' => ['required', 'string', 'max:2000'],
-            'province_code' => ['required', 'string', 'size:2'],
-            'regency_code' => ['required', 'string', 'size:5'],
-            'district_code' => ['required', 'string', 'size:8'],
-            'village_code' => ['required', 'string', 'size:13'],
-            'postal_code' => ['required', 'string', 'max:15'],
-            'country' => ['required', 'string', 'max:255'],
-            'is_default' => ['sometimes', 'boolean'],
-        ], [
-            'required' => ':attribute wajib diisi.',
-        ]);
-
-        $province = Province::query()->where('code', $validated['province_code'])->first();
-        $regency = $province
-            ? Regency::query()->where('code', $validated['regency_code'])->where('province_id', $province->id)->first()
-            : null;
-        $district = $regency
-            ? District::query()->where('code', $validated['district_code'])->where('regency_id', $regency->id)->first()
-            : null;
-        $village = $district
-            ? Village::query()->where('code', $validated['village_code'])->where('district_id', $district->id)->first()
-            : null;
-
-        if (! $province || ! $regency || ! $district || ! $village) {
-            throw ValidationException::withMessages([
-                'village_code' => 'Kombinasi provinsi, kota, kecamatan, dan kelurahan tidak valid.',
-            ]);
-        }
-
-        return [...$validated,
-            'province' => $province->name,
-            'city' => $regency->name,
-            'district' => $district->name,
-            'village' => $village->name,
-            'postal_code' => $village->postal_code ?: $validated['postal_code'],
-        ];
     }
 
     private function ensureOwner(Request $request, UserAddress $address): void

@@ -57,7 +57,7 @@ function addressTestProduct(): Product
 test('user can save multiple addresses and the first address becomes default', function () {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->post(route('addresses.store'), addressPayload())
+    $this->actingAs($user, 'customer')->post(route('addresses.store'), addressPayload())
         ->assertRedirect(route('addresses.index'));
     $this->post(route('addresses.store'), addressPayload([
         'label' => 'Kantor',
@@ -75,7 +75,7 @@ test('user can change the default address and deleting the default promotes anot
     $first = $user->addresses()->create(addressPayload(['is_default' => true]));
     $second = $user->addresses()->create(addressPayload(['label' => 'Kantor']));
 
-    $this->actingAs($user)->patch(route('addresses.default', $second))
+    $this->actingAs($user, 'customer')->patch(route('addresses.default', $second))
         ->assertRedirect(route('addresses.index'));
     expect($first->fresh()->is_default)->toBeFalse()
         ->and($second->fresh()->is_default)->toBeTrue();
@@ -89,7 +89,7 @@ test('user cannot view or modify another users address', function () {
     $otherUser = User::factory()->create();
     $address = $owner->addresses()->create(addressPayload(['is_default' => true]));
 
-    $this->actingAs($otherUser)->get(route('addresses.edit', $address))->assertNotFound();
+    $this->actingAs($otherUser, 'customer')->get(route('addresses.edit', $address))->assertNotFound();
     $this->put(route('addresses.update', $address), addressPayload(['label' => 'Hijack']))->assertNotFound();
     $this->delete(route('addresses.destroy', $address))->assertNotFound();
 
@@ -132,7 +132,7 @@ test('checkout rejects an address belonging to another user', function () {
     $product = addressTestProduct();
     Cart::query()->create(['user_id' => $user->id, 'product_id' => $product->id, 'quantity' => 1]);
 
-    $this->actingAs($user)->post(route('checkout.store'), ['address_id' => $address->id, 'shipping_quote_id' => 'invalid', 'shipping_rate_key' => 'invalid'])
+    $this->actingAs($user, 'customer')->post(route('checkout.store'), ['address_id' => $address->id, 'shipping_quote_id' => 'invalid', 'shipping_rate_key' => 'invalid'])
         ->assertSessionHasErrors('address_id');
 
     $this->assertDatabaseCount('orders', 0);
@@ -145,7 +145,7 @@ test('cart checkout displays saved addresses and address management link', funct
     $product = addressTestProduct();
     Cart::query()->create(['user_id' => $user->id, 'product_id' => $product->id, 'quantity' => 1]);
 
-    $this->actingAs($user)->get(route('cart'))
+    $this->actingAs($user, 'customer')->get(route('cart'))
         ->assertOk()
         ->assertSee('Kelola alamat')
         ->assertSee('checkout-address')
@@ -156,7 +156,7 @@ test('cart checkout displays saved addresses and address management link', funct
 test('region dropdown endpoints return dependent Indonesian administrative regions', function () {
     $payload = addressPayload();
 
-    $this->actingAs(User::factory()->create())->get(route('wilayah.provinces'))
+    $this->actingAs(User::factory()->create(), 'customer')->get(route('wilayah.provinces'))
         ->assertOk()->assertJsonFragment(['value' => $payload['province_code'], 'label' => 'TEST PROVINCE']);
     $this->get(route('wilayah.regencies', ['province' => $payload['province_code']]))
         ->assertOk()->assertJsonFragment(['value' => $payload['regency_code'], 'label' => 'TEST CITY']);
@@ -170,7 +170,7 @@ test('address validation rejects a village that does not belong to the selected 
     $user = User::factory()->create();
     $payload = addressPayload(['district_code' => '99.01.02']);
 
-    $this->actingAs($user)->post(route('addresses.store'), $payload)
+    $this->actingAs($user, 'customer')->post(route('addresses.store'), $payload)
         ->assertSessionHasErrors('village_code');
 
     $this->assertDatabaseCount('user_addresses', 0);

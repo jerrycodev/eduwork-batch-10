@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\StoreCustomerRequest;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -28,29 +28,23 @@ class RegisteredUserController extends Controller
      *
      * @throws ValidationException
      */
-    public function store(Request $request): RedirectResponse
+    public function store(StoreCustomerRequest $request): RedirectResponse
     {
-        $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
-        ]);
+        $validated = $request->validated();
 
         $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'role' => 'customer',
         ]);
 
         event(new Registered($user));
 
-        Auth::login($user);
+        Auth::guard('customer')->login($user);
 
-        $redirectTo = $this->safeRedirectTo($request->input('redirect_to'));
-
-        return $redirectTo
-            ? redirect()->to($redirectTo)
-            : redirect(route('dashboard', absolute: false));
+        return redirect()->route('verification.notice')
+            ->with('status', 'verification-link-sent');
     }
 
     /**
@@ -58,7 +52,7 @@ class RegisteredUserController extends Controller
      */
     private function safeRedirectTo(mixed $destination): ?string
     {
-        if (! is_string($destination) || $destination === '' || str_contains($destination, "\\") || preg_match('/[\x00-\x1F\x7F]/', $destination)) {
+        if (! is_string($destination) || $destination === '' || str_contains($destination, '\\') || preg_match('/[\x00-\x1F\x7F]/', $destination)) {
             return null;
         }
 

@@ -1,12 +1,18 @@
 <?php
 
+use App\Models\User;
+use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Support\Facades\Notification;
+
 test('registration screen can be rendered', function () {
     $response = $this->get('/register');
 
     $response->assertStatus(200);
 });
 
-test('new users can register', function () {
+test('new customers receive an email verification notification after registration', function () {
+    Notification::fake();
+
     $response = $this->post('/register', [
         'name' => 'Test User',
         'email' => 'test@example.com',
@@ -14,12 +20,15 @@ test('new users can register', function () {
         'password_confirmation' => 'password',
     ]);
 
-    $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $user = User::where('email', 'test@example.com')->firstOrFail();
+
+    $this->assertAuthenticatedAs($user, 'customer');
+    $response->assertRedirect(route('verification.notice'));
+    $this->assertDatabaseHas('users', ['email' => 'test@example.com', 'email_verified_at' => null]);
+    Notification::assertSentTo($user, VerifyEmail::class);
 });
 
-
-test('new users are redirected to the requested local path after registration', function () {
+test('new customers are sent to email verification even when a redirect path was requested', function () {
     $response = $this->post('/register', [
         'name' => 'Redirect User',
         'email' => 'redirect-user@example.com',
@@ -29,7 +38,7 @@ test('new users are redirected to the requested local path after registration', 
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect('/cart');
+    $response->assertRedirect(route('verification.notice'));
 });
 
 test('external redirect destinations are ignored after registration', function () {
@@ -42,5 +51,5 @@ test('external redirect destinations are ignored after registration', function (
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $response->assertRedirect(route('verification.notice'));
 });

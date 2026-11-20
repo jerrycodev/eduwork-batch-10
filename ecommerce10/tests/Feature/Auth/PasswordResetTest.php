@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 
 test('reset password link screen can be rendered', function () {
@@ -74,4 +75,26 @@ test('password reset notification uses the ecommerce email template', function (
         ->and($mail->viewData['expireMinutes'])->toBe(config('auth.passwords.'.config('auth.defaults.passwords').'.expire'))
         ->and($mail->viewData['resetUrl'])->toContain($token)
         ->and($mail->viewData['resetUrl'])->toContain(url('/reset-password/'));
+});
+
+test('customer password reset token cannot reset an account after it becomes an administrator', function () {
+    Notification::fake();
+
+    $user = User::factory()->create(['role' => 'customer']);
+    $this->post('/forgot-password', ['email' => $user->email]);
+
+    Notification::assertSentTo($user, ResetPassword::class, function ($notification) use ($user) {
+        $user->update(['role' => 'admin']);
+
+        $this->post('/reset-password', [
+            'token' => $notification->token,
+            'email' => $user->email,
+            'password' => 'ChangedPassword123!',
+            'password_confirmation' => 'ChangedPassword123!',
+        ])->assertSessionHasErrors('email');
+
+        return true;
+    });
+
+    expect(Hash::check('password', $user->fresh()->password))->toBeTrue();
 });
