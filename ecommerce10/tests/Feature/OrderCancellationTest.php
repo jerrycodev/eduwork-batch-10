@@ -5,6 +5,7 @@ use App\Models\OrderCancellationRequest;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\User;
+use App\Services\MidtransPaymentService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
@@ -51,7 +52,7 @@ test('customer can directly cancel an unpaid pending order and stock is restored
         'total' => 300000,
     ]);
 
-    $this->actingAs($customer)
+    $this->actingAs($customer, 'customer')
         ->post(route('orders.cancel', $order), [
             'reason' => 'changed_mind',
             'description' => 'Saya berubah pikiran.',
@@ -79,7 +80,7 @@ test('customer paid order cancellation requires admin approval and holds shipmen
     $admin = User::factory()->create(['role' => 'admin']);
     $order = cancellationTestOrder($customer, ['status' => 'processing', 'payment_status' => 'paid']);
 
-    $this->actingAs($customer)
+    $this->actingAs($customer, 'customer')
         ->post(route('orders.cancel', $order), ['reason' => 'wrong_order'])
         ->assertRedirect()
         ->assertSessionHas('success');
@@ -88,7 +89,7 @@ test('customer paid order cancellation requires admin approval and holds shipmen
     expect($cancellation->status)->toBe('requested')
         ->and($order->fresh()->status)->toBe('processing');
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->patch(route('orders.status.update', $order), [
             'status' => 'shipped',
             'tracking_number' => 'JNE-123',
@@ -105,8 +106,8 @@ test('customer paid order cancellation requires admin approval and holds shipmen
     $this->patch(route('orders.status.update', $order), [
         'status' => 'shipped',
         'tracking_number' => 'JNE-123',
-    ])->assertRedirect();
-    expect($order->fresh()->status)->toBe('shipped');
+    ])->assertSessionHasErrors('status');
+    expect($order->fresh()->status)->toBe('processing');
 });
 
 test('admin cannot start processing while a cancellation request is awaiting a decision', function () {
@@ -120,7 +121,7 @@ test('admin cannot start processing while a cancellation request is awaiting a d
         'status' => 'requested',
     ]);
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->patch(route('orders.status.update', $order), ['status' => 'processing'])
         ->assertSessionHasErrors('status');
 
@@ -146,7 +147,7 @@ test('approved paid cancellation becomes cancelled and restores stock only after
         'status' => 'requested',
     ]);
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->patch(route('order-cancellations.update', $cancellation), [
             'status' => 'approved',
             'admin_note' => 'Disetujui. Refund sedang diproses.',
@@ -182,11 +183,11 @@ test('customer cannot cancel shipped order or another customers order', function
     $shipped = cancellationTestOrder($customer, ['status' => 'shipped', 'payment_status' => 'paid']);
     $pending = cancellationTestOrder($customer);
 
-    $this->actingAs($customer)
+    $this->actingAs($customer, 'customer')
         ->post(route('orders.cancel', $shipped), ['reason' => 'other'])
         ->assertSessionHasErrors('cancellation');
 
-    $this->actingAs($other)
+    $this->actingAs($other, 'customer')
         ->post(route('orders.cancel', $pending), ['reason' => 'other'])
         ->assertForbidden();
 });
@@ -231,7 +232,7 @@ test('paid cancellation cannot be completed without a refund proof and customer 
         'status' => 'approved',
     ]);
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->patch(route('order-cancellations.update', $cancellation), [
             'status' => 'completed',
             'admin_note' => 'Refund reference REF-987',
@@ -241,7 +242,7 @@ test('paid cancellation cannot be completed without a refund proof and customer 
     expect($order->fresh()->payment_status)->toBe('paid')
         ->and($cancellation->fresh()->status)->toBe('approved');
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->patch(route('order-cancellations.update', $cancellation), [
             'status' => 'completed',
             'admin_note' => 'Refund reference REF-987',
@@ -252,12 +253,13 @@ test('paid cancellation cannot be completed without a refund proof and customer 
     $cancellation->refresh();
     expect($cancellation->refund_proof_path)->not->toBeNull();
 
-    $this->actingAs($customer)
+    $this->actingAs($customer, 'customer')
         ->get(route('order-cancellations.proof', $cancellation))
         ->assertOk();
 
+    auth('admin')->logout();
     $otherCustomer = User::factory()->create();
-    $this->actingAs($otherCustomer)
+    $this->actingAs($otherCustomer, 'customer')
         ->get(route('order-cancellations.proof', $cancellation))
         ->assertForbidden();
 });
@@ -277,7 +279,7 @@ test('admin can view cancellation refund proof', function () {
         'refund_proof_original_name' => 'proof.png',
     ]);
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->get(route('order-cancellations.proof', $cancellation))
         ->assertOk();
 });
@@ -293,11 +295,80 @@ test('admin order page renders reusable refund proof uploader with image preview
         'status' => 'approved',
     ]);
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->get(route('orders.show', $order))
         ->assertOk()
         ->assertSee('data-upload-mode="deferred"', false)
         ->assertSee('name="refund_proof"', false)
         ->assertSee('image/jpeg,image/png,image/webp,application/pdf', false)
         ->assertSee('data-file-upload-template', false);
+});
+
+test('admin cancellation sends Midtrans refund once and waits for refund webhook before completing', function () {
+    $customer = User::factory()->create();
+    $admin = User::factory()->create(['role' => 'admin']);
+    $product = cancellationTestProduct(stock: 2);
+    $order = cancellationTestOrder($customer, [
+        'status' => 'processing',
+        'payment_status' => 'paid',
+        'transaction_id' => 'MIDTRANS-TXN-123',
+        'payment_payload' => ['transaction_status' => 'settlement', 'refund_amount' => '0.00'],
+    ]);
+    $order->orderItems()->create([
+        'product_id' => $product->id,
+        'product_name' => $product->name,
+        'quantity' => 1,
+        'price' => 150000,
+        'total' => 150000,
+    ]);
+    $cancellation = OrderCancellationRequest::query()->create([
+        'order_id' => $order->id,
+        'user_id' => $customer->id,
+        'reason' => 'changed_mind',
+        'status' => 'approved',
+    ]);
+
+    $payments = Mockery::mock(MidtransPaymentService::class);
+    $payments->shouldReceive('refund')->once()
+        ->withArgs(fn ($candidate, $amount, $reason, $key) => $candidate->is($order)
+            && $amount === 150000
+            && str_contains($reason, $order->order_number)
+            && $key === 'CANCEL-'.$cancellation->id)
+        ->andReturn((object) ['refund_key' => 'CANCEL-'.$cancellation->id, 'status' => 'pending']);
+    $this->app->instance(MidtransPaymentService::class, $payments);
+
+    $this->actingAs($admin, 'admin')->patch(route('order-cancellations.update', $cancellation), [
+        'status' => 'completed',
+        'refund_method' => 'midtrans',
+    ])->assertRedirect()->assertSessionHas('success');
+
+    expect($order->fresh()->payment_status)->toBe('paid')
+        ->and($order->fresh()->status)->toBe('processing')
+        ->and($order->fresh()->stock_restored_at)->toBeNull()
+        ->and($cancellation->fresh()->status)->toBe('approved')
+        ->and($cancellation->fresh()->refund_request_status)->toBe('submitted')
+        ->and($cancellation->fresh()->refund_amount)->toBe(150000)
+        ->and($cancellation->fresh()->refund_reference)->toBe('CANCEL-'.$cancellation->id);
+
+    $this->patch(route('order-cancellations.update', $cancellation), [
+        'status' => 'completed',
+        'refund_method' => 'midtrans',
+    ])->assertSessionHasErrors('refund_method');
+
+    // Simulate the verified transaction.refund webhook updating the local payment state.
+    $order->forceFill([
+        'payment_status' => 'refunded',
+        'payment_payload' => ['transaction_status' => 'refund', 'refund_amount' => '150000.00'],
+    ])->save();
+
+    $this->patch(route('order-cancellations.update', $cancellation), [
+        'status' => 'completed',
+        'refund_method' => 'midtrans',
+    ])->assertRedirect()->assertSessionHas('success');
+
+    expect($cancellation->fresh()->status)->toBe('completed')
+        ->and($order->fresh()->status)->toBe('cancelled')
+        ->and($order->fresh()->payment_status)->toBe('refunded')
+        ->and($order->fresh()->stock_restored_at)->not->toBeNull();
+    $this->assertDatabaseHas('products', ['id' => $product->id, 'stock' => 3]);
 });

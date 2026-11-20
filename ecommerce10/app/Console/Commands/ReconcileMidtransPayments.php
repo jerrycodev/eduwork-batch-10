@@ -7,6 +7,7 @@ use App\Models\PaymentReconciliationAlert;
 use App\Models\PaymentReconciliationCheck;
 use App\Models\User;
 use App\Notifications\OrderAlert;
+use App\Services\ExpireUnpaidOrder;
 use App\Services\MidtransPaymentService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +20,10 @@ class ReconcileMidtransPayments extends Command
 
     protected $description = 'Periodically verify recent Midtrans transactions and alert administrators about discrepancies.';
 
-    public function handle(MidtransPaymentService $payments): int
+    /**
+     * Menjalankan alur bisnis untuk menangani event atau permintaan yang diterima.
+     */
+    public function handle(MidtransPaymentService $payments, ExpireUnpaidOrder $expiry): int
     {
         $limit = max(1, min((int) $this->option('limit'), 200));
         $interval = max(1, min((int) $this->option('interval'), 168));
@@ -50,6 +54,13 @@ class ReconcileMidtransPayments extends Command
                 $amountValid = preg_match('/^\\d+(?:\\.\\d{1,2})?$/D', $remoteAmount) === 1;
                 $amountMatches = $amountValid && $this->toMinorUnits($remoteAmount) === ((int) $order->total * 100);
                 $mappedStatus = $this->mapStatus($remoteStatus, strtolower((string) data_get($remote, 'fraud_status', 'accept')));
+
+                // Reconciliation is the fallback when the Midtrans expiry callback was missed.
+                if ($amountMatches && $mappedStatus === 'expired') {
+                    $expiry->handle($order);
+                    $order->refresh();
+                }
+
                 $matched = $amountMatches && $mappedStatus !== null && $mappedStatus === $order->payment_status;
                 $message = ! $amountMatches
                     ? 'Nominal pembayaran Midtrans tidak cocok dengan total pesanan.'
@@ -122,7 +133,7 @@ class ReconcileMidtransPayments extends Command
             'type' => 'payment_reconciliation_alert',
             'title' => $title,
             'message' => 'Pesanan '.$order->order_number.': '.$message,
-            'url' => route('payment-reconciliation.index'),
+            'url' => route('payment-reconciliation.index', [], false),
             'order_id' => (string) $order->id,
             'order_number' => $order->order_number,
             'finding_code' => $code,

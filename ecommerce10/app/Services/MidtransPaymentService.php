@@ -19,7 +19,11 @@ class MidtransPaymentService
         return DB::transaction(function () use ($order): Order {
             $lockedOrder = Order::query()->lockForUpdate()->with('orderItems')->findOrFail($order->id);
 
-            if (in_array($lockedOrder->payment_status, ['paid', 'refunded', 'partially_refunded'], true) || $lockedOrder->status === 'cancelled') {
+            if (
+                in_array($lockedOrder->payment_status, ['paid', 'refunded', 'partially_refunded'], true) ||
+                $lockedOrder->status === 'cancelled' ||
+                ($lockedOrder->payment_expires_at && $lockedOrder->payment_expires_at->isPast())
+            ) {
                 throw new RuntimeException('Pesanan ini tidak dapat dibuatkan sesi pembayaran baru.');
             }
 
@@ -34,10 +38,10 @@ class MidtransPaymentService
             $this->configure();
             $paymentOrderId = 'PAY-'.$lockedOrder->order_number.'-'.Str::lower(Str::random(6));
             $itemDetails = $lockedOrder->orderItems->map(fn ($item) => [
-                'id' => (string) $item->product_id,
+                'id' => Str::limit((string) ($item->product_sku ?: $item->product_id), 50, ''),
                 'price' => (int) $item->price,
                 'quantity' => (int) $item->quantity,
-                'name' => Str::limit($item->product_name, 50, ''),
+                'name' => Str::limit(trim($item->product_name.' '.($item->product_variant_name && $item->product_variant_name !== 'Default' ? ' - '.$item->product_variant_name : '')), 50, ''),
             ])->values()->all();
 
             if ((int) $lockedOrder->shipping_cost > 0) {
@@ -55,6 +59,20 @@ class MidtransPaymentService
                     'gross_amount' => (int) $lockedOrder->total,
                 ],
                 'item_details' => $itemDetails,
+                // Keep the Snap page and the selected payment method aligned with
+                // the expiry timestamp reserved on our order at checkout.
+                'expiry' => [
+                    'start_time' => $lockedOrder->created_at
+                        ->copy()
+                        ->timezone('Asia/Jakarta')
+                        ->format('Y-m-d H:i:s O'),
+                    'unit' => 'minutes',
+                    'duration' => (int) config('midtrans.payment_expiry_minutes', 30),
+                ],
+                'page_expiry' => [
+                    'unit' => 'minutes',
+                    'duration' => (int) config('midtrans.payment_expiry_minutes', 30),
+                ],
                 'customer_details' => [
                     'first_name' => $lockedOrder->recipient_name ?: $lockedOrder->user_name,
                     'email' => $lockedOrder->user_email,
@@ -93,6 +111,20 @@ class MidtransPaymentService
         $this->configure();
 
         return (object) Transaction::status($order->payment_order_id);
+    }
+
+    /**
+     * Invalidate a still-pending Snap transaction before releasing its reserved stock.
+     */
+    public function cancelPending(Order $order): object
+    {
+        if (! $order->payment_order_id) {
+            throw new RuntimeException('Order ID pembayaran Midtrans tidak tersedia.');
+        }
+
+        $this->configure();
+
+        return (object) Transaction::cancel($order->payment_order_id);
     }
 
     public function refund(Order $order, int $amount, string $reason, string $refundKey): object

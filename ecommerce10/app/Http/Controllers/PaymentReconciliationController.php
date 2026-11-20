@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\OrderCancellationRequest;
 use App\Models\PaymentReconciliationCheck;
 use App\Models\PaymentStatusResolution;
+use App\Models\PaymentWebhookLog;
 use App\Services\MidtransPaymentService;
 use App\Services\OrderEmailService;
 use App\Services\OrderNotificationService;
@@ -19,11 +20,16 @@ use Throwable;
 
 class PaymentReconciliationController extends Controller
 {
+    /**
+     * Menampilkan daftar data dengan filter dan relasi yang diperlukan untuk kebutuhan operasional.
+     */
     public function index(Request $request, PaymentReconciliationService $reconciliation): View
     {
         $validated = $request->validate([
             'severity' => ['nullable', 'in:critical,warning,info'],
             'search' => ['nullable', 'string', 'max:120'],
+            'webhook_result' => ['nullable', 'in:processed,rejected,failed'],
+            'webhook_status' => ['nullable', 'string', 'max:50'],
         ]);
 
         $allFindings = $reconciliation->findings();
@@ -37,15 +43,28 @@ class PaymentReconciliationController extends Controller
             ->latest('checked_at')
             ->limit(10)
             ->get();
+        $webhookLogs = PaymentWebhookLog::query()
+            ->with('order:id,order_number,payment_status')
+            ->when($validated['webhook_result'] ?? null, fn ($query, string $result) => $query->where('result', $result))
+            ->when($validated['webhook_status'] ?? null, fn ($query, string $status) => $query->where('transaction_status', $status))
+            ->latest('received_at')->limit(100)->get();
+        $webhookCounts = [
+            'processed' => PaymentWebhookLog::query()->where('result', 'processed')->count(),
+            'rejected' => PaymentWebhookLog::query()->where('result', 'rejected')->count(),
+            'failed' => PaymentWebhookLog::query()->where('result', 'failed')->count(),
+        ];
         $recentResolutions = PaymentStatusResolution::query()
             ->with(['order:id,order_number', 'admin:id,name,email'])
             ->latest('resolved_at')
             ->limit(10)
             ->get();
 
-        return view('admin.payment-reconciliation.index', compact('findings', 'counts', 'recentChecks', 'recentResolutions'));
+        return view('admin.payment-reconciliation.index', compact('findings', 'counts', 'recentChecks', 'recentResolutions', 'webhookLogs', 'webhookCounts'));
     }
 
+    /**
+     * Memeriksa konsistensi data dan mencatat hasil pemeriksaan.
+     */
     public function check(Order $order, MidtransPaymentService $payments): RedirectResponse
     {
         if (! $order->payment_order_id) {

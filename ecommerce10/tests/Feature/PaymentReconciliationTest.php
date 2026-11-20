@@ -69,7 +69,7 @@ test('admin can compare a Midtrans status response without automatically changin
         ]);
     $this->app->instance(MidtransPaymentService::class, $payments);
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->post(route('payment-reconciliation.check', $order))
         ->assertRedirect()
         ->assertSessionHas('status');
@@ -93,7 +93,7 @@ test('Midtrans amount mismatch is recorded and local status is not overwritten',
     ]);
     $this->app->instance(MidtransPaymentService::class, $payments);
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->post(route('payment-reconciliation.check', $order))
         ->assertRedirect()
         ->assertSessionHas('error');
@@ -103,16 +103,16 @@ test('Midtrans amount mismatch is recorded and local status is not overwritten',
 });
 
 test('payment reconciliation page is restricted to administrators', function () {
-    $this->actingAs(User::factory()->create(['role' => 'customer']))
+    $this->actingAs(User::factory()->create(['role' => 'customer']), 'customer')
         ->get(route('payment-reconciliation.index'))
-        ->assertRedirect(route('home'));
+        ->assertRedirect(route('admin.login'));
 });
 
 test('admin can open payment reconciliation dashboard and see local findings', function () {
     $admin = User::factory()->create(['role' => 'admin']);
     $order = reconciliationTestOrder($admin, ['status' => 'processing', 'payment_status' => 'pending']);
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->get(route('payment-reconciliation.index'))
         ->assertOk()
         ->assertSee('Payment Reconciliation')
@@ -183,7 +183,7 @@ test('admin can apply a freshly verified Midtrans settlement with an audited rea
     ]);
     $this->app->instance(MidtransPaymentService::class, $payments);
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->post(route('payment-reconciliation.resolve', $order), [
             'reason' => 'Settlement sudah diverifikasi langsung melalui Midtrans.',
             'expected_local_status' => 'failed',
@@ -215,7 +215,7 @@ test('payment resolution rejects amount mismatch and unsupported remote statuses
     ]);
     $this->app->instance(MidtransPaymentService::class, $payments);
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->post(route('payment-reconciliation.resolve', $order), [
             'reason' => 'Mencoba koreksi setelah pemeriksaan transaksi.',
             'expected_local_status' => 'pending',
@@ -232,7 +232,7 @@ test('payment resolution rejects stale local status and missing admin confirmati
     $admin = User::factory()->create(['role' => 'admin']);
     $order = reconciliationTestOrder($admin, ['payment_status' => 'pending']);
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->post(route('payment-reconciliation.resolve', $order), [
             'reason' => 'Status pembayaran sudah berubah sebelumnya.',
             'expected_local_status' => 'failed',
@@ -241,4 +241,30 @@ test('payment resolution rejects stale local status and missing admin confirmati
 
     expect($order->fresh()->payment_status)->toBe('pending')
         ->and(PaymentStatusResolution::query()->count())->toBe(0);
+});
+
+test('scheduled Midtrans reconciliation also cancels orders when expiry callback was missed', function () {
+    Notification::fake();
+    $customer = User::factory()->create();
+    $admin = User::factory()->create(['role' => 'admin']);
+    $order = reconciliationTestOrder($customer);
+    $payments = Mockery::mock(MidtransPaymentService::class);
+    $payments->shouldReceive('fetchStatus')->once()->with(Mockery::on(fn (Order $candidate): bool => $candidate->is($order)))
+        ->andReturn((object) [
+            'order_id' => $order->payment_order_id,
+            'transaction_id' => 'midtrans-expired-fallback',
+            'transaction_status' => 'expire',
+            'gross_amount' => '150000.00',
+        ]);
+    $this->app->instance(MidtransPaymentService::class, $payments);
+
+    $this->artisan('payments:reconcile')->assertSuccessful();
+
+    expect($order->fresh()->payment_status)->toBe('expired')
+        ->and($order->fresh()->status)->toBe('cancelled')
+        ->and($order->fresh()->cancellationRequest->status)->toBe('completed')
+        ->and(PaymentReconciliationCheck::query()->sole()->result)->toBe('matched');
+
+    Notification::assertSentTo($customer, OrderAlert::class);
+    Notification::assertSentTo($admin, OrderAlert::class);
 });

@@ -1,3 +1,4 @@
+{{-- Dokumentasi: Daftar transaksi yang perlu dicocokkan dengan status resmi Midtrans. --}}
 <x-app-layout>
     <x-slot name="header">
         <div>
@@ -7,7 +8,7 @@
     </x-slot>
 
     <div class="py-8">
-        <div class="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
+        <div class="space-y-6 px-4 sm:px-6 lg:px-8">
             @if (session('status'))<div class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">{{ session('status') }}</div>@endif
             @if (session('error'))<div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{{ session('error') }}</div>@endif
 
@@ -38,7 +39,7 @@
                                 <div class="flex shrink-0 flex-col gap-2">
                                     <a href="{{ route('orders.show', $finding['order']) }}" class="rounded-lg border border-gray-200 px-3 py-2 text-center text-xs font-semibold text-gray-700 hover:bg-gray-50">Detail pesanan</a>
                                     @if ($finding['order']->payment_order_id)
-                                        <form method="POST" action="{{ route('payment-reconciliation.check', $finding['order']) }}" onsubmit="return confirm('Periksa status transaksi pesanan ini langsung ke Midtrans?')">@csrf<button class="w-full rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700">Check Midtrans</button></form>
+                                        <form method="POST" action="{{ route('payment-reconciliation.check', $finding['order']) }}" x-data="adminConfirm(@js('Periksa status transaksi pesanan ini langsung ke Midtrans?'))" @submit="submit($event)">@csrf<button class="w-full rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700">Check Midtrans</button></form>
                                     @endif
                                     @if ($finding['order']->payment_order_id && in_array($finding['order']->payment_status, ['pending', 'challenge', 'failed', 'cancelled', 'expired'], true))
                                         <details class="max-w-xs rounded-lg border border-amber-200 bg-amber-50 p-3 text-left">
@@ -59,6 +60,42 @@
                         <div class="px-5 py-12 text-center"><p class="font-semibold text-gray-900">Tidak ada temuan untuk filter ini</p><p class="mt-1 text-sm text-gray-500">Pemeriksaan lokal tidak menemukan anomali pada pesanan yang diperiksa.</p></div>
                     @endforelse
                 </div>
+            </section>
+
+            <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                <div class="border-b border-gray-100 px-5 py-4">
+                    <h3 class="font-semibold text-gray-900">Webhook masuk dari Midtrans</h3>
+                    <p class="mt-1 text-xs text-gray-500">100 notifikasi terbaru, termasuk signature tidak valid, nominal atau merchant tidak cocok, order tidak ditemukan, dan kegagalan pemrosesan. Signature key dan data kartu tidak disimpan.</p>
+                    <div class="mt-3 flex flex-wrap gap-2 text-xs">
+                        <span class="rounded-full bg-green-50 px-2.5 py-1 font-semibold text-green-700">Processed: {{ $webhookCounts['processed'] }}</span>
+                        <span class="rounded-full bg-red-50 px-2.5 py-1 font-semibold text-red-700">Rejected: {{ $webhookCounts['rejected'] }}</span>
+                        <span class="rounded-full bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">Failed: {{ $webhookCounts['failed'] }}</span>
+                    </div>
+                </div>
+                <form method="GET" action="{{ route('payment-reconciliation.index') }}" class="flex flex-wrap items-end gap-3 border-b border-gray-100 p-4">
+                    <input type="hidden" name="search" value="{{ request('search') }}"><input type="hidden" name="severity" value="{{ request('severity') }}">
+                    <label><span class="mb-1 block text-xs font-semibold text-gray-500">Hasil webhook</span><select name="webhook_result" class="rounded-lg border-gray-300 text-sm"><option value="">Semua hasil</option>@foreach (['processed' => 'Processed', 'rejected' => 'Rejected', 'failed' => 'Failed'] as $value => $label)<option value="{{ $value }}" @selected(request('webhook_result') === $value)>{{ $label }}</option>@endforeach</select></label>
+                    <label><span class="mb-1 block text-xs font-semibold text-gray-500">Status transaksi</span><select name="webhook_status" class="rounded-lg border-gray-300 text-sm"><option value="">Semua status</option>@foreach ($webhookLogs->pluck('transaction_status')->filter()->unique()->sort() as $status)<option value="{{ $status }}" @selected(request('webhook_status') === $status)>{{ str($status)->replace('_', ' ')->title() }}</option>@endforeach</select></label>
+                    <button class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white">Filter webhook</button>
+                </form>
+                <div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-100 text-sm">
+                    <thead class="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500"><tr><th class="px-5 py-3">Diterima</th><th class="px-5 py-3">Event</th><th class="px-5 py-3">Pesanan / Order ID</th><th class="px-5 py-3">Transaksi</th><th class="px-5 py-3">Signature</th><th class="px-5 py-3">Hasil / HTTP</th><th class="px-5 py-3">Detail</th></tr></thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @forelse ($webhookLogs as $webhook)
+                            <tr>
+                                <td class="whitespace-nowrap px-5 py-4 text-xs text-gray-500">{{ $webhook->received_at?->format('d M Y H:i:s') }}</td>
+                                <td class="px-5 py-4"><span class="font-semibold text-gray-800">{{ $webhook->event ?? 'midtrans.notification' }}</span></td>
+                                <td class="px-5 py-4">@if ($webhook->order)<a href="{{ route('orders.show', $webhook->order) }}" class="font-semibold text-indigo-700 hover:underline">{{ $webhook->order->order_number }}</a>@else<span class="text-gray-400">Tidak terhubung</span>@endif<p class="mt-1 font-mono text-xs text-gray-500">{{ $webhook->payment_order_id ?: '—' }}</p></td>
+                                <td class="px-5 py-4">{{ $webhook->transaction_status ? str($webhook->transaction_status)->replace('_', ' ')->title() : '—' }}<p class="mt-1 text-xs text-gray-500">{{ $webhook->transaction_id ?: 'Tanpa transaction ID' }}</p></td>
+                                <td class="px-5 py-4">@if (is_null($webhook->signature_valid))<span class="text-xs text-gray-400">Belum validasi</span>@elseif ($webhook->signature_valid)<span class="text-xs font-semibold text-green-700">Valid</span>@else<span class="text-xs font-semibold text-red-700">Invalid</span>@endif</td>
+                                <td class="px-5 py-4"><span class="rounded-full px-2 py-1 text-xs font-semibold {{ $webhook->result === 'processed' ? 'bg-green-50 text-green-700' : ($webhook->result === 'failed' || $webhook->result === 'rejected' ? 'bg-red-50 text-red-700' : 'bg-gray-100 text-gray-700') }}">{{ strtoupper($webhook->result) }}</span><p class="mt-1 text-xs text-gray-500">HTTP {{ $webhook->http_status ?? '—' }}</p></td>
+                                <td class="max-w-sm px-5 py-4"><p class="text-xs text-gray-600">{{ $webhook->message }}</p>@if ($webhook->payload)<details class="mt-2"><summary class="cursor-pointer text-xs font-semibold text-indigo-700">Lihat payload aman</summary><pre class="mt-2 max-h-48 overflow-auto rounded bg-gray-50 p-2 text-[11px] text-gray-600">{{ json_encode($webhook->payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre></details>@endif</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="7" class="px-5 py-8 text-center text-sm text-gray-500">Belum ada webhook Midtrans yang tercatat.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table></div>
             </section>
 
             <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
