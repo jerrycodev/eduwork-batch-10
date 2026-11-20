@@ -1,3 +1,4 @@
+{{-- Dokumentasi: Ringkasan metrik operasional dan grafik performa toko untuk administrator. --}}
 <x-app-layout>
     <x-slot name="header">
         <div>
@@ -7,7 +8,7 @@
     </x-slot>
 
     <div class="py-8">
-        <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 sm:px-6 lg:px-8">
+        <div class="flex w-full flex-col gap-6 px-4 sm:px-6 lg:px-8">
             {{-- Date filters --}}
             <section class="flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:flex-row sm:items-end sm:justify-between">
                 <div>
@@ -17,7 +18,7 @@
                 <form method="GET" action="{{ route('dashboard') }}" class="flex flex-col gap-3 sm:flex-row sm:items-end">
                     <div>
                         <label for="dashboard-period" class="mb-1.5 block text-xs font-medium text-gray-600">Filter by</label>
-                        <select id="dashboard-period" name="period" class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:w-36">
+                        <select id="dashboard-period" name="period" class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:w-36">
                             <option value="day" @selected($filter['period'] === 'day')>Day</option>
                             <option value="month" @selected($filter['period'] === 'month')>Month</option>
                             <option value="year" @selected($filter['period'] === 'year')>Year</option>
@@ -32,10 +33,10 @@
                             value="{{ $filter['date'] }}"
                             @if ($filter['period'] === 'year') min="2000" max="2100" placeholder="YYYY" @endif
                             required
-                            class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:w-44"
+                            class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:w-44"
                         >
                     </div>
-                    <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+                    <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-700">
                         <i data-lucide="filter" class="h-4 w-4"></i> Apply Filter
                     </button>
                     <a href="{{ route('dashboard') }}" class="inline-flex items-center justify-center rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-50">Reset</a>
@@ -45,10 +46,10 @@
             {{-- Summary metrics --}}
             <section aria-label="Store summary" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 @foreach ($metrics as $metric)
-                    <article class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-indigo-200 hover:shadow-md">
+                    <article class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-primary-200 hover:shadow-md">
                         <div class="flex items-center justify-between gap-3">
                             <p class="text-sm font-medium text-gray-500">{{ $metric['label'] }}</p>
-                            <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                            <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-50 text-primary-600">
                                 <i data-lucide="{{ $metric['icon'] }}" class="h-5 w-5"></i>
                             </span>
                         </div>
@@ -102,7 +103,7 @@
                         <h3 class="text-base font-semibold text-gray-900">Latest Orders</h3>
                         <p class="mt-1 text-sm text-gray-500">The five most recent orders for {{ $filter['label'] }}.</p>
                     </div>
-                    <a href="{{ route('orders.index') }}" class="inline-flex w-fit items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700">
+                    <a href="{{ route('orders.index') }}" class="inline-flex w-fit items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition hover:border-primary-200 hover:bg-primary-50 hover:text-primary-700">
                         View all orders <i data-lucide="arrow-up-right" class="h-4 w-4"></i>
                     </a>
                 </div>
@@ -139,7 +140,7 @@
                                     </td>
                                     <td class="whitespace-nowrap px-5 py-4 text-xs font-medium text-gray-600">{{ str($order->payment_status ?? 'unpaid')->title() }}</td>
                                     <td class="px-5 py-4 text-right">
-                                        <a href="{{ route('orders.show', $order) }}" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700">
+                                        <a href="{{ route('orders.show', $order) }}" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 transition hover:border-primary-200 hover:bg-primary-50 hover:text-primary-700">
                                             View details <i data-lucide="arrow-up-right" class="h-3.5 w-3.5"></i>
                                         </a>
                                     </td>

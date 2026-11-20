@@ -8,6 +8,9 @@ use Illuminate\View\View;
 
 class AdminActivityLogController extends Controller
 {
+    /**
+     * Menampilkan daftar data dengan filter dan relasi yang diperlukan untuk kebutuhan operasional.
+     */
     public function index(Request $request): View
     {
         $validated = $request->validate([

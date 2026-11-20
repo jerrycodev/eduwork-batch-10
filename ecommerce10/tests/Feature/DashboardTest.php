@@ -8,7 +8,7 @@ use App\Models\User;
 
 test('the dashboard renders database-backed order and product metrics', function () {
     $admin = User::factory()->create(['role' => 'admin']);
-    $customer = User::factory()->create(['role' => 'user']);
+    $customer = User::factory()->create(['role' => 'customer']);
     $now = now();
 
     $category = ProductCategory::query()->create([
@@ -49,7 +49,7 @@ test('the dashboard renders database-backed order and product metrics', function
         'status' => 'pending',
     ]);
 
-    $this->actingAs($admin);
+    $this->actingAs($admin, 'admin');
 
     $response = $this->get(route('dashboard'));
 
@@ -72,10 +72,10 @@ test('the dashboard renders database-backed order and product metrics', function
         ->assertSee(route('orders.show', $order), false)
         ->assertDontSee('Products Clicks')
         ->assertDontSee('Total Clicks')
-        ->assertSee('action="'.route('logout').'"', false)
+        ->assertSee('action="'.route('admin.logout').'"', false)
         ->assertSee('method="POST"', false)
         ->assertSee('<button type="submit"', false)
-        ->assertDontSee('href="'.route('logout').'"', false)
+        ->assertDontSee('href="'.route('admin.logout').'"', false)
         ->assertDontSee('Operating System');
 
     $this->get(route('dashboard', ['period' => 'day', 'date' => $now->format('Y-m-d')]))

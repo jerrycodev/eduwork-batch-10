@@ -1,3 +1,4 @@
+{{-- Dokumentasi: Daftar log pengiriman email transaksional dan aksi retry. --}}
 <x-app-layout>
     <x-slot name="header">
         <div>
@@ -7,7 +8,7 @@
     </x-slot>
 
     <div class="py-8">
-        <div class="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
+        <div class="space-y-6 px-4 sm:px-6 lg:px-8">
             @if (session('status'))
                 <div class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">{{ session('status') }}</div>
             @endif
@@ -15,21 +16,21 @@
                 <form method="GET" action="{{ route('email-delivery-logs.index') }}" class="grid gap-3 border-b border-gray-100 p-4 sm:grid-cols-2 lg:grid-cols-5">
                     <label class="lg:col-span-2">
                         <span class="mb-1 block text-xs font-semibold text-gray-500">Cari penerima, tipe, atau nomor pesanan</span>
-                        <input type="search" name="search" value="{{ request('search') }}" placeholder="Search email..." class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <input type="search" name="search" value="{{ request('search') }}" placeholder="Search email..." class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500">
                     </label>
                     <label>
                         <span class="mb-1 block text-xs font-semibold text-gray-500">Status</span>
-                        <select name="status" class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <select name="status" class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500">
                             <option value="">Semua status</option>
                             @foreach (['queued' => 'Queued', 'sent' => 'Sent', 'failed' => 'Failed'] as $value => $label)
                                 <option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>
                             @endforeach
                         </select>
                     </label>
-                    <label><span class="mb-1 block text-xs font-semibold text-gray-500">Dari</span><input type="date" name="date_from" value="{{ request('date_from') }}" class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></label>
-                    <label><span class="mb-1 block text-xs font-semibold text-gray-500">Sampai</span><input type="date" name="date_to" value="{{ request('date_to') }}" class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></label>
+                    <label><span class="mb-1 block text-xs font-semibold text-gray-500">Dari</span><input type="date" name="date_from" value="{{ request('date_from') }}" class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500"></label>
+                    <label><span class="mb-1 block text-xs font-semibold text-gray-500">Sampai</span><input type="date" name="date_to" value="{{ request('date_to') }}" class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500"></label>
                     <div class="flex items-end gap-2 sm:col-span-2 lg:col-span-5">
-                        <button class="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700">Filter</button>
+                        <button class="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">Filter</button>
                         <a href="{{ route('email-delivery-logs.index') }}" class="rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">Reset</a>
                     </div>
                 </form>
@@ -50,7 +51,7 @@
                                     </td>
                                     <td class="whitespace-nowrap px-5 py-4 text-gray-600">{{ $log->attempt_count }} attempt · {{ $log->retry_count }} retry</td>
                                     <td class="px-5 py-4">@if ($log->status === 'failed')
-                                        <form method="POST" action="{{ route('email-delivery-logs.retry', $log) }}" onsubmit="return confirm('Jadwalkan ulang pengiriman email ini?')">@csrf<button class="rounded-lg border border-indigo-200 px-3 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-50">Retry email</button></form>
+                                        <form method="POST" action="{{ route('email-delivery-logs.retry', $log) }}" x-data="adminConfirm(@js('Jadwalkan ulang pengiriman email ini?'))" @submit="submit($event)">@csrf<button class="rounded-lg border border-primary-200 px-3 py-2 text-xs font-semibold text-primary-700 hover:bg-primary-50">Retry email</button></form>
                                     @else<span class="text-xs text-gray-400">—</span>@endif</td>
                                 </tr>
                             @empty

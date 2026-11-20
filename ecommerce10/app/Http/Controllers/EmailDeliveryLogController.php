@@ -10,6 +10,9 @@ use Illuminate\View\View;
 
 class EmailDeliveryLogController extends Controller
 {
+    /**
+     * Menampilkan daftar data dengan filter dan relasi yang diperlukan untuk kebutuhan operasional.
+     */
     public function index(Request $request): View
     {
         $validated = $request->validate([
@@ -38,6 +41,9 @@ class EmailDeliveryLogController extends Controller
         return view('admin.email-delivery-logs.index', compact('logs'));
     }
 
+    /**
+     * Mengulangi proses integrasi setelah memeriksa kondisi dan status terakhir.
+     */
     public function retry(EmailDeliveryLog $emailDeliveryLog, OrderEmailService $emails): RedirectResponse
     {
         abort_unless($emailDeliveryLog->status === 'failed', 409, 'Only failed emails can be retried.');

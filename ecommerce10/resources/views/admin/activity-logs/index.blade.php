@@ -1,3 +1,4 @@
+{{-- Dokumentasi: Halaman audit aktivitas administrator: menampilkan aktor, aksi, objek, dan waktu perubahan. --}}
 <x-app-layout>
     <x-slot name="header">
         <div>
@@ -7,16 +8,16 @@
     </x-slot>
 
     <div class="py-8">
-        <div class="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
+        <div class="space-y-6 px-4 sm:px-6 lg:px-8">
             <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
                 <form method="GET" action="{{ route('activity-logs.index') }}" class="grid gap-3 border-b border-gray-100 p-4 sm:grid-cols-2 lg:grid-cols-5">
                     <label class="lg:col-span-2">
                         <span class="mb-1 block text-xs font-semibold text-gray-500">Search actor, route, or subject ID</span>
-                        <input type="search" name="search" value="{{ request('search') }}" placeholder="Search activity..." class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <input type="search" name="search" value="{{ request('search') }}" placeholder="Search activity..." class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500">
                     </label>
                     <label>
                         <span class="mb-1 block text-xs font-semibold text-gray-500">Action</span>
-                        <select name="action" class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <select name="action" class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500">
                             <option value="">All actions</option>
                             @foreach ($actions as $action)
                                 <option value="{{ $action }}" @selected(request('action') === $action)>{{ $action }}</option>
@@ -25,14 +26,14 @@
                     </label>
                     <label>
                         <span class="mb-1 block text-xs font-semibold text-gray-500">From</span>
-                        <input type="date" name="date_from" value="{{ request('date_from') }}" class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <input type="date" name="date_from" value="{{ request('date_from') }}" class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500">
                     </label>
                     <label>
                         <span class="mb-1 block text-xs font-semibold text-gray-500">To</span>
-                        <input type="date" name="date_to" value="{{ request('date_to') }}" class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <input type="date" name="date_to" value="{{ request('date_to') }}" class="w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500">
                     </label>
                     <div class="flex items-end gap-2 sm:col-span-2 lg:col-span-5">
-                        <button class="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700">Apply filters</button>
+                        <button class="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">Apply filters</button>
                         <a href="{{ route('activity-logs.index') }}" class="rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">Reset</a>
                     </div>
                 </form>

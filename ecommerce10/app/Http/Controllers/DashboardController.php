@@ -12,6 +12,9 @@ use Illuminate\Validation\Rule;
 
 class DashboardController extends Controller
 {
+    /**
+     * Menampilkan daftar data dengan filter dan relasi yang diperlukan untuk kebutuhan operasional.
+     */
     public function index(Request $request)
     {
         $period = in_array($request->query('period'), ['day', 'month', 'year'], true)

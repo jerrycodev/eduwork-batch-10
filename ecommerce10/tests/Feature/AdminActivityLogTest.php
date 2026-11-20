@@ -28,7 +28,7 @@ test('admin mutations are recorded with actor route subject and response metadat
     $admin = User::factory()->create(['role' => 'admin']);
     $product = activityLogTestProduct();
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->post(route('inventory.movements.store', $product), [
             'type' => 'in',
             'quantity' => 3,
@@ -68,7 +68,7 @@ test('admin activity log page supports filtering and is restricted to administra
         'created_at' => now(),
     ]);
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->get(route('activity-logs.index', ['search' => 'subject-123', 'action' => 'inventory.movements.store']))
         ->assertOk()
         ->assertSee('Admin Activity Logs')
@@ -76,15 +76,17 @@ test('admin activity log page supports filtering and is restricted to administra
         ->assertSee('subject-123')
         ->assertSee('HTTP 302');
 
-    $this->actingAs(User::factory()->create(['role' => 'customer']))
+    auth('admin')->logout();
+
+    $this->actingAs(User::factory()->create(['role' => 'customer']), 'customer')
         ->get(route('activity-logs.index'))
-        ->assertRedirect(route('home'));
+        ->assertRedirect(route('admin.login'));
 });
 
 test('read-only admin page views do not create activity log entries', function () {
     $admin = User::factory()->create(['role' => 'admin']);
 
-    $this->actingAs($admin)->get(route('dashboard'))->assertOk();
+    $this->actingAs($admin, 'admin')->get(route('dashboard'))->assertOk();
 
     expect(AdminActivityLog::query()->count())->toBe(0);
 });

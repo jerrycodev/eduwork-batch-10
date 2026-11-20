@@ -84,7 +84,7 @@ test('failed queued email records error and admin can retry it', function () {
     expect($log->fresh()->status)->toBe('failed')
         ->and($log->fresh()->last_error)->toBe('SMTP connection refused');
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->post(route('email-delivery-logs.retry', $log))
         ->assertRedirect()
         ->assertSessionHas('status');
@@ -108,14 +108,16 @@ test('email delivery log page is admin-only and can filter by status', function 
         'queued_at' => now(),
     ]);
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->get(route('email-delivery-logs.index', ['status' => 'failed']))
         ->assertOk()
         ->assertSee('Email Delivery Logs')
         ->assertSee($order->user_email)
         ->assertSee('SMTP unavailable');
 
-    $this->actingAs(User::factory()->create(['role' => 'customer']))
+    auth('admin')->logout();
+
+    $this->actingAs(User::factory()->create(['role' => 'customer']), 'customer')
         ->get(route('email-delivery-logs.index'))
-        ->assertRedirect(route('home'));
+        ->assertRedirect(route('admin.login'));
 });
