@@ -427,14 +427,14 @@ Menambahkan kolom role pada tabel users melalui migration, membuat middleware un
 
 ### Fitur
 
-- Migration `add_role_to_users_table` menambahkan kolom `role` bertipe string dengan nilai default `user`.
+- Migration awal `add_role_to_users_table` dahulu menggunakan nilai default `user`; migration `use_customer_role_name` menormalkan data role pelanggan menjadi `customer`, lalu migration `set_customer_role_default` menetapkan default database menjadi `customer`.
 - Model `User` menambahkan `role` ke atribut fillable.
 - `AdminMiddleware` memeriksa pengguna yang sudah login dan memiliki role `admin`; pengguna lain diarahkan ke halaman home dengan pesan error.
 - Alias middleware `admin` didaftarkan pada `bootstrap/app.php`.
 - Route dashboard, produk, kategori, dan upload file dibatasi menggunakan middleware `admin`.
 - Blade directive `@admin` ditambahkan untuk menampilkan menu Dashboard, Products, dan Product Categories hanya kepada admin.
 - Menu admin juga disembunyikan pada tampilan navigasi responsif untuk pengguna non-admin.
-- `UserFactory` mengisi role default `user`, sedangkan `DatabaseSeeder` membuat akun admin `admin@ecommerce.com` dengan password `password`.
+- `UserFactory` mengisi role default `customer`, sedangkan `DatabaseSeeder` membuat akun admin `admin@ecommerce.com` dengan password `password`.
 - Data pengguna dummy menggunakan locale Indonesia (`id_ID`).
 
 ### Dibangun Menggunakan

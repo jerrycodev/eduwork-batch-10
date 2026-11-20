@@ -73,7 +73,7 @@ function checkoutShippingQuote($test, User $user, UserAddress $address): array
         ], 200),
     ]);
 
-    return $test->actingAs($user)
+    return $test->actingAs($user, 'customer')
         ->postJson(route('checkout.shipping-rates'), ['address_id' => $address->id])
         ->assertOk()
         ->json();

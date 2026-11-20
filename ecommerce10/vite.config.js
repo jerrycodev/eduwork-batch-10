@@ -13,6 +13,8 @@ export default defineConfig({
                 'resources/js/dashboard.js',
                 'resources/js/file_upload.form.js',
                 'resources/js/product.form.js',
+                'resources/js/product-variants.builder.js',
+                'resources/js/product-variants.edit.js',
                 'resources/js/order-realtime.js',
                 'resources/js/notification-realtime.js',
             ],

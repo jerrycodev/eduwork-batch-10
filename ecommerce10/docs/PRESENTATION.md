@@ -4,7 +4,8 @@
 > **Repository:** `/home/user/GitHub/eduwork-batch-10/ecommerce10`
 > **Dokumen:** `docs/PRESENTATION.md`
 > **Tujuan:** Materi sumber untuk disusun menjadi slide PowerPoint.
-> **Catatan:** Placeholder screenshot menunjukkan gambar yang perlu diambil dari aplikasi. Simpan hasil akhirnya pada folder `docs/screenshots/` sesuai nama file yang dicantumkan.
+> **Acuan:** Struktur route, controller, service, model, migration, dan Blade view pada repository saat ini.
+> **Catatan screenshot:** Placeholder menunjukkan halaman yang perlu diambil dari aplikasi aktual. Simpan hasilnya di `docs/screenshots/` menggunakan nama file yang dicantumkan.
 
 ---
 
@@ -12,1198 +13,583 @@
 
 # E-Commerce Website
 
-**Aplikasi toko online untuk menampilkan produk, mengelola keranjang belanja, dan mencatat pesanan pelanggan.**
+**Platform toko online untuk mengelola katalog, varian produk, transaksi pembayaran, persediaan, dan pengiriman dalam satu aplikasi.**
 
 - Nama Project: E-Commerce Website
 - Nama Pembuat: [Nama Lengkap]
 - Program: Eduwork — Batch 10
-- Teknologi Utama: Laravel, PHP, MySQL, Blade, Tailwind CSS
+- Teknologi Utama: Laravel 13, PHP 8.3+, MySQL, Blade, Tailwind CSS 4
 
 **Visual:**
 - [PLACEHOLDER: Screenshot halaman Home sebagai background/hero]
-- Sumber halaman: `resources/views/home/index.blade.php`
-- File screenshot: `docs/screenshots/01-homepage.png`
+- Sumber: `resources/views/home/index.blade.php`
+- File: `docs/screenshots/01-homepage.png`
 
 ---
 
-## Slide 2 — Deskripsi Project & Daftar Fitur
+## Slide 2 — Deskripsi Project & Fitur Utama
 
 ### Deskripsi Singkat
 
-E-Commerce Website merupakan aplikasi toko online berbasis web. Pengunjung dapat melihat katalog produk dan detail produk. Pengguna yang sudah login dapat mengelola keranjang, melakukan checkout, serta melihat riwayat pesanan. Admin memiliki area khusus untuk mengelola produk, kategori, pesanan, dan melihat ringkasan performa toko.
+E-Commerce Website merupakan aplikasi toko online berbasis web yang menyediakan pengalaman belanja untuk customer dan area operasional terpisah untuk admin. Customer dapat menjelajahi produk beserta variannya, menyimpan wishlist, mengelola alamat, melakukan checkout, membayar pesanan, serta memantau proses pengiriman. Admin mengelola katalog, stok, pesanan, pengguna, dan proses operasional toko.
 
-### Fitur Utama
+### Fitur Customer
 
-**Customer**
-- Melihat halaman utama dan katalog produk.
-- Menjelajahi produk berdasarkan kategori.
-- Melihat detail, harga, dan stok produk.
-- Mencari produk dari nama atau deskripsi.
-- Registrasi, login, dan logout.
-- Menambahkan produk ke keranjang.
-- Mengubah jumlah atau menghapus item keranjang.
-- Checkout dan membuat pesanan.
-- Melihat daftar serta detail pesanan milik sendiri.
-- Mengelola informasi profil dan password.
+- Melihat halaman utama, katalog, kategori, pencarian, dan detail produk.
+- Memilih varian produk dengan opsi seperti warna dan ukuran.
+- Melihat galeri gambar, harga, stok, dan informasi produk.
+- Registrasi, login, verifikasi email, reset password, dan pengelolaan profil.
+- Menambahkan produk ke keranjang dan memperbarui kuantitas.
+- Mengelola wishlist dan alamat pengiriman.
+- Memilih wilayah alamat Indonesia secara bertingkat.
+- Melihat estimasi/opsi pengiriman pada proses checkout.
+- Membuat pesanan dan membayar melalui payment gateway.
+- Melihat riwayat pesanan, invoice, status pembayaran, dan pelacakan pengiriman.
+- Mengajukan pembatalan atau retur, mengirim revisi bukti, dan mengonfirmasi pesanan diterima.
+- Menerima notifikasi dan menulis ulasan produk.
 
-**Admin**
-- Mengakses dashboard khusus admin.
-- Melihat ringkasan jumlah produk, kategori, pesanan, dan klik produk.
-- Melihat grafik jumlah pesanan per bulan dan distribusi status pesanan.
-- Melihat produk dengan jumlah kunjungan detail tertinggi.
-- CRUD produk dan kategori.
-- Mencari, memfilter, dan mengurutkan produk.
-- Upload dan menghapus gambar produk.
-- Melihat seluruh pesanan dan detail pesanan.
+### Fitur Admin
 
-**Batasan fitur saat ini**
-- Checkout langsung membuat pesanan berstatus `pending`; belum ada integrasi payment gateway.
-- Informasi telepon dan alamat pengiriman pada pesanan belum diisi melalui form checkout.
-- Halaman admin dapat melihat pesanan, tetapi belum menyediakan aksi untuk mengubah status pesanan.
-- Tombol wishlist pada detail produk masih berupa tampilan, belum memiliki proses penyimpanan wishlist.
+- Login admin dengan guard dan halaman autentikasi tersendiri.
+- Dashboard ringkasan dan analitik toko.
+- CRUD produk, kategori, gambar, opsi, dan varian.
+- Mengelola SKU, barcode, harga, harga pembanding, biaya, stok, dan dimensi.
+- Mencatat pergerakan stok melalui inventory management.
+- Mengelola customer/admin dan ulasan produk.
+- Melihat seluruh pesanan dan memperbarui status pesanan.
+- Memproses pembatalan, retur, dan refund sesuai alur yang tersedia.
+- Memantau rekonsiliasi pembayaran dan pengiriman.
+- Melihat audit aktivitas admin/customer serta log pengiriman email.
+- Mengelola notifikasi dan melakukan retry pengiriman email yang gagal.
+
+### Integrasi Eksternal
+
+- **Midtrans:** pembuatan sesi pembayaran, callback/webhook, status transaksi, rekonsiliasi, dan proses refund yang didukung alur pembatalan.
+- **Biteship:** pencarian tarif pengiriman, pembuatan pengiriman, webhook, tracking, dan rekonsiliasi status pengiriman.
+- **Email:** pengiriman email transaksional dan pencatatan status delivery.
 
 ---
 
-## Slide 3 — Tools, Framework & Library
+## Slide 3 — Teknologi, Framework & Tools
 
-### Teknologi Backend
+### Backend
+
 - **PHP 8.3+** — Bahasa pemrograman backend.
-- **Laravel 13** — Framework aplikasi, routing, middleware, validation, dan ORM.
-- **Eloquent ORM** — Relasi dan query database.
-- **MySQL** — Database relasional utama.
-- **Laravel Breeze** — Fondasi autentikasi.
+- **Laravel 13** — Routing, middleware, validasi, autentikasi, queue/scheduler, dan fondasi aplikasi.
+- **Eloquent ORM** — Relasi dan pengelolaan data database.
+- **MySQL** — Database relasional.
+- **Midtrans PHP SDK** — Integrasi transaksi pembayaran.
+- **Laravel DomPDF** — Pembuatan invoice PDF.
+- **Laravel Wilayah** — Data wilayah administratif Indonesia.
 
-### Teknologi Frontend
-- **Laravel Blade** — Template halaman dan komponen UI.
-- **Tailwind CSS 4** — Utility-first styling dan responsive layout.
-- **Alpine.js** — Interaksi UI sederhana, termasuk kontrol jumlah produk.
+### Frontend
+
+- **Blade** — Template halaman dan komponen UI.
+- **Tailwind CSS 4** — Styling dan responsive layout.
+- **Alpine.js** — Interaksi UI.
 - **Vite** — Build tool dan development server.
+- **Chart.js** — Visualisasi data dashboard.
 - **Lucide** — Ikon antarmuka.
-- **Chart.js** — Grafik dashboard.
-- **Pristine.js** — Validasi form sisi client.
-- **Slugify** — Membantu pembuatan slug.
-- **NProgress** — Indikator progres navigasi halaman.
+- **Axios** — HTTP request dari frontend.
+- **Laravel Precognition** — Validasi form sebelum submit penuh.
+- **Pristine.js** — Validasi form sisi client pada bagian yang menggunakannya.
+- **NProgress** — Indikator progres navigasi.
 
-### Tools Development & Testing
+### Development & Testing
+
 - Visual Studio Code
-- Browser (Chrome/Firefox)
-- Composer
-- npm
+- Composer dan npm
 - Laravel Artisan
-- Pest — Feature testing
+- Pest — Feature dan integration-oriented testing
+- Browser untuk pengujian UI
 
 **File konfigurasi utama:**
 - `composer.json`
 - `package.json`
 - `vite.config.js`
 - `bootstrap/app.php`
+- `routes/web.php`
+- `routes/auth.php`
 
 ---
 
-## Slide 4 — Wireframe & Mockup Tampilan
+## Slide 4 — Wireframe & Tampilan Aplikasi
 
-> Gunakan screenshot aplikasi aktual jika halaman sudah tersedia. Jika belum, buat mockup dengan susunan komponen sesuai deskripsi. Setiap placeholder di bawah menyebutkan file Blade sumber agar halaman mudah ditemukan.
+Gunakan screenshot aplikasi aktual. Path di bawah merupakan sumber halaman, bukan teks yang perlu dimasukkan ke slide final.
 
-### 1. Home Page
-- Isi: navbar, hero/banner, daftar kategori, daftar produk, pagination, footer.
-- Route: `/`
-- View: `resources/views/home/index.blade.php`
-- Komponen: `resources/views/components/hero.blade.php`, `categories.blade.php`, `product-card.blade.php`
-- [PLACEHOLDER SCREENSHOT: Home Page]
-- Simpan sebagai: `docs/screenshots/02-home-page.png`
-- Referensi screenshot lama: `.thumbnails/tugas_sesi_14_home.png`
+### Customer / Storefront
 
-### 2. Shop / Product Listing
-- Isi: daftar produk, kategori, pencarian, pagination.
-- Route: `/shop`
-- View: `resources/views/home/shop.blade.php`
-- [PLACEHOLDER SCREENSHOT: Shop / Product Listing]
-- Simpan sebagai: `docs/screenshots/03-shop-page.png`
+| Halaman | Route | View | File Screenshot |
+|---|---|---|---|
+| Home | `/` | `resources/views/home/index.blade.php` | `02-home-page.png` |
+| Shop | `/shop` | `resources/views/home/shop.blade.php` | `03-shop-page.png` |
+| Product detail | `/product/{product:slug}` | `resources/views/product/description.blade.php` | `04-product-detail.png` |
+| Cart | `/cart` | `resources/views/cart/index.blade.php` | `05-cart-page.png` |
+| Checkout | `GET /checkout` mengarahkan customer kembali ke cart; proses checkout dilakukan dari halaman cart | `resources/views/cart/index.blade.php` | `06-checkout.png` |
+| Order detail | `/orders/{order}` | `resources/views/orders/show.blade.php` | `07-order-detail.png` |
+| Wishlist | `/wishlist` | `resources/views/wishlist/index.blade.php` | `08-wishlist.png` |
+| Address | `/addresses` | `resources/views/addresses/` | `09-addresses.png` |
+| Login / Register | `/login`, `/register` | `resources/views/auth/` | `10-authentication.png` |
 
-### 3. Product Description / Detail
-- Isi: gambar produk, nama, harga, deskripsi, stok, pemilih kuantitas, tombol tambah ke keranjang.
-- Route: `/product/{product}`
-- View: `resources/views/product/description.blade.php`
-- [PLACEHOLDER SCREENSHOT: Product Detail]
-- Simpan sebagai: `docs/screenshots/04-product-detail.png`
-- Referensi screenshot lama: `.thumbnails/tugas_sesi_14_product_detail.png`
+### Admin
 
-### 4. Cart Page
-- Isi: daftar item keranjang, kuantitas, subtotal, total belanja, tombol checkout.
-- Route: `/cart`
-- View: `resources/views/cart/index.blade.php`
-- [PLACEHOLDER SCREENSHOT: Shopping Cart]
-- Simpan sebagai: `docs/screenshots/05-cart-page.png`
-
-### 5. Checkout Result / Order Detail
-- Isi: nomor pesanan, status, item pesanan, total, informasi pemesan.
-- Route: `/orders/{order}`
-- View: `resources/views/orders/show.blade.php`
-- [PLACEHOLDER SCREENSHOT: Order Detail setelah checkout]
-- Simpan sebagai: `docs/screenshots/06-order-detail.png`
-
-### 6. Login & Register
-- Login: `/login` — `resources/views/auth/login.blade.php`
-- Register: `/register` — `resources/views/auth/register.blade.php`
-- [PLACEHOLDER SCREENSHOT: Login dan Register]
-- Simpan sebagai:
-  - `docs/screenshots/07-login.png`
-  - `docs/screenshots/08-register.png`
-- Referensi screenshot lama:
-  - `.thumbnails/tugas_sesi_15_login.png`
-  - `.thumbnails/tugas_sesi_15_register.png`
-
-### 7. Admin Dashboard
-- Isi: kartu statistik, grafik order bulanan, ringkasan status order, top viewed products.
-- Route: `/dashboard`
-- View: `resources/views/admin/dashboard.blade.php`
-- [PLACEHOLDER SCREENSHOT: Admin Dashboard]
-- Simpan sebagai: `docs/screenshots/09-admin-dashboard.png`
-- Referensi screenshot lama: `.thumbnails/tugas_sesi_19_admin_dashboard.png`
-
-### 8. Admin Product Management
-- Isi: tabel produk, pencarian, filter kategori, sorting, tombol tambah/edit/hapus.
-- Route: `/dashboard/products`
-- View: `resources/views/admin/products/index.blade.php`
-- Form create/edit:
-  - `resources/views/admin/products/create.blade.php`
-  - `resources/views/admin/products/edit.blade.php`
-  - `resources/views/admin/products/_form.blade.php`
-- [PLACEHOLDER SCREENSHOT: Product Management]
-- Simpan sebagai: `docs/screenshots/10-admin-products.png`
-- Referensi screenshot lama: `.thumbnails/tugas_sesi_16_products.png`
-
-### 9. Admin Category Management
-- Isi: tabel kategori dan dialog tambah/edit kategori.
-- Route: `/dashboard/product-categories`
-- View: `resources/views/admin/categories/index.blade.php`
-- [PLACEHOLDER SCREENSHOT: Category Management]
-- Simpan sebagai: `docs/screenshots/11-admin-categories.png`
-- Referensi screenshot lama: `.thumbnails/tugas_sesi_16_product-categories.png`
-
-### 10. Admin Order Management
-- Isi: daftar seluruh pesanan dan detail pesanan pelanggan.
-- Route:
-  - `/dashboard/orders`
-  - `/dashboard/orders/{order}`
-- View:
-  - `resources/views/admin/orders/index.blade.php`
-  - `resources/views/admin/orders/show.blade.php`
-- [PLACEHOLDER SCREENSHOT: Admin Order List & Detail]
-- Simpan sebagai:
-  - `docs/screenshots/12-admin-orders.png`
-  - `docs/screenshots/13-admin-order-detail.png`
+| Halaman | Route | View | File Screenshot |
+|---|---|---|---|
+| Admin login | `/admin/login` | `resources/views/admin/auth/login.blade.php` | `11-admin-login.png` |
+| Dashboard | `/dashboard` | `resources/views/admin/dashboard.blade.php` | `12-admin-dashboard.png` |
+| Product list & detail | `/dashboard/products` | `resources/views/admin/products/` | `13-admin-products.png` |
+| Product variants | `/dashboard/products/{product}/edit` | `resources/views/admin/products/edit.blade.php` | `14-admin-product-variants.png` |
+| Inventory | `/dashboard/inventory` | `resources/views/admin/inventory/index.blade.php` | `15-admin-inventory.png` |
+| Orders | `/dashboard/orders` | `resources/views/admin/orders/` | `16-admin-orders.png` |
+| Payment reconciliation | `/dashboard/payment-reconciliation` | `resources/views/admin/payment-reconciliation/index.blade.php` | `17-payment-reconciliation.png` |
+| Shipping reconciliation | `/dashboard/biteship-reconciliation` | `resources/views/admin/biteship-reconciliation/index.blade.php` | `18-shipping-reconciliation.png` |
+| User management | `/dashboard/users` | `resources/views/admin/users/` | `19-admin-users.png` |
+| Activity & delivery logs | `/dashboard/activity-logs`, `/dashboard/email-delivery-logs` | `resources/views/admin/activity-logs/`, `resources/views/admin/email-delivery-logs/` | `20-admin-monitoring.png` |
 
 ---
 
-## Slide 5 — Screenshot Kode: Routing & Autentikasi
+## Slide 5 — Arsitektur Aplikasi & Autentikasi
 
-### A. Definisi Route Utama
+### Pemisahan Area Customer dan Admin
 
-Sumber: `routes/web.php`
+Aplikasi menggunakan guard autentikasi terpisah untuk customer dan admin. Halaman login keduanya juga terpisah, sehingga sesi dan hak akses tidak tercampur.
 
-```php
-// Import controller yang menangani setiap fitur aplikasi.
-use App\Http\Controllers\CartController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\FileUploadController;
-use App\Http\Controllers\HomeController;
-use App\Http\Controllers\OrderController;
-use App\Http\Controllers\ProductCategoryController;
-use App\Http\Controllers\ProductController;
-use App\Http\Controllers\ProfileController;
-use Illuminate\Support\Facades\Route;
+- Customer: `/login`, `/register`, dan `/logout`.
+- Admin: `/admin/login` dan `/admin/logout`.
+- Area admin berada di prefix `/dashboard` dan dilindungi middleware autentikasi serta otorisasi admin.
+- Route customer menggunakan middleware customer; operasi tertentu juga mensyaratkan email terverifikasi.
+- Pengguna yang sudah login diarahkan dari halaman login yang bukan untuk guard-nya ke area yang sesuai.
 
-// Route publik: halaman Home, Shop, Cart, dan detail produk.
-Route::get('/', [HomeController::class, 'index'])->name('home');
-Route::get('/shop', [HomeController::class, 'shop'])->name('shop');
-Route::get('/cart', [CartController::class, 'index'])->name('cart');
-Route::get('/product/{product}', [HomeController::class, 'productDetail'])
-    ->name('product-detail');
+### Route Utama
 
-// Route untuk menambah, mengubah, dan menghapus item keranjang.
-Route::post('/cart/{product}', [CartController::class, 'store'])->name('cart.store');
-Route::patch('/cart/{cart}', [CartController::class, 'update'])->name('cart.update');
-Route::delete('/cart/{cart}', [CartController::class, 'destroy'])->name('cart.destroy');
+Sumber: `routes/web.php` dan `routes/auth.php`.
 
-// Prefix dashboard dan middleware admin berlaku untuk semua route di dalam grup.
-Route::prefix('/dashboard')->middleware(['admin'])->group(function () {
-    // Halaman ringkasan dan analitik toko.
-    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+| Area | Route penting | Fungsi |
+|---|---|---|
+| Storefront | `/`, `/shop`, `/product/{product:slug}` | Home, katalog, detail produk |
+| Cart | `/cart`, `POST /cart/{product}` | Keranjang |
+| Checkout | `GET /checkout`, `POST /checkout` | Checkout dan pembuatan pesanan |
+| Payment | `POST /orders/{order}/payment`, `POST /midtrans/callback` | Inisiasi dan callback pembayaran |
+| Customer | `/orders`, `/addresses`, `/wishlist`, `/profile` | Akun dan aktivitas customer |
+| Admin | `/admin/login`, `/dashboard` | Autentikasi dan area admin |
+| Webhook | `/webhooks/biteship` | Pembaruan status pengiriman dari provider |
 
-    // Daftar semua pesanan dan halaman detail pesanan untuk admin.
-    Route::get('/orders', [OrderController::class, 'adminIndex'])->name('orders.index');
-    Route::get('/orders/{order}', [OrderController::class, 'adminShow'])->name('orders.show');
-
-    // Resource route menyediakan endpoint CRUD produk dan kategori.
-    Route::resource('products', ProductController::class);
-    Route::resource('product-categories', ProductCategoryController::class);
-
-    // Endpoint untuk upload dan menghapus gambar produk.
-    Route::post('file-uploads', [FileUploadController::class, 'store'])->name('file-uploads.store');
-    Route::delete('file-uploads', [FileUploadController::class, 'destroy'])->name('file-uploads.destroy');
-});
-
-// Grup auth hanya dapat diakses oleh pengguna yang sudah login.
-Route::middleware('auth')->group(function () {
-    // Route untuk melihat, mengubah, dan menghapus profil.
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-
-    // Checkout membuat pesanan; customer hanya dapat membaca pesanan miliknya.
-    Route::post('/checkout', [OrderController::class, 'store'])->name('checkout.store');
-    Route::get('/orders', [OrderController::class, 'index'])->name('orders.customer.index');
-    Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.customer.show');
-});
-
-// Muat route autentikasi bawaan Laravel Breeze.
-require __DIR__ . '/auth.php';
-```
-
-**Alur penjelasan:**
-1. Import controller agar dapat dipanggil oleh route.
-2. Route publik menghubungkan URL dengan halaman yang dapat diakses pengunjung.
-3. Route cart menggunakan HTTP method POST, PATCH, dan DELETE sesuai operasinya.
-4. Grup dashboard menerapkan middleware admin sebelum request mencapai controller.
-5. Grup auth melindungi checkout, riwayat pesanan, dan pengelolaan profil.
-6. File auth.php memuat route login, register, reset password, dan logout.
-
-### B. Route Autentikasi
-
-Sumber: `routes/auth.php`
-
-```php
-// Pengunjung yang belum login boleh membuka halaman login dan register.
-Route::middleware('guest')->group(function () {
-    // Tampilkan form registrasi.
-    Route::get('register', [RegisteredUserController::class, 'create'])
-        ->name('register');
-
-    // Proses data registrasi dan buat akun baru.
-    Route::post('register', [RegisteredUserController::class, 'store']);
-
-    // Tampilkan form login.
-    Route::get('login', [AuthenticatedSessionController::class, 'create'])
-        ->name('login');
-
-    // Periksa kredensial dan buat session login.
-    Route::post('login', [AuthenticatedSessionController::class, 'store']);
-});
-
-// Hanya pengguna yang sudah login dapat melakukan logout.
-Route::middleware('auth')->group(function () {
-    // Akhiri session autentikasi pengguna.
-    Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
-        ->name('logout');
-});
-```
-
-**Alur autentikasi:**
-1. Middleware guest mencegah user yang sudah login membuka form login/register.
-2. Method GET menampilkan halaman form.
-3. Method POST mengirim data ke controller untuk diproses.
-4. Jika login berhasil, Laravel menyimpan status autentikasi pada session.
-5. Logout mengakhiri session pengguna.
-
-**Screenshot kode yang perlu diambil:**
-- `routes/web.php` — kelompok route publik, customer, dan admin.
-- `routes/auth.php` — proses login, register, dan logout.
-
----
-
-## Slide 6 — Screenshot Kode: Backend & Business Logic
-
-### A. Filter Produk di Halaman Shop
-
-Sumber: `app/Http/Controllers/HomeController.php`, method `shop()`.
-
-```php
-public function shop(Request $request)
-{
-    // Ambil kata kunci dan kategori dari query parameter URL.
-    $search = $request->input('search');
-    $category = $request->input('category');
-
-    // Mulai query dari tabel products.
-    $query = Product::query();
-
-    // Jika ada kata kunci, cari pada nama atau deskripsi produk.
-    if ($search) {
-        $query->where('name', 'like', '%' . $search . '%')
-            ->orWhere('description', 'like', '%' . $search . '%');
-    }
-
-    // Jika kategori dipilih, filter berdasarkan slug kategori.
-    if ($category) {
-        $category = trim($category);
-
-        // whereHas memfilter produk berdasarkan relasi category.
-        $query->whereHas('category', function ($q) use ($category) {
-            $q->where('slug', $category);
-        });
-    }
-
-    // Tampilkan produk yang stoknya masih tersedia.
-    // with() memuat relasi kategori agar siap digunakan di Blade.
-    // paginate(12) membatasi 12 produk per halaman.
-    // withQueryString() mempertahankan filter saat berpindah halaman.
-    $products = $query
-        ->where('stock', '>', 0)
-        ->with('category')
-        ->paginate(12)
-        ->withQueryString();
-
-    // Ambil daftar kategori sekaligus jumlah produk per kategori.
-    $categories = ProductCategory::withCount('products')->get();
-
-    // Kirim seluruh data yang dibutuhkan ke halaman Shop.
-    return view('home.shop', compact('products', 'search', 'category', 'categories'));
-}
-```
-
-**Alur penjelasan:**
-1. Baca parameter pencarian dan kategori dari URL.
-2. Susun query produk sesuai filter yang dimasukkan.
-3. whereHas memanfaatkan relasi Eloquent untuk filter kategori.
-4. with memuat relasi kategori untuk menghindari query berulang di view.
-5. paginate membagi hasil menjadi 12 produk per halaman.
-6. Kirim data ke Blade untuk ditampilkan.
-
-> Catatan teknis: implementasi saat ini menggunakan where() lalu orWhere() untuk pencarian nama/deskripsi. Jika filter kategori dan stok harus selalu berlaku pada kedua kondisi pencarian, kelompokkan pencarian dengan closure where(function ($q) { ... }).
-
-### B. Menambahkan Produk ke Keranjang
-
-Sumber: `app/Http/Controllers/CartController.php`, method `store()`.
-
-```php
-public function store(Request $request, Product $product): RedirectResponse
-{
-    // Pastikan pengguna login sebelum menambahkan item ke cart.
-    if (! Auth::check()) {
-        return redirect()->route('login', [
-            'redirect_to' => route('product-detail', $product, absolute: false)
-        ])->with('error', 'Silakan masuk terlebih dahulu.');
-    }
-
-    // Validasi kuantitas dari form detail produk.
-    $validated = $request->validate([
-        'quantity' => ['required', 'integer', 'min:1'],
-    ]);
-
-    // Tolak produk yang stoknya sudah habis.
-    if ($product->stock < 1) {
-        return back()->with('error', 'Maaf, produk ini sedang habis.');
-    }
-
-    // Jalankan perubahan cart di dalam transaksi database.
-    $stockError = DB::transaction(function () use ($product, $validated): ?int {
-
-        // Kunci baris produk agar perubahan bersamaan tidak menyebabkan overselling.
-        $lockedProduct = Product::query()->lockForUpdate()->findOrFail($product->id);
-
-        // Cari item cart milik user untuk produk yang sama.
-        // Baris cart dikunci selama transaksi berlangsung.
-        $cartItem = Cart::query()
-            ->where('user_id', Auth::id())
-            ->where('product_id', $lockedProduct->id)
-            ->lockForUpdate()
-            ->first();
-
-        // Jika item sudah ada, jumlah baru adalah jumlah lama + input baru.
-        // Jika belum ada, jumlah lama dianggap nol.
-        $newQuantity = ($cartItem?->quantity ?? 0) + $validated['quantity'];
-
-        // Pastikan jumlah yang diminta tidak melebihi stok.
-        if ($newQuantity > $lockedProduct->stock) {
-            return $lockedProduct->stock;
-        }
-
-        // Jika item ditemukan, perbarui kuantitasnya.
-        if ($cartItem) {
-            $cartItem->quantity = $newQuantity;
-            $cartItem->save();
-        } else {
-            // Jika belum ada, buat item cart baru.
-            Cart::query()->create([
-                'user_id' => Auth::id(),
-                'product_id' => $lockedProduct->id,
-                'quantity' => $validated['quantity'],
-            ]);
-        }
-
-        // Null menandakan proses berhasil tanpa masalah stok.
-        return null;
-    });
-
-    // Jika stok tidak mencukupi, tampilkan pesan kesalahan.
-    if ($stockError !== null) {
-        return back()->with('error', "Jumlah melebihi stok tersedia ({$stockError}).");
-    }
-
-    // Arahkan user ke halaman cart setelah berhasil.
-    return redirect()->route('cart')
-        ->with('success', 'Produk berhasil ditambahkan ke keranjang.');
-}
-```
-
-**Alur penjelasan:**
-1. Periksa autentikasi user.
-2. Validasi input kuantitas.
-3. Periksa stok awal produk.
-4. Mulai transaksi database.
-5. Kunci data produk dan cart menggunakan lockForUpdate().
-6. Hitung kuantitas baru dan bandingkan dengan stok.
-7. Update item yang sudah ada atau insert item baru.
-8. Jika transaksi berhasil, arahkan user ke halaman cart.
-
-### C. Checkout & Pembuatan Pesanan
-
-Sumber: `app/Http/Controllers/OrderController.php`, method `store()`.
-
-```php
-public function store(Request $request): RedirectResponse
-{
-    // Bungkus seluruh checkout dalam satu transaksi database.
-    // Jika salah satu langkah gagal, perubahan akan di-rollback.
-    $order = DB::transaction(function (): Order {
-
-        // Ambil cart milik user yang login dan kunci barisnya.
-        $cartItems = Cart::query()
-            ->where('user_id', Auth::id())
-            ->lockForUpdate()
-            ->get();
-
-        // Validasi: checkout tidak boleh dilakukan jika cart kosong.
-        if ($cartItems->isEmpty()) {
-            throw ValidationException::withMessages([
-                'cart' => 'Keranjang belanja kosong. Tambahkan produk sebelum checkout.',
-            ]);
-        }
-
-        // Siapkan penampung detail pesanan dan total belanja.
-        $orderLines = [];
-        $total = 0;
-
-        // Proses seluruh produk yang ada di keranjang.
-        foreach ($cartItems as $cartItem) {
-
-            // Ambil dan kunci produk untuk pemeriksaan stok terakhir.
-            $product = Product::query()
-                ->lockForUpdate()
-                ->find($cartItem->product_id);
-
-            // Validasi produk masih ada dan jumlah pesanan tidak melebihi stok.
-            if (! $product || $cartItem->quantity < 1 || $cartItem->quantity > $product->stock) {
-                throw ValidationException::withMessages([
-                    'cart' => 'Stok produk ' . ($product?->name ?? 'yang dipilih')
-                        . ' tidak mencukupi. Perbarui keranjang lalu coba lagi.',
-                ]);
-            }
-
-            // Hitung subtotal satu jenis produk.
-            $lineTotal = (int) $product->price * (int) $cartItem->quantity;
-
-            // Tambahkan subtotal ke total keseluruhan pesanan.
-            $total += $lineTotal;
-
-            // Simpan snapshot nama, harga, kuantitas, dan subtotal produk.
-            $orderLines[] = [
-                'product_id' => $product->id,
-                'product_name' => $product->name,
-                'quantity' => $cartItem->quantity,
-                'price' => $product->price,
-                'total' => $lineTotal,
-            ];
-        }
-
-        // Ambil data customer yang sedang checkout.
-        $user = Auth::user();
-
-        // Buat record utama pesanan pada tabel orders.
-        // Status awal pesanan adalah pending.
-        // cart_id dan data pengiriman belum diisi pada versi saat ini.
-        $order = Order::query()->create([
-            'user_id' => $user->id,
-            'cart_id' => null,
-            'user_name' => $user->name,
-            'user_email' => $user->email,
-            'user_phone' => null,
-            'address' => null,
-            'city' => null,
-            'state' => null,
-            'zip' => null,
-            'country' => null,
-            'total' => $total,
-            'status' => 'pending',
-        ]);
-
-        // Buat seluruh baris detail pesanan pada tabel order_items.
-        $order->orderItems()->createMany($orderLines);
-
-        // Kurangi stok setiap produk sesuai jumlah yang dipesan.
-        foreach ($cartItems as $cartItem) {
-            Product::query()
-                ->whereKey($cartItem->product_id)
-                ->decrement('stock', $cartItem->quantity);
-        }
-
-        // Kosongkan cart setelah order dan detailnya berhasil disimpan.
-        Cart::query()->where('user_id', $user->id)->delete();
-
-        // Kembalikan object order dari transaksi.
-        return $order;
-    });
-
-    // Arahkan customer ke detail pesanan yang baru dibuat.
-    return redirect()->route('orders.customer.show', $order)
-        ->with('success', 'Pesanan berhasil dibuat. Pesanan Anda sudah tercatat.');
-}
-```
-
-**Alur penjelasan:**
-1. Mulai transaksi database.
-2. Ambil dan kunci cart milik user.
-3. Tolak checkout jika cart kosong.
-4. Periksa ulang produk dan stok terbaru satu per satu.
-5. Hitung subtotal setiap item dan total pesanan.
-6. Siapkan orderLines sebagai snapshot detail produk.
-7. Buat satu record utama di tabel orders.
-8. Buat banyak record detail melalui createMany() ke order_items.
-9. Kurangi stok produk.
-10. Hapus cart user setelah pesanan tersimpan.
-11. Redirect ke halaman detail pesanan.
-
-**Istilah penting:**
-- DB::transaction() — memastikan seluruh langkah berhasil bersama atau dibatalkan bersama.
-- lockForUpdate() — mengunci baris database selama transaksi.
-- create() — membuat satu record baru.
-- createMany() — membuat beberapa record pada relasi.
-- decrement() — mengurangi nilai stok langsung di database.
-- ValidationException — menghentikan proses dan mengembalikan pesan validasi.
-
-> Untuk screenshot, fokuskan pada keseluruhan method store() di OrderController.php. Jika terlalu panjang, pecah menjadi dua screenshot: (1) validasi cart, stok, dan perhitungan total; (2) pembuatan order, order items, pengurangan stok, dan pengosongan cart.
-
----
-
-## Slide 7 — Screenshot Kode: Admin, Upload & Analytics
-
-### A. Proteksi Akses Admin
-
-Sumber: `app/Http/Middleware/AdminMiddleware.php`
-
-```php
-class AdminMiddleware
-{
-    public function handle(Request $request, Closure $next): Response
-    {
-        // Pastikan user sudah login dan memiliki role admin.
-        if (Auth::check() && Auth::user()->role === 'admin') {
-
-            // Jika lolos pemeriksaan, teruskan request ke controller.
-            return $next($request);
-        }
-
-        // Jika bukan admin, arahkan kembali ke Home dengan pesan error.
-        return redirect()->route('home')
-            ->with('error', 'You are not authorized to access this page.');
-    }
-}
-```
-
-Pendaftaran alias middleware di `bootstrap/app.php`:
-
-```php
-// Daftarkan alias admin agar dapat digunakan pada definisi route.
-$middleware->alias([
-    'admin' => AdminMiddleware::class,
-]);
-```
-
-**Alur penjelasan:**
-1. Request melewati middleware sebelum controller dijalankan.
-2. Auth::check() memeriksa apakah user sudah login.
-3. Auth::user()->role memeriksa role akun.
-4. Jika role admin, request diteruskan dengan $next($request).
-5. Jika tidak memenuhi syarat, user diarahkan ke Home.
-
-### B. Validasi & Penyimpanan Produk
-
-Sumber: `app/Http/Controllers/ProductController.php`, method `store()`.
-
-```php
-public function store(Request $request): RedirectResponse
-{
-    // Validasi seluruh data yang dikirim dari form tambah produk.
-    $validated = $request->validate([
-        // Nama produk wajib diisi dan maksimal 255 karakter.
-        'name' => ['required', 'string', 'max:255'],
-
-        // Slug harus unik agar URL produk tidak bertabrakan.
-        'slug' => ['required', 'string', 'max:255', 'unique:products,slug'],
-
-        // Deskripsi produk wajib diisi.
-        'description' => ['required', 'string', 'max:255'],
-
-        // Field image berisi path gambar yang sudah diunggah.
-        'image' => ['required', 'string', 'max:255'],
-
-        // Harga dan stok harus integer dan tidak boleh negatif.
-        'price' => ['required', 'integer', 'min:0'],
-        'stock' => ['required', 'integer', 'min:0'],
-
-        // Pastikan kategori yang dipilih tersedia di tabel kategori.
-        'category_id' => ['required', 'integer', 'exists:product_categories,id'],
-    ]);
-
-    // Simpan data yang sudah lolos validasi ke tabel products.
-    Product::create($validated);
-
-    // Kembali ke daftar produk dengan notifikasi sukses.
-    return redirect()
-        ->route('products.index')
-        ->with('success', 'Product created successfully.');
-}
-```
-
-**Alur penjelasan:**
-1. Form mengirim data produk ke method store().
-2. Laravel memvalidasi seluruh field.
-3. Jika gagal, Laravel mengembalikan user ke form dengan pesan error.
-4. Jika valid, Eloquent menyimpan data menggunakan Product::create().
-5. Admin kembali ke daftar produk dan melihat notifikasi sukses.
-
-### C. Upload Gambar Produk
-
-Sumber: `app/Http/Controllers/FileUploadController.php`, method `store()`.
-
-```php
-public function store(Request $request): JsonResponse
-{
-    // Validasi file: wajib berupa file dengan format yang diizinkan.
-    // Batas ukuran file adalah 2048 KB atau 2 MB.
-    $request->validate([
-        'file' => [
-            'required',
-            'file',
-            'mimes:jpg,jpeg,png,gif,webp',
-            'max:2048',
-        ],
-    ]);
-
-    // Ambil file yang dikirim melalui request.
-    $file = $request->file('file');
-
-    // Simpan file ke folder uploads pada disk public.
-    $path = $file->store('uploads', 'public');
-
-    // Kembalikan path dan informasi file dalam format JSON ke frontend.
-    return response()->json([
-        'path' => $path,
-        'url' => '/storage/' . $path,
-        'name' => $file->getClientOriginalName(),
-        'size' => $file->getSize(),
-        'extension' => strtolower(
-            $file->extension() ?: $file->getClientOriginalExtension()
-        ),
-    ]);
-}
-```
-
-**Alur penjelasan:**
-1. Frontend mengirim file ke endpoint upload.
-2. Backend memvalidasi format dan ukuran file.
-3. Laravel Storage menyimpan file pada disk public.
-4. Backend mengembalikan path dan URL dalam JSON.
-5. Frontend menggunakan path tersebut ketika menyimpan data produk.
-
-### D. Statistik Dashboard
-
-Sumber: `app/Http/Controllers/DashboardController.php`, method `index()`.
-
-```php
-public function index()
-{
-    // Hitung total produk, kategori, pesanan, dan klik produk.
-    $totalProducts = Product::count();
-    $totalCategories = ProductCategory::count();
-    $totalOrders = Order::count();
-    $totalProductClicks = (int) Product::sum('click');
-
-    // Siapkan nilai untuk empat kartu statistik dashboard.
-    $metrics = [
-        ['label' => 'Total Products', 'value' => $totalProducts, 'icon' => 'package'],
-        ['label' => 'Total Product Clicks', 'value' => $totalProductClicks, 'icon' => 'mouse-pointer-click'],
-        ['label' => 'Total Categories', 'value' => $totalCategories, 'icon' => 'tag'],
-        ['label' => 'Total Orders', 'value' => $totalOrders, 'icon' => 'shopping-bag'],
-    ];
-
-    // Pilih fungsi ekstraksi bulan sesuai driver database.
-    $monthExpression = DB::connection()->getDriverName() === 'sqlite'
-        ? "CAST(strftime('%m', created_at) AS INTEGER)"
-        : 'MONTH(created_at)';
-
-    // Hitung jumlah order per bulan pada tahun berjalan.
-    $monthlyOrders = Order::query()
-        ->whereYear('created_at', now()->year)
-        ->selectRaw($monthExpression . ' as month, COUNT(*) as total')
-        ->groupBy('month')
-        ->pluck('total', 'month');
-
-    // Siapkan 12 label bulan dan isi bulan tanpa order dengan angka nol.
-    $ordersChart = [
-        'labels' => ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-        'orders' => collect(range(1, 12))
-            ->map(fn (int $month) => (int) ($monthlyOrders[$month] ?? 0))
-            ->all(),
-    ];
-
-    // Ambil lima produk dengan klik tertinggi, lalu bentuk data yang dibutuhkan view.
-    $products_clicks = Product::query()
-        ->orderByDesc('click')
-        ->orderByDesc('id')
-        ->limit(5)
-        ->get()
-        ->map(fn (Product $product) => [
-            'image' => $product->image,
-            'label' => $product->name,
-            'url' => route('product-detail', $product),
-            'clicks' => (int) $product->click,
-        ])
-        ->all();
-
-    // Hitung jumlah order berdasarkan status pada tabel orders.
-    // (Detail query order_statuses disingkat pada contoh presentasi.)
-    $order_statuses = /* hasil agregasi order berdasarkan status */ [];
-
-    // Gabungkan data line chart dan doughnut chart untuk dikirim ke JavaScript.
-    $chart_data = [
-        'orders' => $ordersChart,
-        'order_statuses' => $order_statuses,
-    ];
-
-    // Kirim data statistik, produk populer, dan data chart ke Blade.
-    return view('admin.dashboard', compact(
-        'metrics',
-        'products_clicks',
-        'order_statuses',
-        'chart_data',
-    ));
-}
-```
-
-**Alur penjelasan:**
-1. Query agregasi menghitung total produk, kategori, pesanan, dan klik.
-2. Query bulanan menghitung jumlah order berdasarkan bulan pada tahun berjalan.
-3. Bulan yang belum memiliki pesanan diisi angka nol.
-4. Produk diurutkan berdasarkan jumlah klik tertinggi.
-5. Controller juga menghitung distribusi status pesanan.
-6. Data statistik dan chart dikirim ke Blade untuk ditampilkan.
-
-> Potongan ini disederhanakan untuk presentasi. Screenshot kode aktual sebaiknya juga memperlihatkan bagian perhitungan order_statuses dan chart_data agar terlihat bagaimana data status pesanan dikirim ke frontend.
-
-### E. Rendering Grafik Dashboard
-
-Sumber: `resources/js/dashboard.js`.
-
-```js
-// Import controller, elemen, scale, dan plugin Chart.js yang diperlukan.
-import {
-    ArcElement,
-    CategoryScale,
-    Chart,
-    DoughnutController,
-    Filler,
-    LinearScale,
-    LineController,
-    LineElement,
-    PointElement,
-    Tooltip,
-} from "chart.js";
-
-// Registrasikan komponen Chart.js sebelum membuat grafik.
-Chart.register(
-    ArcElement,
-    CategoryScale,
-    DoughnutController,
-    Filler,
-    LinearScale,
-    LineController,
-    LineElement,
-    PointElement,
-    Tooltip,
-);
-
-// Ambil data JSON yang disisipkan oleh Blade ke halaman dashboard.
-function getDashboardData() {
-    const element = document.getElementById("dashboard-chart-data");
-
-    // Jika elemen tidak ditemukan, hentikan proses.
-    if (!element) return null;
-
-    // Ubah teks JSON menjadi object JavaScript.
-    try {
-        return JSON.parse(element.textContent);
-    } catch (error) {
-        console.error("Unable to parse dashboard chart data.", error);
-        return null;
-    }
-}
-
-// Buat line chart untuk menampilkan jumlah order setiap bulan.
-function createOrdersChart(canvas, orders) {
-    new Chart(canvas, {
-        type: "line",
-        data: {
-            labels: orders.labels,
-            datasets: [{
-                label: "Orders",
-                data: orders.orders,
-            }],
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-        },
-    });
-}
-
-// Buat doughnut chart untuk menampilkan distribusi status order.
-function createOrderStatusChart(canvas, statuses) {
-    new Chart(canvas, {
-        type: "doughnut",
-        data: {
-            // Ambil nama status sebagai label setiap bagian grafik.
-            labels: statuses.map((status) => status.name),
-            datasets: [{
-                // Ambil jumlah order dan warna untuk setiap status.
-                data: statuses.map((status) => status.value),
-                backgroundColor: statuses.map((status) => status.color),
-            }],
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-        },
-    });
-}
-
-// Inisialisasi seluruh grafik ketika data dan elemen canvas tersedia.
-function initializeDashboard() {
-    const data = getDashboardData();
-
-    if (!data) return;
-
-    // Temukan canvas untuk grafik order dan status.
-    const ordersCanvas = document.getElementById("orders-chart");
-    const statusCanvas = document.getElementById("order-status-chart");
-
-    // Hapus instance sebelumnya, lalu render line chart terbaru.
-    if (ordersCanvas && data.orders) {
-        Chart.getChart(ordersCanvas)?.destroy();
-        createOrdersChart(ordersCanvas, data.orders);
-    }
-
-    // Hapus instance sebelumnya, lalu render doughnut chart terbaru.
-    if (statusCanvas && data.order_statuses) {
-        Chart.getChart(statusCanvas)?.destroy();
-        createOrderStatusChart(statusCanvas, data.order_statuses);
-    }
-}
-
-// Bersihkan instance chart sebelum Boost mengganti konten halaman.
-function destroyDashboardCharts() {
-    const ordersCanvas = document.getElementById("orders-chart");
-    const statusCanvas = document.getElementById("order-status-chart");
-
-    if (ordersCanvas) Chart.getChart(ordersCanvas)?.destroy();
-    if (statusCanvas) Chart.getChart(statusCanvas)?.destroy();
-}
-
-// Integrasi dengan event Boost HTML untuk navigasi tanpa reload penuh.
-document.addEventListener("boost:before-swap", destroyDashboardCharts);
-document.addEventListener("boost:page-ready", initializeDashboard);
-
-// Inisialisasi awal: tunggu DOM jika dokumen masih dalam proses loading.
-if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initializeDashboard, { once: true });
-} else {
-    // Jika DOM sudah siap, langsung inisialisasi grafik.
-    initializeDashboard();
-}
-```
-
-**Alur penjelasan:**
-1. Import dan registrasi modul Chart.js.
-2. Ambil data JSON yang dikirim oleh Blade.
-3. Parse JSON menjadi object JavaScript.
-4. Cari elemen canvas untuk setiap grafik.
-5. Render line chart untuk jumlah order bulanan.
-6. Render doughnut chart untuk distribusi status pesanan.
-7. Hapus instance chart sebelumnya agar tidak terjadi duplikasi.
-
-> Potongan JavaScript di atas disederhanakan untuk menjelaskan konsep. Implementasi aktual juga menangani event Boost HTML (boost:before-swap dan boost:page-ready) agar chart dibersihkan dan diinisialisasi ulang saat navigasi halaman tanpa reload penuh.
-
-**Screenshot kode yang perlu diambil:**
-- `AdminMiddleware.php` — pemeriksaan role admin.
-- `bootstrap/app.php` — pendaftaran alias middleware.
-- `ProductController.php` — validasi dan penyimpanan produk.
-- `FileUploadController.php` — validasi dan penyimpanan gambar.
-- `DashboardController.php` — agregasi data dashboard.
-- `resources/js/dashboard.js` — parsing data dan rendering chart.
-
----
-
-## Slide 8 — User Flow
-
-### A. Customer Flow
-
-- Pengunjung membuka halaman Home.
-  - Melihat hero, kategori, dan produk.
-- Pengunjung membuka halaman Shop.
-  - Mencari produk.
-  - Memilih kategori.
-  - Membuka detail produk.
-- Pengunjung menekan tombol Tambah ke Keranjang.
-  - Jika belum login, diarahkan untuk login.
-  - Jika stok tidak mencukupi, sistem menampilkan pesan error.
-  - Jika valid, produk disimpan ke keranjang.
-- Customer membuka halaman Cart.
-  - Mengubah kuantitas produk.
-  - Menghapus produk jika diperlukan.
-  - Memeriksa total belanja.
-- Customer menekan Checkout.
-  - Sistem memvalidasi keranjang dan stok terbaru.
-  - Sistem membuat order dan order items.
-  - Sistem mengurangi stok produk.
-  - Sistem menghapus item keranjang.
-- Customer melihat halaman detail pesanan.
-  - Customer dapat membuka riwayat pesanan.
-  - Customer dapat melihat detail order miliknya.
-
-### B. Admin Flow
-
-- Admin membuka halaman Login.
-- Admin berhasil login dengan akun ber-role `admin`.
-- Admin masuk ke Dashboard.
-  - Melihat total produk, kategori, pesanan, dan klik produk.
-  - Melihat grafik jumlah pesanan bulanan.
-  - Melihat ringkasan status pesanan.
-  - Melihat produk dengan klik terbanyak.
-- Admin membuka Product Management.
-  - Melihat daftar produk.
-  - Mencari, memfilter, dan mengurutkan produk.
-  - Menambah produk.
-  - Mengedit produk.
-  - Menghapus produk.
-- Admin membuka Category Management.
-  - Menambah kategori.
-  - Mengedit kategori.
-  - Menghapus kategori.
-- Admin membuka Order Management.
-  - Melihat seluruh pesanan.
-  - Membuka detail pesanan pelanggan.
-- Admin logout.
-
-### C. Diagram Alur Customer
+### Diagram Autentikasi dan Area Aplikasi
 
 ```mermaid
 flowchart TD
-    A([Mulai]) --> B[Home / Shop]
-    B --> C[Pilih Produk]
-    C --> D[Detail Produk]
-    D --> E{Sudah Login?}
-    E -- Tidak --> F[Login / Register]
-    F --> D
-    E -- Ya --> G{Stok Tersedia?}
-    G -- Tidak --> H[Tampilkan Pesan Stok]
-    H --> D
-    G -- Ya --> I[Tambah ke Keranjang]
-    I --> J[Cart]
-    J --> K[Atur Kuantitas / Hapus Item]
-    K --> L[Checkout]
-    L --> M{Keranjang & Stok Valid?}
-    M -- Tidak --> J
-    M -- Ya --> N[Buat Order & Order Items]
-    N --> O[Kurangi Stok & Kosongkan Cart]
-    O --> P[Order Detail]
-    P --> Q([Selesai])
+    A([Pengunjung]) --> B{Pilih area}
+    B -->|Customer| C[/login atau register/]
+    B -->|Admin| D[/admin/login/]
+    C --> E[Customer Guard]
+    D --> F[Admin Guard]
+    E --> G[Storefront dan fitur customer]
+    F --> H[Dashboard dan fitur admin]
+    G --> I[Middleware customer dan verifikasi email sesuai kebutuhan]
+    H --> J[Middleware admin]
 ```
+
+**Sumber screenshot kode:** `routes/web.php`, `routes/auth.php`, `config/auth.php`, dan middleware di `app/Http/Middleware/`.
 
 ---
 
-## Slide 9 — ERD (Entity Relationship Diagram)
+## Slide 6 — Katalog Produk, Varian & Inventory
 
-### Struktur Database
+### Pengelolaan Produk
 
-Database utama terdiri dari enam entitas:
+Data produk mencakup informasi katalog dan operasional, antara lain:
 
-- `users` — menyimpan akun customer dan admin.
-- `product_categories` — menyimpan kategori produk.
-- `products` — menyimpan katalog, harga, stok, dan jumlah klik.
-- `carts` — menyimpan item keranjang milik user.
-- `orders` — menyimpan data transaksi/pesanan.
-- `order_items` — menyimpan rincian produk pada setiap pesanan.
+- Nama, slug, deskripsi, kategori, dan status aktif/featured.
+- Galeri gambar dengan gambar utama.
+- SKU dan barcode.
+- Harga jual, harga pembanding, dan harga modal.
+- SEO title dan SEO description.
+- Berat serta dimensi untuk kebutuhan pengiriman.
+- Jumlah klik/kunjungan detail produk.
 
-### Diagram ERD
+### Varian Produk
+
+Produk dapat memiliki beberapa varian, misalnya kombinasi warna dan ukuran.
+
+- Opsi dan nilai opsi dikelola melalui product options.
+- Setiap kombinasi varian memiliki SKU, barcode, harga, stok, berat, dan dimensi.
+- Varian dapat memiliki gambar tersendiri.
+- Warna dapat menyimpan kode warna HEX agar storefront dapat menampilkan swatch warna yang sesuai.
+- Produk lama tetap didukung melalui varian default/legacy yang dibuat untuk menjaga kompatibilitas.
+
+### Inventory
+
+- Stok dikelola pada tingkat varian.
+- Admin dapat mencatat penambahan atau pengurangan stok.
+- Pergerakan stok disimpan sebagai inventory/stock movement.
+- Perubahan stok saat transaksi dilakukan melalui service inventory agar pencatatan lebih konsisten.
+- Data stok agregat produk digunakan untuk kebutuhan ringkasan katalog.
+
+**Sumber kode:**
+- `app/Models/Product.php`
+- `app/Models/ProductVariant.php`
+- `app/Models/ProductOption.php`
+- `app/Models/ProductOptionValue.php`
+- `app/Models/ProductImage.php`
+- `app/Services/InventoryService.php`
+- `app/Http/Controllers/ProductController.php`
+- `app/Http/Controllers/InventoryController.php`
+
+**Visual:**
+- [PLACEHOLDER: Product editor dengan tab variants & inventory]
+- [PLACEHOLDER: Storefront color swatches dan pemilih varian]
+- File: `docs/screenshots/14-admin-product-variants.png`
+
+---
+
+## Slide 7 — Cart, Checkout & Pembayaran
+
+### Keranjang Belanja
+
+1. Customer menambahkan produk/varian ke keranjang.
+2. Sistem memvalidasi kuantitas dan ketersediaan stok.
+3. Customer dapat mengubah kuantitas atau menghapus item.
+4. Total belanja dihitung dari item yang ada di keranjang.
+5. Aksi perubahan cart dibatasi pada customer yang memiliki item tersebut.
+
+### Checkout
+
+1. Customer harus login dan memenuhi persyaratan verifikasi email.
+2. Customer memulai checkout dari halaman cart dan memilih alamat pengiriman.
+3. Sistem meminta opsi tarif pengiriman berdasarkan tujuan dan detail barang.
+4. Customer memilih layanan pengiriman.
+5. Sistem memvalidasi ulang item, harga, dan stok sebelum membuat pesanan.
+6. Pesanan dan snapshot item disimpan dalam transaksi database.
+7. Customer diarahkan ke detail pesanan untuk melanjutkan pembayaran.
+
+### Pembayaran
+
+- Integrasi Midtrans digunakan untuk membuat sesi/transaction token pembayaran.
+- Status pembayaran diperbarui berdasarkan callback/notifikasi yang diverifikasi.
+- Halaman sukses dan gagal pembayaran tersedia.
+- Data transaksi disimpan pada order untuk mendukung pemeriksaan status dan rekonsiliasi.
+- Masa berlaku pembayaran yang belum selesai ditangani oleh proses otomatis.
+- Alur pembatalan yang memenuhi ketentuan dapat memproses refund melalui API, kemudian menyimpan referensi dan status refund.
+
+### Diagram Checkout
+
+```mermaid
+flowchart TD
+    A[Cart] --> B[Checkout]
+    B --> C[Validasi alamat dan item]
+    C --> D[Ambil tarif pengiriman]
+    D --> E[Pilih layanan]
+    E --> F[Validasi stok dan harga]
+    F --> G[Buat order dan order items]
+    G --> H[Buat sesi pembayaran]
+    H --> I[Customer membayar]
+    I --> J[Callback Midtrans]
+    J --> K[Verifikasi dan perbarui status]
+    K --> L[Notifikasi dan proses fulfillment]
+```
+
+**Sumber kode:**
+- `app/Http/Controllers/CartController.php`
+- `app/Http/Controllers/OrderController.php`
+- `app/Http/Controllers/PaymentController.php`
+- `app/Services/MidtransPaymentService.php`
+- `app/Services/InventoryService.php`
+- `resources/views/cart/index.blade.php`
+- `resources/views/orders/`
+- `resources/views/payments/`
+
+**Visual:** [PLACEHOLDER: Halaman cart dengan form alamat, pilihan pengiriman, dan ringkasan checkout]
+File: `docs/screenshots/06-checkout.png`
+
+---
+
+## Slide 8 — Pesanan, Pengiriman, Pembatalan & Retur
+
+### Pengelolaan Pesanan
+
+- Setiap pesanan memiliki nomor order, customer, item snapshot, nilai transaksi, dan status.
+- Customer hanya dapat melihat pesanan miliknya.
+- Admin dapat melihat seluruh pesanan dan memperbarui status melalui halaman detail.
+- Customer dapat mengunduh invoice PDF.
+- Customer dapat mengonfirmasi bahwa pesanan telah diterima.
+
+### Fulfillment & Tracking
+
+- Tarif pengiriman diperoleh pada proses checkout.
+- Data pengiriman diproses melalui integrasi Biteship.
+- Status pengiriman dapat diperbarui melalui webhook dan pemeriksaan ulang.
+- Customer dapat melihat informasi pelacakan pada halaman detail pesanan.
+- Admin memiliki halaman rekonsiliasi untuk memeriksa pesanan yang status pengirimannya perlu diselaraskan.
+
+### Pembatalan & Refund
+
+- Customer mengajukan permintaan pembatalan dari pesanan yang memenuhi syarat.
+- Admin meninjau dan memproses permintaan sesuai status pesanan dan pembayaran.
+- Jika refund diperlukan, proses refund dijalankan melalui integrasi pembayaran dan hasilnya dicatat.
+- Bukti refund dapat ditampilkan kepada pihak yang berwenang.
+
+### Retur
+
+- Customer mengajukan retur dan melampirkan bukti.
+- Admin dapat meninjau, meminta revisi, menerima barang retur, dan menentukan penyelesaian.
+- Customer dapat mengirim revisi bukti dan informasi pengiriman balik.
+- Status dan tahapan penyelesaian dicatat agar proses dapat ditelusuri.
+
+**Sumber kode:**
+- `app/Http/Controllers/OrderController.php`
+- `app/Http/Controllers/OrderCancellationRequestController.php`
+- `app/Http/Controllers/OrderReturnRequestController.php`
+- `app/Services/BiteshipShippingService.php`
+- `app/Http/Controllers/BiteshipWebhookController.php`
+- `resources/views/orders/show.blade.php`
+- `resources/views/admin/orders/show.blade.php`
+- `docs/ORDER-FULFILLMENT.md`
+- `docs/ORDER-CANCELLATION.md`
+
+**Visual:**
+- [PLACEHOLDER: Detail pesanan customer dengan status dan tracking]
+- [PLACEHOLDER: Detail pesanan admin dengan tindakan operasional]
+- File: `docs/screenshots/07-order-detail.png` dan `docs/screenshots/16-admin-orders.png`
+
+---
+
+## Slide 9 — Dashboard & Operasional Admin
+
+### Dashboard
+
+Dashboard admin menyajikan ringkasan performa dan aktivitas toko, seperti metrik katalog, pesanan, dan visualisasi data operasional yang tersedia.
+
+### Modul Admin
+
+| Modul | Fungsi |
+|---|---|
+| Products | CRUD produk, gambar, opsi, varian, dan informasi katalog |
+| Categories | CRUD kategori produk |
+| Inventory | Penyesuaian stok dan riwayat pergerakan stok |
+| Orders | Daftar pesanan, detail, dan pembaruan status |
+| Users | Pengelolaan akun admin/customer sesuai kewenangan |
+| Reviews | Moderasi dan pengelolaan ulasan |
+| Payment reconciliation | Pemeriksaan transaksi dan penyelesaian ketidaksesuaian |
+| Biteship reconciliation | Pemeriksaan dan retry proses/status pengiriman |
+| Activity logs | Riwayat aktivitas admin dan customer |
+| Email delivery logs | Status pengiriman email dan retry yang tersedia |
+| Notifications | Notifikasi operasional untuk admin |
+
+### Monitoring Transaksi
+
+- Rekonsiliasi pembayaran dapat memeriksa kembali status transaksi ke provider.
+- Perbedaan status dapat ditampilkan sebagai alert untuk ditinjau admin.
+- Penyelesaian ketidaksesuaian dicatat sebagai bagian dari audit.
+- Rekonsiliasi pengiriman membantu menemukan status order yang belum sinkron.
+- Log webhook pembayaran, pengiriman, aktivitas, dan email mendukung investigasi.
+
+**Sumber kode:**
+- `app/Http/Controllers/DashboardController.php`
+- `app/Http/Controllers/InventoryController.php`
+- `app/Http/Controllers/PaymentReconciliationController.php`
+- `app/Http/Controllers/BiteshipReconciliationController.php`
+- `app/Http/Controllers/AdminActivityLogController.php`
+- `app/Http/Controllers/CustomerActivityLogController.php`
+- `app/Http/Controllers/EmailDeliveryLogController.php`
+
+**Visual:** [PLACEHOLDER: Dashboard dan halaman rekonsiliasi]
+File: `docs/screenshots/12-admin-dashboard.png`, `17-payment-reconciliation.png`, `18-shipping-reconciliation.png`
+
+---
+
+## Slide 10 — Database & Entity Relationship
+
+### Entitas Utama
+
+Struktur database berkembang dari transaksi dasar menjadi modul katalog, pembayaran, fulfillment, audit, dan operasional. Entitas penting meliputi:
+
+- **users** — akun customer dan admin dengan role.
+- **product_categories** — kategori produk.
+- **products** — data utama katalog.
+- **product_variants** — SKU/varian, harga, stok, dan dimensi per varian.
+- **product_options** dan **product_option_values** — definisi opsi serta nilai varian.
+- **product_images** — galeri gambar produk/varian.
+- **carts** — item keranjang customer.
+- **orders** dan **order_items** — transaksi dan snapshot item.
+- **user_addresses** — alamat customer.
+- **wishlist_items** — daftar produk yang disimpan customer.
+- **product_reviews** dan **product_review_media** — ulasan dan media.
+- **stock_movements** — histori perubahan stok.
+- **order_cancellation_requests** dan **order_return_requests** — alur pembatalan dan retur.
+- **payment_webhook_logs**, **payment_reconciliation_checks**, dan entitas terkait — audit serta rekonsiliasi pembayaran.
+- **biteship_webhook_logs** dan **biteship_reconciliation_checks** — audit serta rekonsiliasi pengiriman.
+- **admin_activity_logs**, **customer_activity_logs**, dan **email_delivery_logs** — jejak aktivitas dan email.
+
+### Diagram Relasi Konseptual
+
+Diagram berikut disederhanakan untuk presentasi. Tabel pendukung audit, notifikasi, dan rekonsiliasi tidak seluruhnya ditampilkan.
 
 ```mermaid
 erDiagram
     USERS ||--o{ CARTS : memiliki
     USERS ||--o{ ORDERS : membuat
+    USERS ||--o{ USER_ADDRESSES : menyimpan
+    USERS ||--o{ WISHLIST_ITEMS : menyimpan
+    USERS ||--o{ PRODUCT_REVIEWS : menulis
     PRODUCT_CATEGORIES ||--o{ PRODUCTS : mengelompokkan
-    PRODUCTS ||--o{ CARTS : dimasukkan_ke
-    PRODUCTS ||--o{ ORDER_ITEMS : dipesan
+    PRODUCTS ||--o{ PRODUCT_VARIANTS : memiliki
+    PRODUCTS ||--o{ PRODUCT_IMAGES : memiliki
+    PRODUCTS ||--o{ PRODUCT_OPTIONS : mendefinisikan
+    PRODUCT_OPTIONS ||--o{ PRODUCT_OPTION_VALUES : memiliki
+    PRODUCT_VARIANTS ||--o{ PRODUCT_IMAGES : memiliki
+    PRODUCT_VARIANTS ||--o{ STOCK_MOVEMENTS : dicatat
+    PRODUCT_VARIANTS ||--o{ CARTS : dipilih
     ORDERS ||--|{ ORDER_ITEMS : memiliki
-    CARTS o|--o| ORDERS : referensi_legacy
-
-    USERS {
-        bigint id PK
-        string name
-        string email UK
-        string password
-        string role
-    }
-
-    PRODUCT_CATEGORIES {
-        bigint id PK
-        string name
-        string slug UK
-    }
-
-    PRODUCTS {
-        bigint id PK
-        string name
-        string slug UK
-        string description
-        string image
-        integer price
-        integer stock
-        bigint click
-        bigint category_id FK
-    }
-
-    CARTS {
-        bigint id PK
-        bigint user_id FK
-        bigint product_id FK
-        integer quantity
-    }
-
-    ORDERS {
-        bigint id PK
-        bigint user_id FK
-        bigint cart_id FK "nullable"
-        string user_name
-        string user_email
-        string user_phone "nullable"
-        string address "nullable"
-        string city "nullable"
-        string state "nullable"
-        string zip "nullable"
-        string country "nullable"
-        integer total
-        string status
-    }
-
-    ORDER_ITEMS {
-        bigint id PK
-        bigint order_id FK
-        bigint product_id FK
-        string product_name
-        integer quantity
-        integer price
-        integer total
-    }
+    PRODUCTS ||--o{ ORDER_ITEMS : direferensikan
+    PRODUCT_VARIANTS ||--o{ ORDER_ITEMS : snapshot_varian
+    ORDERS ||--o{ ORDER_CANCELLATION_REQUESTS : dapat_dibatalkan
+    ORDERS ||--o{ ORDER_RETURN_REQUESTS : dapat_diretur
+    ORDERS ||--o{ PAYMENT_WEBHOOK_LOGS : memiliki_log
 ```
 
-### Penjelasan Relasi
+### Catatan Desain
 
-- Satu user dapat memiliki banyak cart item.
-- Satu user dapat membuat banyak order.
-- Satu kategori dapat memiliki banyak produk.
-- Satu produk dapat muncul pada banyak cart item.
-- Satu order memiliki satu atau lebih order item.
-- Satu produk dapat tercatat pada banyak order item.
-- `orders.cart_id` bersifat nullable untuk kompatibilitas data lama; checkout saat ini membuat order dengan `cart_id = null`. Relasi ini bukan sumber utama rincian transaksi.
-- `order_items` menyimpan `product_name` dan `price` sebagai snapshot saat checkout agar rincian historis tetap tersedia.
+- ID entitas domain menggunakan UUID pada model yang menerapkan UUID.
+- `order_items` menyimpan snapshot informasi produk/varian dan harga saat transaksi.
+- Stok varian dan histori pergerakannya dipisahkan agar perubahan inventori dapat diaudit.
+- Tabel log dan rekonsiliasi dipisahkan dari data transaksi utama.
+- Relasi aktual dan kolom lengkap mengacu pada migration serta model, bukan hanya diagram ringkas ini.
 
-**Sumber struktur:** `database/migrations/` dan `app/Models/`.
+**Sumber:** `database/migrations/` dan `app/Models/`.
 
 ---
 
-## Slide 10 — Demo Project
+## Slide 11 — Keamanan, Validasi & Audit
+
+### Proteksi Akses
+
+- Guard customer dan admin dipisahkan.
+- Middleware membatasi akses berdasarkan role.
+- Customer hanya dapat mengakses data pesanan dan alamat miliknya.
+- Operasi sensitif memerlukan autentikasi dan, pada alur tertentu, verifikasi email.
+- Route webhook diproses melalui handler khusus dan validasi yang sesuai.
+
+### Integritas Transaksi
+
+- Validasi dilakukan pada request dan business logic.
+- Operasi checkout dan perubahan stok menggunakan transaksi database.
+- Baris data penting dapat dikunci selama proses untuk mengurangi risiko konflik stok.
+- Callback pembayaran diverifikasi sebelum status transaksi dipercaya.
+- Proses refund memeriksa konteks dan nominal sebelum mengirim permintaan refund.
+- Webhook dan proses rekonsiliasi dibuat agar status transaksi dapat diperiksa ulang.
+
+### Audit & Observability
+
+- Aktivitas admin dicatat melalui admin activity log.
+- Aktivitas customer dicatat secara selektif tanpa menyimpan payload sensitif.
+- Webhook pembayaran dan pengiriman memiliki log tersendiri.
+- Email transaksional memiliki delivery log dan mekanisme retry yang tersedia.
+- Ketidaksesuaian pembayaran/pengiriman dapat ditinjau melalui halaman rekonsiliasi.
+
+**Sumber kode:**
+- `app/Http/Middleware/`
+- `app/Services/MidtransPaymentService.php`
+- `app/Services/PaymentReconciliationService.php`
+- `app/Services/InventoryService.php`
+- `app/Http/Controllers/BiteshipWebhookController.php`
+- `app/Models/*Log.php`
+
+---
+
+## Slide 12 — Otomatisasi & Pengujian
+
+### Proses Terjadwal
+
+Scheduler Laravel pada `routes/console.php` menjalankan beberapa pekerjaan operasional:
+
+- Melengkapi pesanan yang telah memenuhi kondisi auto-complete.
+- Mengirim pengingat untuk pengiriman yang melewati estimasi.
+- Membatalkan/menangani pesanan yang melewati masa pembayaran.
+- Menjalankan rekonsiliasi status pembayaran secara berkala.
+- Beberapa proses menggunakan `withoutOverlapping()` untuk menghindari eksekusi yang bertumpuk.
+
+Jadwal aktif dan frekuensi harus mengikuti konfigurasi pada file scheduler saat deployment.
+
+### Pengujian
+
+Feature test Pest tersedia untuk modul-modul penting, antara lain:
+
+- Autentikasi customer dan admin.
+- Cart, checkout, dan order.
+- Payment callback serta rekonsiliasi pembayaran.
+- Fulfillment Biteship dan follow-up pengiriman.
+- Product, product variant, dan kategori.
+- Inventory dan stock movement.
+- Pembatalan, retur, dan refund workflow.
+- Review, wishlist, alamat, dan notifikasi.
+- Activity log dan email delivery log.
+
+**Perintah pengujian:**
+
+```bash
+php artisan test
+```
+
+**Pemeriksaan frontend:**
+
+```bash
+npm run build
+```
+
+**Sumber:** `tests/Feature/`, `routes/console.php`, dan `app/Console/Commands/`.
+
+---
+
+## Slide 13 — Demo Project
 
 ### Urutan Demo yang Disarankan
 
-**1. Halaman Publik**
-- Buka Home dan tunjukkan hero, kategori, serta daftar produk.
-- Buka Shop.
-- Cari produk menggunakan kata kunci.
-- Filter produk berdasarkan kategori.
-- Buka detail salah satu produk.
-- Tunjukkan harga, stok, deskripsi, dan pemilih kuantitas.
+**1. Storefront**
+- Tampilkan Home dan Shop.
+- Cari produk dan filter berdasarkan kategori.
+- Buka detail produk.
+- Tunjukkan galeri gambar dan pemilihan varian, misalnya warna dan ukuran.
 
-**2. Autentikasi Customer**
-- Registrasi akun baru atau login sebagai customer.
-- Tunjukkan navigasi setelah login.
-- Jelaskan pembatasan akses halaman yang membutuhkan autentikasi.
+**2. Customer Account**
+- Login sebagai customer.
+- Tunjukkan profil, alamat, dan wishlist.
+- Jelaskan verifikasi email untuk fitur yang mensyaratkannya.
 
-**3. Keranjang & Checkout**
-- Tambahkan produk ke keranjang.
-- Tambahkan produk yang sama lagi untuk menunjukkan penggabungan kuantitas.
-- Ubah kuantitas di halaman cart.
-- Hapus salah satu item.
-- Checkout.
-- Tunjukkan halaman detail pesanan yang berhasil dibuat.
-- Tunjukkan stok produk berkurang dan keranjang menjadi kosong.
+**3. Cart & Checkout**
+- Tambahkan varian produk ke cart.
+- Ubah kuantitas dan tunjukkan validasi stok.
+- Pilih alamat serta layanan pengiriman.
+- Tunjukkan ringkasan checkout dan proses pembayaran.
 
-**4. Riwayat Pesanan**
-- Buka halaman Pesanan Saya.
-- Tunjukkan nomor order, tanggal, jumlah item, total, dan status.
-- Buka detail order.
-- Jelaskan bahwa user hanya dapat mengakses pesanan miliknya.
+**4. Order & Fulfillment**
+- Buka riwayat pesanan dan detail pesanan.
+- Tunjukkan invoice, status pembayaran, dan tracking pengiriman.
+- Perlihatkan proses konfirmasi penerimaan atau pengajuan pembatalan/retur sesuai data demo.
 
-**5. Admin Dashboard**
-- Logout dari customer dan login sebagai admin.
-- Buka Dashboard.
-- Tunjukkan total produk, kategori, order, dan klik produk.
-- Tunjukkan grafik order per bulan.
-- Tunjukkan distribusi status order.
-- Tunjukkan daftar produk dengan klik tertinggi.
+**5. Admin Operations**
+- Login melalui `/admin/login`.
+- Tampilkan dashboard.
+- Kelola produk dan varian.
+- Catat pergerakan stok.
+- Buka daftar pesanan dan detail order.
+- Tunjukkan proses pembaruan status dan modul rekonsiliasi.
 
-**6. Manajemen Produk**
-- Buka daftar produk.
-- Coba pencarian, filter kategori, dan sorting.
-- Tambahkan produk baru beserta gambar.
-- Edit harga atau stok produk.
-- Hapus produk jika aman untuk data demo.
-
-**7. Manajemen Kategori**
-- Buka daftar kategori.
-- Tambahkan kategori.
-- Edit nama atau slug kategori.
-- Tunjukkan jumlah produk per kategori.
-- Hapus kategori hanya jika tidak memiliki produk terkait.
-
-**8. Manajemen Pesanan**
-- Buka daftar seluruh order pada admin.
-- Buka salah satu detail order.
-- Tunjukkan informasi customer, item, kuantitas, subtotal, total, dan status.
-- Jelaskan bahwa perubahan status belum tersedia pada versi saat ini.
+**6. Monitoring**
+- Tampilkan payment reconciliation dan Biteship reconciliation.
+- Tunjukkan activity log dan email delivery log.
+- Jelaskan bagaimana log membantu penelusuran masalah.
 
 ### Checklist Persiapan Demo
 
-- [ ] Pastikan aplikasi dapat diakses dan database berjalan.
-- [ ] Jalankan seeder atau siapkan data demo yang cukup.
-- [ ] Siapkan akun customer dan admin.
-- [ ] Siapkan beberapa kategori dan produk dengan stok yang cukup.
-- [ ] Siapkan satu produk dengan stok terbatas untuk demo validasi stok.
-- [ ] Pastikan storage link aktif agar gambar produk tampil.
-- [ ] Pastikan grafik dashboard memiliki data pesanan.
-- [ ] Siapkan browser dalam kondisi logout sebelum demo customer.
-- [ ] Pastikan tidak ada data pribadi atau kredensial asli yang tampil saat presentasi.
+- [ ] Pastikan aplikasi, database, dan asset frontend berjalan.
+- [ ] Jalankan migration dan siapkan data demo.
+- [ ] Siapkan akun customer dan admin khusus demo.
+- [ ] Siapkan produk dengan beberapa varian, warna HEX, gambar, dan stok.
+- [ ] Siapkan alamat customer yang valid.
+- [ ] Pastikan konfigurasi sandbox integrasi pembayaran/pengiriman tersedia bila demo end-to-end dilakukan.
+- [ ] Siapkan pesanan dengan status yang sesuai untuk demo tracking, pembatalan, atau retur.
+- [ ] Pastikan storage link dan file gambar dapat diakses.
+- [ ] Hindari menampilkan kredensial, token, data pribadi, atau transaksi produksi.
 
 ### Akun Demo
 
@@ -1214,22 +600,23 @@ Isi setelah akun demo dipastikan tersedia. Jangan menampilkan password akun prib
 
 ---
 
-## Slide 11 — Penutup
+## Slide 14 — Kesimpulan & Pengembangan
 
 ### Kesimpulan
 
-E-Commerce Website telah mengimplementasikan alur utama toko online, mulai dari penampilan katalog produk, autentikasi pengguna, pengelolaan keranjang, checkout, hingga pencatatan dan pemantauan pesanan.
+E-Commerce Website telah berkembang menjadi aplikasi toko online dengan alur yang lebih lengkap dari katalog hingga operasional pascapembelian. Customer dapat mengelola akun, alamat, wishlist, keranjang, pembayaran, dan pesanan. Admin memiliki fasilitas untuk mengelola katalog dan varian, inventori, pengguna, pesanan, retur, serta pemantauan transaksi dan pengiriman.
 
-Dari sisi admin, aplikasi menyediakan pengelolaan produk dan kategori, proteksi akses berdasarkan role, serta dashboard untuk memantau ringkasan aktivitas toko.
+Integrasi pembayaran dan pengiriman dilengkapi pencatatan webhook, rekonsiliasi, serta audit untuk membantu menjaga konsistensi data dan memudahkan investigasi operasional.
 
-### Pengembangan Selanjutnya
+### Pengembangan Berikutnya
 
-- Menambahkan form alamat dan nomor telepon pada checkout.
-- Integrasi payment gateway.
-- Menambahkan aksi perubahan status pesanan untuk admin.
-- Menambahkan notifikasi status pesanan.
-- Mengimplementasikan wishlist.
-- Menambahkan pengelolaan pengiriman dan pelacakan pesanan.
+Prioritas lanjutan sebaiknya ditentukan berdasarkan hasil pengujian dan kebutuhan operasional, misalnya:
+
+- Memperluas automated test untuk skenario integrasi eksternal dan kegagalan jaringan.
+- Memperkuat observability, alerting, dan prosedur pemulihan proses asynchronous.
+- Mengoptimalkan performa katalog, pencarian, dan halaman admin saat data bertambah.
+- Menyempurnakan analitik penjualan dan laporan operasional.
+- Melakukan audit keamanan dan uji beban sebelum penggunaan produksi berskala besar.
 
 **Terima kasih.**
 
@@ -1237,9 +624,11 @@ Dari sisi admin, aplikasi menyediakan pengelolaan produk dan kategori, proteksi 
 
 ## Catatan Produksi PowerPoint
 
-1. Gunakan satu slide untuk setiap heading `Slide N`.
-2. Slide wireframe sebaiknya menggunakan screenshot aktual dengan ukuran besar; jangan memasukkan seluruh path file ke tampilan presentasi final.
-3. Path file dan catatan implementasi pada dokumen ini berfungsi sebagai panduan pembuat PPT.
-4. Untuk slide kode, ambil screenshot dari file sumber dengan font editor yang cukup besar. Potongan kode dalam dokumen dapat dipakai sebagai acuan, bukan harus ditampilkan seluruhnya.
-5. Untuk ERD, render diagram Mermaid menjadi gambar atau buat ulang menggunakan tool diagram agar terbaca di PowerPoint.
-6. Jangan menyatakan fitur payment gateway, update status order, wishlist, atau pengisian alamat checkout sudah tersedia karena belum diimplementasikan pada versi yang diperiksa.
+1. Gunakan satu slide untuk setiap heading `Slide N`; pecah bagian yang terlalu padat bila diperlukan.
+2. Utamakan screenshot aplikasi aktual untuk menunjukkan fitur yang sudah berjalan.
+3. Path file, route, dan catatan implementasi pada dokumen ini adalah panduan pembuat slide, bukan materi yang harus seluruhnya ditampilkan.
+4. Untuk slide kode, ambil potongan dari file sumber terkini. Jangan menyalin contoh kode lama dari materi presentasi versi sebelumnya tanpa memeriksa implementasinya.
+5. Render diagram Mermaid menjadi gambar atau buat ulang dengan tool diagram agar terbaca di PowerPoint.
+6. Untuk demo integrasi, gunakan akun sandbox dan data simulasi. Jangan menampilkan secret key, access token, atau data pelanggan sebenarnya.
+7. Status dan jadwal proses otomatis harus disesuaikan dengan konfigurasi deployment saat presentasi.
+8. Dokumen ini merangkum fitur yang teridentifikasi pada source code saat diperiksa; keberhasilan transaksi end-to-end tetap bergantung pada konfigurasi kredensial, webhook URL, scheduler, queue, dan layanan eksternal.
