@@ -1,17 +1,29 @@
-@import url('https://fonts.googleapis.com/css2?family=Geist:ital,wght@0,100..900;1,100..900&display=swap');
-@import 'tailwindcss';
+@import "tailwindcss";
 @plugin '@tailwindcss/forms';
-@import './nprogress.css';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+@theme inline {
+    --color-primary-50: var(--color-teal-50);
+    --color-primary-100: var(--color-teal-100);
+    --color-primary-200: var(--color-teal-200);
+    --color-primary-300: var(--color-teal-300);
+    --color-primary-400: var(--color-teal-400);
+    --color-primary-500: var(--color-teal-500);
+    --color-primary-600: var(--color-teal-600);
+    --color-primary-700: var(--color-teal-700);
+    --color-primary-800: var(--color-teal-800);
+    --color-primary-900: var(--color-teal-900);
+    --color-primary-950: var(--color-teal-950);
+}
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
 @theme {
-    --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans:
+        "Poppins", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+        "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 
 [x-cloak] {
@@ -21,4 +33,47 @@
 /* Prevent empty data-lucide placeholders from flashing before SVG rendering. */
 body:not(.icons-ready) [data-lucide] {
     visibility: hidden;
+}
+
+@import "./nprogress.css";
+
+/* Chrome, Safari, Edge, and Opera */
+.qty-input::-webkit-outer-spin-button,
+.qty-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* Firefox */
+.qty-input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+.container {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+}
+
+@layer base {
+    .storefront-shell { font-family: "Instrument Sans", ui-sans-serif, system-ui, sans-serif; font-feature-settings: "ss01" on; }
+    .storefront-shell :where(button, a, input, select, textarea) { -webkit-tap-highlight-color: transparent; }
+    .storefront-shell ::selection { background: rgb(13 148 136 / .18); color: rgb(17 24 39); }
+}
+
+@layer components {
+    .ui-input { min-height: 2.75rem; }
+    .ui-page { @apply container mx-auto max-w-7xl; }
+    .ui-surface { @apply rounded-2xl border border-gray-200/80 bg-white shadow-sm shadow-gray-900/[0.025]; }
+    .ui-muted { @apply text-sm leading-6 text-gray-500; }
+    .ui-eyebrow { @apply text-xs font-semibold uppercase tracking-[0.16em] text-primary-700; }
+}
+
+@layer base {
+    .storefront-shell :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea) { @apply rounded-xl border-gray-200 text-sm shadow-sm transition; }
+    .storefront-shell :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea):focus { @apply border-primary-500 ring-4 ring-primary-500/10; }
+    .storefront-shell :where(input[type="checkbox"], input[type="radio"]) { @apply border-gray-300 text-primary-600 focus:ring-primary-500; }
+}
+
+@layer components {
+    .storefront-shell button:not([data-button-shape="preserve"]):not([class*="rounded-full"]) { border-radius: 0.75rem !important; }
+    .storefront-shell a[class*="inline-flex"][class*="bg-primary-"]:not([class*="rounded-full"]) { border-radius: 0.75rem; }
 }

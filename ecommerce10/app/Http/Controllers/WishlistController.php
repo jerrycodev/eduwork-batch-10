@@ -10,6 +10,9 @@ use Illuminate\View\View;
 
 class WishlistController extends Controller
 {
+    /**
+     * Menampilkan daftar data dengan filter dan relasi yang diperlukan untuk kebutuhan operasional.
+     */
     public function index(): View
     {
         abort_if(Auth::user()->role === 'admin', 403);
@@ -48,6 +51,9 @@ class WishlistController extends Controller
         return back()->with('success', 'Produk berhasil ditambahkan ke wishlist.');
     }
 
+    /**
+     * Memeriksa ketentuan penghapusan lalu menghapus data yang diizinkan.
+     */
     public function destroy(WishlistItem $wishlistItem): RedirectResponse
     {
         abort_if(Auth::user()->role === 'admin', 403);

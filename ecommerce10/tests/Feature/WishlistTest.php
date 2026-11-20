@@ -27,7 +27,7 @@ test('authenticated customer can add a product to wishlist from product detail',
     $user = User::factory()->create();
     $product = makeWishlistProduct();
 
-    $this->actingAs($user)
+    $this->actingAs($user, 'customer')
         ->get(route('product-detail', $product->slug))
         ->assertOk()
         ->assertSee(route('wishlist.toggle', $product), false)
@@ -48,7 +48,7 @@ test('wishlist toggle removes an already saved product', function () {
     $product = makeWishlistProduct();
     $item = WishlistItem::query()->create(['user_id' => $user->id, 'product_id' => $product->id]);
 
-    $this->actingAs($user)
+    $this->actingAs($user, 'customer')
         ->post(route('wishlist.toggle', $product))
         ->assertRedirect()
         ->assertSessionHas('success', 'Produk dihapus dari wishlist.');
@@ -61,7 +61,7 @@ test('customer can view wishlist and remove an item', function () {
     $product = makeWishlistProduct();
     $item = WishlistItem::query()->create(['user_id' => $user->id, 'product_id' => $product->id]);
 
-    $this->actingAs($user)
+    $this->actingAs($user, 'customer')
         ->get(route('wishlist.index'))
         ->assertOk()
         ->assertSee('Wishlist Saya')
@@ -83,7 +83,7 @@ test('wishlist items belong to their owner and guests must sign in', function ()
 
     $this->delete(route('wishlist.destroy', $item))->assertRedirect(route('login'));
 
-    $this->actingAs($otherUser)
+    $this->actingAs($otherUser, 'customer')
         ->delete(route('wishlist.destroy', $item))
         ->assertForbidden();
 
@@ -94,9 +94,9 @@ test('admin cannot use customer wishlist', function () {
     $admin = User::factory()->create(['role' => 'admin']);
     $product = makeWishlistProduct();
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->get(route('wishlist.index'))
-        ->assertForbidden();
+        ->assertRedirect(route('login'));
 
-    $this->post(route('wishlist.toggle', $product))->assertForbidden();
+    $this->post(route('wishlist.toggle', $product))->assertRedirect(route('login'));
 });

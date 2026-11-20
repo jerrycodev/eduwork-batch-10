@@ -1,33 +1,21 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="scroll-smooth">
 
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-
-    <title>{{ config('app.name', 'Laravel') }}</title>
-
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
-
-    <!-- Scripts -->
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @include('layouts.partials.storefront-head')
+    <title>{{ config('app.name', 'RevStore') }}</title>
 </head>
 
-<body data-boost="true" class="font-sans text-gray-900 antialiased">
-    <div class="flex min-h-screen flex-col items-center justify-center bg-gray-100 px-4 py-8 sm:px-6 sm:py-12">
-        <div>
-            <a href="/" class="flex items-center gap-4 text-2xl font-semibold">
-                <x-logo />
-            </a>
-        </div>
-
-        <div class="mt-6 w-full max-w-md overflow-hidden rounded-lg bg-white px-5 py-6 shadow-md sm:px-8 sm:py-8">
+<body
+    class="storefront-shell min-h-screen bg-gradient-to-br from-teal-50 via-gray-50 to-white font-sans text-gray-900 antialiased">
+    <main class="flex min-h-screen flex-col items-center justify-center px-4 py-10 sm:px-6 gap-4">
+        <x-logo />
+        <section
+            class="w-full max-w-md rounded-2xl border border-gray-200/80 bg-white p-5 shadow-xl shadow-gray-900/5 sm:p-8">
             {{ $slot }}
-        </div>
-    </div>
+        </section>
+        <p class="mt-6 text-center text-xs text-gray-400">© {{ now()->year }} {{ config('app.name', 'RevStore') }}</p>
+    </main>
 </body>
 
 </html>

@@ -21,7 +21,7 @@ class CartController extends Controller
     {
         $cartItems = Auth::check()
             ? Cart::query()
-                ->with('product.category')
+                ->with(['product.category', 'variant.optionValues.option', 'variant.images'])
                 ->where('user_id', Auth::id())
                 ->latest()
                 ->get()
@@ -31,7 +31,7 @@ class CartController extends Controller
 
         $totalQuantity = $cartItems->sum('quantity');
         $totalPrice = $cartItems->sum(
-            fn (Cart $item) => $item->quantity * $item->product->price
+            fn (Cart $item) => $item->quantity * ($item->variant?->price ?? $item->product->price)
         );
 
         $addresses = Auth::check()
@@ -46,37 +46,50 @@ class CartController extends Controller
      */
     public function store(Request $request, Product $product): RedirectResponse
     {
+        if (! $product->is_active) {
+            return back()->with('error', 'Produk ini sedang tidak tersedia.');
+        }
+
         if (! Auth::check()) {
             return redirect()->route('login', ['redirect_to' => route('product-detail', $product->slug, absolute: false)])
                 ->with('error', 'Silakan masuk terlebih dahulu untuk menambahkan produk ke keranjang.');
         }
 
+        if (Auth::user()->role === 'admin') {
+            return redirect()->route('product-detail', $product->slug)
+                ->with('error', 'Admin tidak dapat menambahkan produk ke keranjang.');
+        }
+
         $validated = $request->validate([
             'quantity' => ['required', 'integer', 'min:1'],
+            'product_variant_id' => ['nullable', 'uuid'],
         ], [
             'quantity.required' => 'Jumlah produk wajib diisi.',
             'quantity.integer' => 'Jumlah produk harus berupa angka.',
             'quantity.min' => 'Jumlah produk minimal 1.',
         ]);
 
-        if ($product->stock < 1) {
-            return back()->with('error', 'Maaf, produk ini sedang habis.');
-        }
-
         $stockError = DB::transaction(function () use ($product, $validated): ?int {
-            // Serialize additions for the same product to prevent stock overselling.
             $lockedProduct = Product::query()->lockForUpdate()->findOrFail($product->id);
+            $variant = isset($validated['product_variant_id'])
+                ? $lockedProduct->variants()->where('is_active', true)->find($validated['product_variant_id'])
+                : $lockedProduct->variants()->where('is_default', true)->where('is_active', true)->first();
+
+            if (! $variant) {
+                return 0;
+            }
 
             $cartItem = Cart::query()
                 ->where('user_id', Auth::id())
                 ->where('product_id', $lockedProduct->id)
+                ->where('product_variant_id', $variant->id)
                 ->lockForUpdate()
                 ->first();
 
             $newQuantity = ($cartItem?->quantity ?? 0) + $validated['quantity'];
 
-            if ($newQuantity > $lockedProduct->stock) {
-                return $lockedProduct->stock;
+            if ($newQuantity > $variant->stock) {
+                return (int) $variant->stock;
             }
 
             if ($cartItem) {
@@ -86,6 +99,7 @@ class CartController extends Controller
                 Cart::query()->create([
                     'user_id' => Auth::id(),
                     'product_id' => $lockedProduct->id,
+                    'product_variant_id' => $variant->id,
                     'quantity' => $validated['quantity'],
                 ]);
             }
@@ -96,6 +110,10 @@ class CartController extends Controller
         if ($stockError !== null) {
             return back()->with('error', "Jumlah melebihi stok tersedia ({$stockError}).");
         }
+
+        $cartItem = Cart::query()->where('user_id', Auth::id())->where('product_id', $product->id)->where('product_variant_id', $validated['product_variant_id'] ?? $product->variants()->where('is_default', true)->value('id'))->first();
+        request()->attributes->set('customer_activity_subject', $cartItem);
+        request()->attributes->set('customer_activity_metadata', ['product_name' => $product->name, 'quantity' => (int) ($cartItem?->quantity ?? $validated['quantity']), 'change_quantity' => (int) $validated['quantity']]);
 
         return redirect()->route('cart')->with('success', 'Produk berhasil ditambahkan ke keranjang.');
     }
@@ -109,6 +127,7 @@ class CartController extends Controller
 
         $validated = $request->validate([
             'quantity' => ['required', 'integer', 'min:1'],
+            'product_variant_id' => ['nullable', 'uuid'],
         ], [
             'quantity.required' => 'Jumlah produk wajib diisi.',
             'quantity.integer' => 'Jumlah produk harus berupa angka.',
@@ -118,11 +137,18 @@ class CartController extends Controller
         $cart->loadMissing('product');
         abort_if($cart->product === null, 404);
 
-        if ($validated['quantity'] > $cart->product->stock) {
-            return back()->with('error', "Jumlah melebihi stok tersedia ({$cart->product->stock}).");
+        $availableStock = (int) ($cart->variant?->stock ?? $cart->product->stock);
+        if (! $cart->product->is_active || ($cart->variant && ! $cart->variant->is_active)) {
+            return back()->with('error', 'Produk atau variant ini sedang tidak tersedia.');
+        }
+        if ($validated['quantity'] > $availableStock) {
+            return back()->with('error', "Jumlah melebihi stok tersedia ({$availableStock}).");
         }
 
+        $previousQuantity = (int) $cart->quantity;
         $cart->update(['quantity' => $validated['quantity']]);
+        request()->attributes->set('customer_activity_subject', $cart->fresh());
+        request()->attributes->set('customer_activity_metadata', ['previous_quantity' => $previousQuantity, 'new_quantity' => (int) $validated['quantity']]);
 
         return redirect()->route('cart')->with('success', 'Jumlah produk di keranjang berhasil diperbarui.');
     }
@@ -133,6 +159,9 @@ class CartController extends Controller
     public function destroy(Cart $cart): RedirectResponse
     {
         $this->authorizeCartItem($cart);
+        $cart->loadMissing(['product', 'variant']);
+        request()->attributes->set('customer_activity_subject', $cart);
+        request()->attributes->set('customer_activity_metadata', ['product_name' => $cart->product?->name, 'product_sku' => $cart->variant?->sku ?? $cart->product?->sku, 'quantity' => (int) $cart->quantity]);
 
         $cart->delete();
 

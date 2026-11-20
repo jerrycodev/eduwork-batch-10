@@ -1,13 +1,14 @@
 <a href="{{ route('home') }}"
-    class="group inline-flex items-center gap-2.5 text-lg font-bold tracking-tight text-gray-900 transition hover:text-indigo-600 sm:text-xl">
-    <span
-        class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition group-hover:bg-indigo-700">
+    class="group inline-flex items-center gap-2.5 text-lg font-bold tracking-tight text-gray-900 transition hover:text-primary-600 sm:text-xl">
+    {{-- <span
+        class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-primary-600 text-white shadow-sm shadow-primary-600/20 transition group-hover:bg-primary-700">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
             class="lucide lucide-zap preview-icon">
             <path
                 d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z" />
         </svg>
-    </span>
+    </span> --}}
+    <img src="{{ asset('logo.png') }}" alt="Logo" class="h-8 w-8">
     <span>{{ config('app.name') }}</span>
 </a>

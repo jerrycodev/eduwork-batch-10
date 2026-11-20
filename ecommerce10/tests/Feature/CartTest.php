@@ -33,7 +33,7 @@ test('authenticated user can add a product and repeated additions increase its q
     $user = User::factory()->create();
     $product = makeCartProduct();
 
-    $this->actingAs($user)
+    $this->actingAs($user, 'customer')
         ->post(route('cart.store', $product), ['quantity' => 2])
         ->assertRedirect(route('cart'))
         ->assertSessionHas('success');
@@ -57,7 +57,7 @@ test('adding a quantity beyond available stock is rejected', function () {
     $user = User::factory()->create();
     $product = makeCartProduct(stock: 3);
 
-    $this->actingAs($user)
+    $this->actingAs($user, 'customer')
         ->post(route('cart.store', $product), ['quantity' => 4])
         ->assertRedirect()
         ->assertSessionHas('error');
@@ -77,7 +77,7 @@ test('user can update and remove their own cart item', function () {
         'quantity' => 1,
     ]);
 
-    $this->actingAs($user)
+    $this->actingAs($user, 'customer')
         ->patch(route('cart.update', $cart), ['quantity' => 4])
         ->assertRedirect(route('cart'));
 
@@ -102,7 +102,7 @@ test('user cannot update or remove another users cart item', function () {
         'quantity' => 1,
     ]);
 
-    $this->actingAs($otherUser)
+    $this->actingAs($otherUser, 'customer')
         ->patch(route('cart.update', $cart), ['quantity' => 2])
         ->assertForbidden();
 

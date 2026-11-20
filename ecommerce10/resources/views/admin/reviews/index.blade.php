@@ -1,3 +1,4 @@
+{{-- Dokumentasi: Moderasi ulasan produk oleh administrator. --}}
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -5,11 +6,11 @@
             <span class="inline-flex w-fit rounded-full bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-700">{{ $pendingCount }} menunggu</span>
         </div>
     </x-slot>
-    <div class="py-8"><div class="mx-auto max-w-7xl space-y-5 px-4 sm:px-6 lg:px-8">
+    <div class="py-8"><div class="space-y-5 px-4 sm:px-6 lg:px-8">
         @if (session('success'))<x-alert class="border border-green-200 bg-green-50 text-green-800">{{ session('success') }}</x-alert>@endif
         <div class="flex flex-wrap gap-2">
             @foreach (['pending' => 'Menunggu', 'approved' => 'Ditampilkan', 'all' => 'Semua'] as $key => $label)
-                <a href="{{ route('reviews.index', ['status' => $key]) }}" class="rounded-lg px-4 py-2 text-sm font-semibold {{ $status === $key ? 'bg-indigo-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50' }}">{{ $label }}</a>
+                <a href="{{ route('reviews.index', ['status' => $key]) }}" class="rounded-lg px-4 py-2 text-sm font-semibold {{ $status === $key ? 'bg-primary-600 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50' }}">{{ $label }}</a>
             @endforeach
         </div>
         <div class="space-y-4">
@@ -37,9 +38,9 @@
                             <form action="{{ route('reviews.update', $review) }}" method="POST">
                                 @csrf @method('PATCH')
                                 <input type="hidden" name="is_approved" value="{{ $review->is_approved ? 0 : 1 }}">
-                                <button class="rounded-lg px-3 py-2 text-sm font-semibold {{ $review->is_approved ? 'border border-amber-200 text-amber-700 hover:bg-amber-50' : 'bg-indigo-600 text-white hover:bg-indigo-700' }}">{{ $review->is_approved ? 'Sembunyikan' : 'Setujui & Tampilkan' }}</button>
+                                <button class="rounded-lg px-3 py-2 text-sm font-semibold {{ $review->is_approved ? 'border border-amber-200 text-amber-700 hover:bg-amber-50' : 'bg-primary-600 text-white hover:bg-primary-700' }}">{{ $review->is_approved ? 'Sembunyikan' : 'Setujui & Tampilkan' }}</button>
                             </form>
-                            <form action="{{ route('reviews.destroy', $review) }}" method="POST" onsubmit="return confirm('Hapus ulasan ini secara permanen?')">
+                            <form action="{{ route('reviews.destroy', $review) }}" method="POST" x-data="adminConfirm(@js('Hapus ulasan ini secara permanen?'))" @submit="submit($event)">
                                 @csrf @method('DELETE')<button class="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">Hapus</button>
                             </form>
                         </div>

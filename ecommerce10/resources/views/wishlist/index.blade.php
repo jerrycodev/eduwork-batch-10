@@ -1,11 +1,8 @@
-<x-layout-component>
-    <div class="mb-8 flex flex-wrap items-end justify-between gap-3">
-        <div>
-            <h1 class="text-2xl font-bold text-gray-900">Wishlist Saya</h1>
-            <p class="mt-1 text-sm text-gray-500">Produk yang Anda simpan untuk dibeli nanti.</p>
-        </div>
-        <a href="{{ route('shop') }}" class="text-sm font-semibold text-indigo-600 hover:text-indigo-700">Jelajahi produk</a>
-    </div>
+<x-storefront-layout>
+    <div class="container">
+    <x-ui.page-header eyebrow="Koleksi Anda" title="Wishlist Saya" description="Produk yang Anda simpan untuk dibeli nanti.">
+        <x-slot:actions><x-ui.link-button :href="route('shop')" variant="secondary">Jelajahi produk</x-ui.link-button></x-slot:actions>
+    </x-ui.page-header>
 
     @if (session('success'))
         <div class="mb-5 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">{{ session('success') }}</div>
@@ -16,15 +13,15 @@
             <i data-lucide="heart" class="mx-auto h-10 w-10 text-gray-300"></i>
             <h2 class="mt-4 font-semibold text-gray-900">Wishlist masih kosong</h2>
             <p class="mt-1 text-sm text-gray-500">Simpan produk yang Anda sukai agar mudah ditemukan kembali.</p>
-            <a href="{{ route('shop') }}" class="mt-5 inline-flex rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700">Lihat Produk</a>
+            <a href="{{ route('shop') }}" class="mt-5 inline-flex rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">Lihat Produk</a>
         </div>
     @else
         <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             @foreach ($wishlistItems as $item)
                 <article class="overflow-hidden rounded-xl border border-gray-200 bg-white">
-                    <a href="{{ route('product-detail', $item->product) }}" class="block">
+                    <a href="{{ route('product-detail', $item->product->slug) }}" class="block">
                         <div class="aspect-square overflow-hidden bg-gray-50">
-                            <img src="{{ $item->product->image ?: 'https://placehold.co/600x600' }}" alt="{{ $item->product->name }}" loading="lazy" class="h-full w-full object-cover">
+                            <img src="{{ $item->product->main_image ?: 'https://placehold.co/600x600' }}" alt="{{ $item->product->name }}" loading="lazy" class="h-full w-full object-cover">
                         </div>
                         <div class="p-3 sm:p-4">
                             <h2 class="line-clamp-2 min-h-10 text-sm font-semibold text-gray-900">{{ $item->product->name }}</h2>
@@ -36,11 +33,12 @@
                         <form action="{{ route('wishlist.destroy', $item) }}" method="POST">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600">Hapus dari Wishlist</button>
+                            <x-ui.button type="submit" variant="danger-soft" size="sm" class="w-full">Hapus dari Wishlist</x-ui.button>
                         </form>
                     </div>
                 </article>
             @endforeach
         </div>
     @endif
-</x-layout-component>
+    </div>
+</x-storefront-layout>

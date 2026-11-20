@@ -55,7 +55,7 @@ test('customer review is stored pending and is not displayed publicly until appr
     $product = makeReviewTestProduct();
     makePaidReviewPurchase($customer, $product);
 
-    $this->actingAs($customer)
+    $this->actingAs($customer, 'customer')
         ->post(route('product-reviews.store', $product), [
             'rating' => 5,
             'title' => 'Produk bagus',
@@ -89,7 +89,7 @@ test('customer cannot submit more than one review for the same product', functio
         'comment' => 'Review awal yang sudah dikirim.',
     ]);
 
-    $this->actingAs($customer)
+    $this->actingAs($customer, 'customer')
         ->from(route('product-detail', $product->slug))
         ->post(route('product-reviews.store', $product), [
             'rating' => 5,
@@ -112,7 +112,7 @@ test('admin can approve and hide reviews and only approved reviews affect produc
         'comment' => 'Review untuk moderasi admin.',
     ]);
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->get(route('reviews.index'))
         ->assertOk()
         ->assertSee('Review untuk moderasi admin.');
@@ -149,12 +149,12 @@ test('non-admin cannot moderate reviews and guests cannot submit reviews', funct
         'comment' => 'Guest mencoba mengirim review.',
     ])->assertRedirect(route('login'));
 
-    $this->actingAs($otherCustomer)
+    $this->actingAs($otherCustomer, 'customer')
         ->get(route('reviews.index'))
-        ->assertRedirect(route('home'));
+        ->assertRedirect(route('admin.login'));
 
     $this->patch(route('reviews.update', $review), ['is_approved' => 1])
-        ->assertRedirect(route('home'));
+        ->assertRedirect(route('admin.login'));
 
     $this->assertDatabaseHas('product_reviews', ['id' => $review->id, 'is_approved' => false]);
 });
@@ -163,7 +163,7 @@ test('customer without a completed paid order cannot submit a review', function 
     $customer = User::factory()->create();
     $product = makeReviewTestProduct();
 
-    $this->actingAs($customer)
+    $this->actingAs($customer, 'customer')
         ->from(route('product-detail', $product->slug))
         ->post(route('product-reviews.store', $product), [
             'rating' => 5,
@@ -181,7 +181,7 @@ test('paid customer can attach multiple images to a pending review', function ()
     $product = makeReviewTestProduct();
     makePaidReviewPurchase($customer, $product);
 
-    $this->actingAs($customer)
+    $this->actingAs($customer, 'customer')
         ->post(route('product-reviews.store', $product), [
             'rating' => 5,
             'comment' => 'Produk diterima dalam kondisi baik.',
@@ -223,7 +223,7 @@ test('confirmed paid order detail shows a review form for each product', functio
     $product = makeReviewTestProduct();
     $order = makePaidReviewPurchase($customer, $product);
 
-    $this->actingAs($customer)
+    $this->actingAs($customer, 'customer')
         ->get(route('orders.customer.show', $order))
         ->assertOk()
         ->assertSee('Ulasan Produk')
@@ -246,7 +246,7 @@ test('order detail shows submitted review state instead of another review form',
         'is_approved' => false,
     ]);
 
-    $this->actingAs($customer)
+    $this->actingAs($customer, 'customer')
         ->get(route('orders.customer.show', $order))
         ->assertOk()
         ->assertSee('Menunggu moderasi')
@@ -261,7 +261,7 @@ test('unconfirmed order does not show product review section', function () {
     $order = makePaidReviewPurchase($customer, $product);
     $order->update(['status' => 'delivered', 'confirmed_at' => null, 'completed_at' => null]);
 
-    $this->actingAs($customer)
+    $this->actingAs($customer, 'customer')
         ->get(route('orders.customer.show', $order))
         ->assertOk()
         ->assertDontSee('Ulasan Produk')

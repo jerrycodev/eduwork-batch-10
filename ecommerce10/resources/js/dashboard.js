@@ -134,6 +134,7 @@ function createOrderStatusChart(canvas, statuses) {
     });
 }
 
+/** Membaca payload metrik dari Blade dan menggambar ulang grafik dashboard. */
 function initializeDashboard() {
     const periodSelect = document.getElementById("dashboard-period");
     const dateInput = document.getElementById("dashboard-date");
@@ -175,6 +176,7 @@ function initializeDashboard() {
     }
 }
 
+// Hancurkan instance Chart.js sebelum konten diganti agar tidak terjadi memory leak.
 function destroyDashboardCharts() {
     const ordersCanvas = document.getElementById("orders-chart");
     const statusCanvas = document.getElementById("order-status-chart");

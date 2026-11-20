@@ -13,6 +13,9 @@ use Illuminate\Validation\ValidationException;
 
 class ProductReviewController extends Controller
 {
+    /**
+     * Memvalidasi dan memproses permintaan pembuatan data baru sesuai aturan bisnis.
+     */
     public function store(Request $request, Product $product): RedirectResponse
     {
         abort_unless(Auth::user()?->role !== 'admin', 403);
@@ -82,6 +85,9 @@ class ProductReviewController extends Controller
         return back()->with('review_success', 'Ulasan berhasil dikirim dan menunggu persetujuan admin.');
     }
 
+    /**
+     * Menampilkan data operasional untuk administrator beserta ringkasan dan filter tindak lanjut.
+     */
     public function adminIndex(Request $request)
     {
         $status = $request->input('status', 'pending');
@@ -100,6 +106,9 @@ class ProductReviewController extends Controller
         return view('admin.reviews.index', compact('reviews', 'status', 'pendingCount'));
     }
 
+    /**
+     * Memvalidasi dan menyimpan perubahan data dengan tetap menjaga aturan bisnis.
+     */
     public function update(Request $request, ProductReview $review): RedirectResponse
     {
         $validated = $request->validate(['is_approved' => ['required', 'boolean']]);
@@ -112,6 +121,9 @@ class ProductReviewController extends Controller
         return back()->with('success', $approved ? 'Ulasan berhasil ditampilkan.' : 'Ulasan berhasil disembunyikan.');
     }
 
+    /**
+     * Memeriksa ketentuan penghapusan lalu menghapus data yang diizinkan.
+     */
     public function destroy(ProductReview $review): RedirectResponse
     {
         Storage::disk('public')->delete($review->media()->pluck('path')->all());
