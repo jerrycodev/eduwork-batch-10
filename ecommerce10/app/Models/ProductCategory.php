@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'slug'])]
+#[Fillable(['name', 'slug', 'image'])]
 class ProductCategory extends Model
 {
     use HasUuids;

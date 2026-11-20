@@ -1,26 +1,29 @@
 import Pristine from "pristinejs";
 import slugify from "slugify";
 
+/** Inisialisasi dialog kategori dan validasi client-side; guard mencegah listener ganda saat Boost navigasi. */
 function initializeCategoryForm() {
     const form = document.querySelector("#category-form");
 
-    if (!form) return;
-    if (form.dataset.boostInitialized) return;
+    if (!form || form.dataset.boostInitialized) return;
     form.dataset.boostInitialized = "true";
 
     const dialog = document.querySelector("#category-dialog");
     const createButton = document.querySelector("#category-dialog-button");
     const editButtons = document.querySelectorAll("[data-dialog-mode='edit']");
 
-    const input_name = form.querySelector("#category-name");
-    const input_slug = form.querySelector("#category-slug");
-    const input_id = form.querySelector("#category-id");
-    const input_method = form.querySelector("input[name='_method']");
+    const inputName = form.querySelector("#category-name");
+    const inputSlug = form.querySelector("#category-slug");
+    const inputId = form.querySelector("#category-id");
+    const inputMethod = form.querySelector("input[name='_method']");
+    const inputImage = form.querySelector("#category-image");
+    const previewWrap = form.querySelector("#category-image-preview-wrap");
+    const preview = form.querySelector("#category-image-preview");
+    const previewLabel = form.querySelector("#category-image-preview-label");
 
     const title = form.querySelector("#category-form-title");
     const description = form.querySelector("#category-form-description");
     const submitButton = form.querySelector("#category-form-submit");
-
     const storeUrl = form.action;
 
     const pristine = new Pristine(form, {
@@ -32,81 +35,95 @@ function initializeCategoryForm() {
         errorTextClass: "mt-1 text-sm text-red-500",
     });
 
-    function setSlug(value) {
-        if (!value) return;
+    // Menampilkan gambar kategori saat ini atau preview file yang baru dipilih.
+    function setPreview(url, label = "Image preview") {
+        if (!url) {
+            preview.removeAttribute("src");
+            previewWrap.classList.add("hidden");
+            previewWrap.classList.remove("flex");
+            return;
+        }
 
-        input_slug.value = slugify(value, {
-            lower: true,
-        });
-
-        pristine.validate(input_slug);
+        preview.src = url;
+        previewLabel.textContent = label;
+        previewWrap.classList.remove("hidden");
+        previewWrap.classList.add("flex");
     }
 
-    function configureForm({ mode, id = "", name = "", slug = "", url = "" }) {
+    // Mengisi ulang form sesuai mode create/edit agar data kategori tidak tertukar antar dialog.
+    function configureForm({ mode, id = "", name = "", slug = "", url = "", image = "" }) {
         pristine.reset();
         form.reset();
 
         const isEdit = mode === "edit";
-
         form.action = isEdit ? url : storeUrl;
-        input_method.value = isEdit ? "PUT" : "POST";
-        input_id.value = id;
-        input_name.value = name;
-        input_slug.value = slug;
+        inputMethod.value = isEdit ? "PUT" : "POST";
+        inputId.value = id;
+        inputName.value = name;
+        inputSlug.value = slug;
+        setPreview(image, image ? "Current category image — upload a new file to replace it" : "");
 
         title.textContent = isEdit ? "Edit Category" : "New Category";
-        description.textContent = isEdit
-            ? "Update this category"
-            : "Create a new category";
+        description.textContent = isEdit ? "Update this category" : "Create a new category";
         submitButton.textContent = isEdit ? "Update Category" : "Save changes";
     }
 
-    input_name.addEventListener("blur", function () {
-        setSlug(input_name.value);
+    // Membuat slug dari nama kategori dan menjalankan ulang validasi field slug.
+    function setSlug(value) {
+        if (!value) return;
+        inputSlug.value = slugify(value, { lower: true });
+        pristine.validate(inputSlug);
+    }
+
+    inputName.addEventListener("blur", () => setSlug(inputName.value));
+    inputSlug.addEventListener("blur", () => setSlug(inputSlug.value));
+
+    inputImage.addEventListener("change", () => {
+        const file = inputImage.files?.[0];
+        if (!file) return;
+        if (!file.type.startsWith("image/")) return;
+
+        const objectUrl = URL.createObjectURL(file);
+        setPreview(objectUrl, file.name);
+        preview.dataset.objectUrl = objectUrl;
     });
 
-    input_slug.addEventListener("blur", function () {
-        setSlug(input_slug.value);
-    });
-
-    createButton?.addEventListener("click", function () {
+    createButton?.addEventListener("click", () => {
         configureForm({ mode: "create" });
         if (dialog && !dialog.open) dialog.showModal();
     });
 
-    dialog?.querySelectorAll("[data-dialog-close]").forEach(function (button) {
-        button.addEventListener("click", function () {
-            dialog.close();
-        });
+    dialog?.querySelectorAll("[data-dialog-close]").forEach((button) => {
+        button.addEventListener("click", () => dialog.close());
     });
 
-    dialog?.addEventListener("click", function (event) {
+    dialog?.addEventListener("click", (event) => {
         if (event.target === dialog) dialog.close();
     });
 
-    editButtons.forEach(function (button) {
-        button.addEventListener("click", function () {
+    editButtons.forEach((button) => {
+        button.addEventListener("click", () => {
             configureForm({
                 mode: "edit",
                 id: button.dataset.dialogId,
                 name: button.dataset.dialogName,
                 slug: button.dataset.dialogSlug,
                 url: button.dataset.dialogUrl,
+                image: button.dataset.dialogImage,
             });
             if (dialog && !dialog.open) dialog.showModal();
         });
     });
 
-    form.addEventListener("submit", function (event) {
-        if (!pristine.validate()) {
-            event.preventDefault();
-        }
+    form.addEventListener("submit", (event) => {
+        if (!pristine.validate()) event.preventDefault();
     });
 
-    dialog?.addEventListener("close", function () {
-        setTimeout(function () {
-            configureForm({ mode: "create" });
-        }, 500);
+    dialog?.addEventListener("close", () => {
+        const objectUrl = preview.dataset.objectUrl;
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        delete preview.dataset.objectUrl;
+        setTimeout(() => configureForm({ mode: "create" }), 150);
     });
 }
 

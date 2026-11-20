@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\Storage;
 
 class FileUploadController extends Controller
 {
+    /**
+     * Memvalidasi dan memproses permintaan pembuatan data baru sesuai aturan bisnis.
+     */
     public function store(Request $request): JsonResponse
     {
         $request->validate([
@@ -26,6 +29,9 @@ class FileUploadController extends Controller
         ]);
     }
 
+    /**
+     * Memeriksa ketentuan penghapusan lalu menghapus data yang diizinkan.
+     */
     public function destroy(Request $request): JsonResponse
     {
         $validated = $request->validate([

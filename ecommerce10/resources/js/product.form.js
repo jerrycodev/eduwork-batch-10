@@ -1,6 +1,7 @@
 import Pristine from "pristinejs";
 import slugify from "slugify";
 
+/** Validasi form produk, pembuatan slug, dan pemeriksaan minimal satu gambar. */
 function initializeProductForm() {
     const form = document.querySelector("#product-form");
 
@@ -11,6 +12,7 @@ function initializeProductForm() {
     const input_name = form.querySelector("[name='name']");
     const input_slug = form.querySelector("[name='slug']");
     const input_image = form.querySelector("[name='image']");
+    const productImages = form.querySelector("#product-images");
     const imageError = form.querySelector("[data-file-upload-error]");
 
     const pristine = new Pristine(form, {
@@ -22,6 +24,7 @@ function initializeProductForm() {
         errorTextClass: "mt-1 text-sm text-red-500",
     });
 
+    // Slug dibuat otomatis dari nama produk ketika field kehilangan fokus.
     function setSlug(value) {
         if (!value) return;
 
@@ -32,6 +35,7 @@ function initializeProductForm() {
         pristine.validate(input_slug);
     }
 
+    // Menampilkan pesan jika produk baru belum memiliki gambar.
     function showImageError(message) {
         if (!imageError) return;
 
@@ -55,15 +59,17 @@ function initializeProductForm() {
     });
 
     input_image?.addEventListener("change", clearImageError);
-    form.querySelector("input[type='file']")?.addEventListener("change", clearImageError);
+    productImages?.addEventListener("change", clearImageError);
 
     form.addEventListener("submit", function (event) {
         let isValid = pristine.validate();
 
         clearImageError();
 
-        if (!input_image?.value) {
-            showImageError("Please upload an image.");
+        // New products can use the gallery upload; the legacy hidden image field is
+        // populated only when an existing/legacy image is already available.
+        if (!input_image?.value && !(productImages?.files?.length > 0)) {
+            showImageError("Please upload at least one product image.");
             isValid = false;
         }
 

@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\ProductCategory;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
+/** Mengelola kategori katalog, termasuk penyimpanan dan pembersihan file gambar. */
 class ProductCategoryController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Menampilkan daftar data dengan filter dan relasi yang diperlukan untuk kebutuhan operasional.
      */
     public function index()
     {
@@ -21,87 +24,91 @@ class ProductCategoryController extends Controller
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Menyiapkan halaman pembuatan data baru.
      */
     public function create()
     {
-        //
+        return redirect()->route('product-categories.index');
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Memvalidasi dan memproses permintaan pembuatan data baru sesuai aturan bisnis.
      */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
-        $validated = $this->validate($request);
-        if ($validated && $this->uniqueSlug($request)) {
-            $productCategory = ProductCategory::create($request->all());
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'slug' => ['required', 'string', 'max:255', 'unique:product_categories,slug'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+        ]);
 
-            return redirect()->route('product-categories.index')->with('success', 'Category created successfully.');
+        unset($validated['image']);
+
+        if ($request->hasFile('image')) {
+            $validated['image'] = $request->file('image')->store('categories', 'public');
         }
 
-        return redirect()->route('product-categories.index')->withErrors($validated)->withInput();
+        ProductCategory::create($validated);
+
+        return redirect()->route('product-categories.index')->with('success', 'Category created successfully.');
     }
 
     /**
-     * Display the specified resource.
+     * Menampilkan detail data beserta relasi yang dibutuhkan oleh halaman.
      */
     public function show(ProductCategory $productCategory)
     {
-        //
+        return redirect()->route('product-categories.index');
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * Menyiapkan halaman perubahan data yang sudah ada.
      */
     public function edit(ProductCategory $productCategory)
     {
-        //
+        return redirect()->route('product-categories.index');
     }
 
     /**
-     * Update the specified resource in storage.
+     * Memvalidasi dan menyimpan perubahan data dengan tetap menjaga aturan bisnis.
      */
-    public function update(Request $request, ProductCategory $productCategory)
+    public function update(Request $request, ProductCategory $productCategory): RedirectResponse
     {
-        $validated = $this->validate($request);
-        if ($validated) {
-            $productCategory->update($request->all());
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'slug' => ['required', 'string', 'max:255', 'unique:product_categories,slug,'.$productCategory->id],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+        ]);
 
-            return redirect()->route('product-categories.index')->with('success', 'Category updated successfully.');
+        unset($validated['image']);
+
+        $oldImage = $productCategory->image;
+        if ($request->hasFile('image')) {
+            $validated['image'] = $request->file('image')->store('categories', 'public');
         }
 
-        return redirect()->route('product-categories.index')->withErrors($validated)->withInput();
+        $productCategory->update($validated);
+
+        if (isset($validated['image']) && $oldImage) {
+            Storage::disk('public')->delete($oldImage);
+        }
+
+        return redirect()->route('product-categories.index')->with('success', 'Category updated successfully.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(ProductCategory $productCategory)
+    /** Kategori yang masih dipakai produk tidak boleh dihapus agar relasi katalog tetap valid. */
+    public function destroy(ProductCategory $productCategory): RedirectResponse
     {
+        if ($productCategory->products()->exists()) {
+            return back()->withErrors(['category' => 'Kategori tidak dapat dihapus karena masih digunakan oleh produk.']);
+        }
+
+        if ($productCategory->image) {
+            Storage::disk('public')->delete($productCategory->image);
+        }
+
         $productCategory->delete();
 
         return redirect()->route('product-categories.index')->with('success', 'Category deleted successfully.');
-    }
-
-    // Validattion
-    public function validate(Request $request)
-    {
-        return $request->validate([
-            'name' => 'required|string|max:255',
-            'slug' => 'required|string|max:255|unique:product_categories,slug',
-        ]);
-    }
-
-    public function uniqueSlug(Request $request)
-    {
-        $slug = $request->slug;
-        $category = ProductCategory::where('slug', $slug)->first();
-
-        if ($category) {
-            return false;
-        }
-
-        return true;
     }
 }

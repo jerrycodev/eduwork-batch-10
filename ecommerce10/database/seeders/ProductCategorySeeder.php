@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 class ProductCategorySeeder extends Seeder
 {
     /**
-     * Seed development product categories.
+     * Seed the fashion storefront categories used by the demo catalog.
      */
     public function run(): void
     {
@@ -17,16 +17,15 @@ class ProductCategorySeeder extends Seeder
             return;
         }
 
-        $categories = [
-            'Headphone',
-            'Earbuds',
-            'Speaker',
-            'Smartwatch',
-            'Keyboard',
-        ];
-
-        foreach ($categories as $name) {
-            ProductCategory::query()->firstOrCreate(
+        foreach ([
+            'Atasan',
+            'Bawahan',
+            'Outerwear',
+            'Dress',
+            'Sepatu',
+            'Tas',
+        ] as $name) {
+            ProductCategory::query()->updateOrCreate(
                 ['slug' => Str::slug($name)],
                 ['name' => $name],
             );

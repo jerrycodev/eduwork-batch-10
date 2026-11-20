@@ -28,7 +28,7 @@ test('admin can restock an out of stock product and see its movement history', f
     $admin = User::factory()->create(['role' => 'admin']);
     $product = inventoryTestProduct();
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->get(route('inventory.index'))
         ->assertOk()
         ->assertSee('Inventory Management')
@@ -53,7 +53,7 @@ test('admin can restock an out of stock product and see its movement history', f
 });
 
 test('stock out cannot reduce inventory below zero', function () {
-    $this->actingAs(User::factory()->create(['role' => 'admin']));
+    $this->actingAs(User::factory()->create(['role' => 'admin']), 'admin');
     $product = inventoryTestProduct(stock: 3);
 
     $this->post(route('inventory.movements.store', $product), [
@@ -66,7 +66,7 @@ test('stock out cannot reduce inventory below zero', function () {
 });
 
 test('stock adjustment sets the exact quantity and records the delta', function () {
-    $this->actingAs(User::factory()->create(['role' => 'admin']));
+    $this->actingAs(User::factory()->create(['role' => 'admin']), 'admin');
     $product = inventoryTestProduct(stock: 8);
 
     $this->post(route('inventory.movements.store', $product), [
@@ -88,12 +88,12 @@ test('stock adjustment sets the exact quantity and records the delta', function 
 test('non-admin users cannot access inventory management', function () {
     $product = inventoryTestProduct();
 
-    $this->actingAs(User::factory()->create(['role' => 'customer']))
+    $this->actingAs(User::factory()->create(['role' => 'customer']), 'customer')
         ->get(route('inventory.index'))
-        ->assertRedirect(route('home'));
+        ->assertRedirect(route('admin.login'));
 
     $this->post(route('inventory.movements.store', $product), [
         'type' => 'in',
         'quantity' => 5,
-    ])->assertRedirect(route('home'));
+    ])->assertRedirect(route('admin.login'));
 });

@@ -22,6 +22,8 @@ function initFileUpload(container) {
 
     const mode = container.dataset.uploadMode || "deferred";
     const maxSize = Number(container.dataset.maxSize || 2097152);
+    const imageMaxSize = Number(container.dataset.imageMaxSize || maxSize);
+    const videoMaxSize = Number(container.dataset.videoMaxSize || maxSize);
     const multiple = container.dataset.multiple === "true";
     const acceptedFormats = (fileInput.accept || "").split(",").map((item) => item.trim().toLowerCase()).filter(Boolean);
     const csrfToken = document.querySelector("meta[name='csrf-token']")?.content;
@@ -157,8 +159,9 @@ function initFileUpload(container) {
                 showError(`${file.name} menggunakan format file yang tidak didukung.`);
                 return false;
             }
-            if (file.size > maxSize) {
-                showError(`${file.name} melebihi batas ${formatFileSize(maxSize)}.`);
+            const fileMaxSize = file.type.startsWith("video/") ? videoMaxSize : file.type.startsWith("image/") ? imageMaxSize : maxSize;
+            if (file.size > fileMaxSize) {
+                showError(`${file.name} melebihi batas ${formatFileSize(fileMaxSize)}.`);
                 return false;
             }
             if (file.type.startsWith("image/") && !IMAGE_TYPES.has(file.type)) {

@@ -1,10 +1,96 @@
+{{-- Dokumentasi: Daftar kategori beserta agregat produk dan aksi pengelolaan kategori. --}}
 <x-app-layout>
-    <x-slot name="header"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 class="text-xl font-bold tracking-tight text-gray-900">Product Categories</h2><p class="mt-1 text-sm text-gray-500">Organize products into easy-to-browse categories.</p></div>@include('admin.categories._form')</div></x-slot>
-    <div class="py-8"><div class="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 sm:px-6 lg:px-8">
-        @if (session('success'))<x-alert class="border border-green-200 bg-green-50 text-green-800">{{ session('success') }}</x-alert>@endif
-        <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"><div class="border-b border-gray-100 px-5 py-4"><h3 class="font-semibold text-gray-900">All categories</h3><p class="mt-0.5 text-sm text-gray-500">{{ $categories->count() }} categories</p></div>
-            <div class="overflow-x-auto"><table class="w-full min-w-[720px] divide-y divide-gray-200 text-left text-sm"><thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500"><tr><th class="px-5 py-3.5 font-semibold">Name</th><th class="px-5 py-3.5 font-semibold">Slug</th><th class="px-5 py-3.5 font-semibold">Products</th><th class="px-5 py-3.5 font-semibold">Total value</th><th class="px-5 py-3.5 font-semibold">Total stock</th><th class="px-5 py-3.5 text-right font-semibold">Actions</th></tr></thead>
-                <tbody class="divide-y divide-gray-100">@forelse ($categories as $category)<tr class="transition hover:bg-gray-50/80"><td class="px-5 py-4"><a href="{{ route('products.index', ['category_id' => $category->id]) }}" class="font-semibold text-gray-900 hover:text-indigo-600">{{ $category->name }}</a></td><td class="px-5 py-4"><span class="rounded-md bg-gray-100 px-2 py-1 font-mono text-xs text-gray-600">{{ $category->slug }}</span></td><td class="px-5 py-4 text-gray-700">{{ $category->products_count }}</td><td class="whitespace-nowrap px-5 py-4 font-medium text-gray-900">Rp {{ number_format($category->products_sum_price ?? 0, 0, ',', '.') }}</td><td class="px-5 py-4 text-gray-700">{{ $category->products_sum_stock ?? 0 }}</td><td class="px-5 py-4"><div class="flex items-center justify-end gap-1"><button type="button" class="rounded-md p-2 text-gray-500 transition hover:bg-indigo-50 hover:text-indigo-600" aria-label="Edit {{ $category->name }}" title="Edit" data-dialog-trigger="category-dialog" data-dialog-mode="edit" data-dialog-id="{{ $category->id }}" data-dialog-name="{{ $category->name }}" data-dialog-slug="{{ $category->slug }}" data-dialog-url="{{ route('product-categories.update', $category) }}"><i data-lucide="pencil" class="h-4 w-4"></i></button><form action="{{ route('product-categories.destroy', $category) }}" method="POST" onsubmit="return confirm('Delete this category?')">@csrf @method('DELETE')<button type="submit" class="rounded-md p-2 text-gray-500 transition hover:bg-red-50 hover:text-red-600" aria-label="Delete {{ $category->name }}" title="Delete"><i data-lucide="trash-2" class="h-4 w-4"></i></button></form></div></td></tr>@empty<tr><td colspan="6" class="px-5 py-14 text-center text-sm text-gray-500">No categories yet. Create your first category to get started.</td></tr>@endforelse</tbody></table></div>
-        </section>
-    </div></div>
+    <x-slot name="header">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h2 class="text-xl font-bold tracking-tight text-gray-900">Product Categories</h2>
+                <p class="mt-1 text-sm text-gray-500">Organize products into easy-to-browse categories.</p>
+            </div>
+            @include('admin.categories._form')
+        </div>
+    </x-slot>
+
+    <div class="py-8">
+        <div class="flex w-full flex-col gap-5 px-4 sm:px-6 lg:px-8">
+            @if (session('success'))
+                <x-alert class="border border-green-200 bg-green-50 text-green-800">{{ session('success') }}</x-alert>
+            @endif
+            @if ($errors->any())
+                <x-alert class="border border-red-200 bg-red-50 text-red-800">
+                    <ul class="list-inside list-disc space-y-1">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </x-alert>
+            @endif
+
+            <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                <div class="border-b border-gray-100 px-5 py-4">
+                    <h3 class="font-semibold text-gray-900">All categories</h3>
+                    <p class="mt-0.5 text-sm text-gray-500">{{ $categories->count() }} categories</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[820px] divide-y divide-gray-200 text-left text-sm">
+                        <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                            <tr>
+                                <th class="px-5 py-3.5 font-semibold">Image</th>
+                                <th class="px-5 py-3.5 font-semibold">Name</th>
+                                <th class="px-5 py-3.5 font-semibold">Slug</th>
+                                <th class="px-5 py-3.5 font-semibold">Products</th>
+                                <th class="px-5 py-3.5 font-semibold">Total value</th>
+                                <th class="px-5 py-3.5 font-semibold">Total stock</th>
+                                <th class="px-5 py-3.5 text-right font-semibold">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            @forelse ($categories as $category)
+                                <tr class="transition hover:bg-gray-50/80">
+                                    <td class="px-5 py-3">
+                                        @if ($category->image)
+                                            <img src="{{ Storage::disk('public')->url($category->image) }}" alt="{{ $category->name }}" class="h-12 w-16 rounded-lg border border-gray-200 object-cover">
+                                        @else
+                                            <span class="flex h-12 w-16 items-center justify-center rounded-lg bg-gray-100 text-gray-400"><i data-lucide="image" class="h-5 w-5"></i></span>
+                                        @endif
+                                    </td>
+                                    <td class="px-5 py-4">
+                                        <a href="{{ route('products.index', ['category_id' => $category->id]) }}" class="font-semibold text-gray-900 hover:text-primary-600">{{ $category->name }}</a>
+                                    </td>
+                                    <td class="px-5 py-4"><span class="rounded-md bg-gray-100 px-2 py-1 font-mono text-xs text-gray-600">{{ $category->slug }}</span></td>
+                                    <td class="px-5 py-4 text-gray-700">{{ $category->products_count }}</td>
+                                    <td class="whitespace-nowrap px-5 py-4 font-medium text-gray-900">Rp {{ number_format($category->products_sum_price ?? 0, 0, ',', '.') }}</td>
+                                    <td class="px-5 py-4 text-gray-700">{{ $category->products_sum_stock ?? 0 }}</td>
+                                    <td class="px-5 py-4">
+                                        <div class="flex items-center justify-end gap-1">
+                                            <button type="button" class="rounded-md p-2 text-gray-500 transition hover:bg-primary-50 hover:text-primary-600"
+                                                aria-label="Edit {{ $category->name }}" title="Edit"
+                                                data-dialog-trigger="category-dialog" data-dialog-mode="edit"
+                                                data-dialog-id="{{ $category->id }}"
+                                                data-dialog-name="{{ $category->name }}"
+                                                data-dialog-slug="{{ $category->slug }}"
+                                                data-dialog-image="{{ $category->image ? Storage::disk('public')->url($category->image) : '' }}"
+                                                data-dialog-url="{{ route('product-categories.update', $category) }}">
+                                                <i data-lucide="pencil" class="h-4 w-4"></i>
+                                            </button>
+                                            <form action="{{ route('product-categories.destroy', $category) }}" method="POST" x-data="adminConfirm(@js('Delete this category?'))" @submit="submit($event)">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="rounded-md p-2 text-gray-500 transition hover:bg-red-50 hover:text-red-600" aria-label="Delete {{ $category->name }}" title="Delete">
+                                                    <i data-lucide="trash-2" class="h-4 w-4"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="px-5 py-14 text-center text-sm text-gray-500">No categories yet. Create your first category to get started.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </div>
 </x-app-layout>

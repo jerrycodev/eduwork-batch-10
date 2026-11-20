@@ -1,20 +1,20 @@
 @php
     // This file is included with @include, so use prefixed variables to avoid
     // accidentally inheriting generic variables (for example $value) from the parent view.
-    $uploadId = $fileUploadId ?? 'file-upload';
-    $uploadLabel = $fileUploadLabel ?? 'Upload file';
-    $uploadName = $fileUploadName ?? 'file';
-    $uploadAccept = $fileUploadAccept ?? 'image/png,image/jpeg,image/webp';
-    $uploadHelpText = $fileUploadHelpText ?? 'PNG, JPG, or WEBP';
-    $uploadMaxSize = $fileUploadMaxSize ?? 2;
-    $uploadMultiple = $fileUploadMultiple ?? false;
-    $uploadMode = $fileUploadMode ?? 'deferred';
-    $uploadUrl = $fileUploadUrl ?? null;
-    $deleteUrl = $fileUploadDeleteUrl ?? null;
-    $uploadValue = $fileUploadValue ?? '';
-    $uploadPreviewUrl = $fileUploadPreviewUrl ?? null;
-    $uploadPreviewName = $fileUploadPreviewName ?? null;
-    $uploadHiddenName = $fileUploadHiddenName ?? null;
+    $uploadId = $id;
+    $uploadLabel = $label;
+    $uploadName = $name;
+    $uploadAccept = $accept;
+    $uploadHelpText = $helpText;
+    $uploadMaxSize = $maxSize;
+    $uploadMultiple = $multiple;
+    $uploadMode = $mode;
+    $uploadUrl = $uploadUrl ?? null;
+    $deleteUrl = $deleteUrl ?? null;
+    $uploadValue = $value ?? '';
+    $uploadPreviewUrl = $previewUrl ?? null;
+    $uploadPreviewName = $previewName ?? null;
+    $uploadHiddenName = $hiddenName ?? null;
 
     $filePath = $uploadValue ? parse_url($uploadValue, PHP_URL_PATH) : null;
     $fileName = $uploadPreviewName ?: ($filePath ? basename($filePath) : null);
@@ -27,15 +27,17 @@
     data-upload-url="{{ $uploadUrl }}"
     data-delete-url="{{ $deleteUrl }}"
     data-max-size="{{ (int) $uploadMaxSize * 1024 * 1024 }}"
+    data-image-max-size="{{ (int) $imageMaxSize * 1024 * 1024 }}"
+    data-video-max-size="{{ (int) $videoMaxSize * 1024 * 1024 }}"
     data-multiple="{{ $uploadMultiple ? 'true' : 'false' }}">
     <label for="{{ $uploadId }}-input" class="block text-sm font-medium text-gray-700">{{ $uploadLabel }}</label>
     <div class="flex w-full items-center justify-center">
         <label for="{{ $uploadId }}-input" data-file-upload-dropzone
-            class="flex min-h-48 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-indigo-300 bg-indigo-50/50 px-5 py-8 text-center transition hover:border-indigo-500 hover:bg-indigo-50 focus-within:ring-2 focus-within:ring-indigo-200">
-            <svg class="mb-4 h-9 w-9 text-indigo-600" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            class="flex min-h-48 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-primary-300 bg-primary-50/50 px-5 py-8 text-center transition hover:border-primary-500 hover:bg-primary-50 focus-within:ring-2 focus-within:ring-primary-200">
+            <svg class="mb-4 h-9 w-9 text-primary-600" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 16V4m0 0L8 8m4-4 4 4M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" />
             </svg>
-            <p class="mb-2 text-sm text-gray-700"><span class="font-semibold text-indigo-600">Click to upload</span> or drag and drop</p>
+            <p class="mb-2 text-sm text-gray-700"><span class="font-semibold text-primary-600">Click to upload</span> or drag and drop</p>
             <p class="text-xs text-gray-500">{{ $uploadHelpText }} (MAX. {{ $uploadMaxSize }} MB{{ $uploadMultiple ? ' per file' : '' }})</p>
             <input id="{{ $uploadId }}-input" type="file" name="{{ $uploadMode === 'deferred' ? $uploadName : '' }}"
                 class="sr-only" accept="{{ $uploadAccept }}" {{ $uploadMultiple ? 'multiple' : '' }}

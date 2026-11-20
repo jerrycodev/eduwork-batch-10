@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Storage;
 beforeEach(function () {
     Storage::fake('public');
 
-    $this->actingAs(User::factory()->create(['role' => 'admin']));
+    $this->actingAs(User::factory()->create(['role' => 'admin']), 'admin');
 });
 
 test('an image can be uploaded', function () {

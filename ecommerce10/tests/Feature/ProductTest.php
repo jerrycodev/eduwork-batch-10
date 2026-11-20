@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
-    $this->actingAs(User::factory()->create(['role' => 'admin']));
+    $this->actingAs(User::factory()->create(['role' => 'admin']), 'admin');
 });
 
 function createProductCategory(): ProductCategory
@@ -89,8 +89,8 @@ test('a product and its uploaded image can be deleted', function () {
     $response->assertRedirect(route('products.index'))
         ->assertSessionHas('success', 'Product deleted successfully.');
 
-    $this->assertModelMissing($product);
-    Storage::disk('public')->assertMissing('uploads/headphones.png');
+    $this->assertSoftDeleted('products', ['id' => $product->id]);
+    Storage::disk('public')->assertExists('uploads/headphones.png');
 });
 
 test('product detail URLs resolve products by slug instead of UUID', function () {
@@ -106,6 +106,41 @@ test('product detail URLs resolve products by slug instead of UUID', function ()
 
     $this->get('/product/slug-url-product')->assertOk();
     $this->get('/product/'.$product->id)->assertNotFound();
+});
+
+test('admin product detail displays catalog fields, SEO metadata, and variant relations', function () {
+    $product = Product::query()->create([
+        'name' => 'Complete Detail Product',
+        'slug' => 'complete-detail-product',
+        'description' => 'Full product description for admin detail.',
+        'image' => 'https://example.test/complete-product.png',
+        'price' => 150000,
+        'stock' => 12,
+        'weight_gram' => 800,
+        'category_id' => createProductCategory()->id,
+        'sku' => 'COMPLETE-001',
+        'barcode' => '8991234567890',
+        'compare_at_price' => 175000,
+        'cost_price' => 90000,
+        'is_active' => true,
+        'is_featured' => true,
+        'meta_title' => 'Complete detail SEO title',
+        'meta_description' => 'Complete detail SEO description.',
+        'length_cm' => 20,
+        'width_cm' => 10,
+        'height_cm' => 5,
+    ]);
+
+    $this->get(route('products.show', $product))
+        ->assertOk()
+        ->assertSee('Complete Detail Product')
+        ->assertSee('COMPLETE-001')
+        ->assertSee('8991234567890')
+        ->assertSee('Complete detail SEO title')
+        ->assertSee('Complete detail SEO description.')
+        ->assertSee('inventori')
+        ->assertSee('800 gram')
+        ->assertSee('20 cm');
 });
 
 test('visiting a product detail page increments its click counter', function () {

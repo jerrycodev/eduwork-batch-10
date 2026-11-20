@@ -4,16 +4,21 @@ namespace Database\Seeders;
 
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductOption;
+use App\Models\ProductOptionValue;
+use App\Models\ProductVariant;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
 
 class ProductSeeder extends Seeder
 {
     /**
-     * Seed sample products for local development and tests.
+     * Seed a realistic fashion catalog for local development and testing.
      *
-     * These records are intentionally not seeded in production.
+     * Every product has Color and Size options and multiple sellable variants.
+     * Re-running this seeder updates the demo records without duplicating them.
      */
     public function run(): void
     {
@@ -23,100 +28,342 @@ class ProductSeeder extends Seeder
 
         $this->call(ProductCategorySeeder::class);
 
-        // Setiap produk memiliki URL gambar utama sendiri, bukan gambar bersama kategori.
-        $images = [
-            'Sony WH-1000XM4 Wireless Headphones' => 'https://images.unsplash.com/photo-1546435770-a3e426bf472b?q=80&w=1465&auto=format&fit=crop',
-            'Bose QuietComfort Ultra' => 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=1465&auto=format&fit=crop',
-            'Audio-Technica ATH-M50xBT2' => 'https://images.unsplash.com/photo-1593078166035-9b9e6c7c3a15?q=80&w=1465&auto=format&fit=crop',
-            'Sennheiser HD 450BT Wireless' => 'https://images.unsplash.com/photo-1484704849700-f032a568e944?q=80&w=1465&auto=format&fit=crop',
-            'Apple AirPods Pro 2nd Gen' => 'https://images.unsplash.com/photo-1603351154351-5e2d0600bb77?q=80&w=1465&auto=format&fit=crop',
-            'Samsung Galaxy Buds3 Pro' => 'https://images.unsplash.com/photo-1608156639585-b3a032ef9689?q=80&w=1465&auto=format&fit=crop',
-            'Marshall Motif II A.N.C.' => 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?q=80&w=1465&auto=format&fit=crop',
-            'JBL Charge 6' => 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?q=80&w=1465&auto=format&fit=crop',
-            'Marshall Emberton III' => 'https://images.unsplash.com/photo-1605648916361-9bc12ad6a569?q=80&w=1465&auto=format&fit=crop',
-            'Sonos Roam 2' => 'https://images.unsplash.com/photo-1589003077984-894e133dabab?q=80&w=1465&auto=format&fit=crop',
-            'Apple Watch Series 10' => 'https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?q=80&w=1465&auto=format&fit=crop',
-            'Samsung Galaxy Watch7' => 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1465&auto=format&fit=crop',
-            'Garmin Forerunner 165' => 'https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?q=80&w=1465&auto=format&fit=crop',
-            'Keychron K8 Pro' => 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?q=80&w=1465&auto=format&fit=crop',
-            'Logitech MX Mechanical' => 'https://images.unsplash.com/photo-1595225476474-87563907a212?q=80&w=1465&auto=format&fit=crop',
-            'Royal Kludge RK84' => 'https://images.unsplash.com/photo-1595044426077-d36d9236d54a?q=80&w=1465&auto=format&fit=crop',
-        ];
+        foreach ($this->products() as $index => $definition) {
+            DB::transaction(function () use ($definition, $index): void {
+                $category = ProductCategory::query()
+                    ->where('slug', $definition['category'])
+                    ->first();
 
-        // Berat dibuat tetap per kategori agar hasil simulasi ongkir konsisten.
-        $categoryWeights = [
-            'headphone' => 350,
-            'earbuds' => 80,
-            'speaker' => 750,
-            'smartwatch' => 100,
-            'keyboard' => 1000,
-        ];
+                if (! $category) {
+                    throw new RuntimeException("Product category [{$definition['category']}] was not created.");
+                }
 
-        $products = [
-            'headphone' => [
-                ['Sony WH-1000XM4 Wireless Headphones', 'Headphone premium dengan fitur Active Noise Cancelling (ANC) dan kualitas suara resolusi tinggi.', 3499000],
-                ['Bose QuietComfort Ultra', 'Menghadirkan kenyamanan berpadu dengan teknologi spatial audio untuk pengalaman mendengarkan yang imersif.', 5299000],
-                ['Audio-Technica ATH-M50xBT2', 'Headphone monitor studio nirkabel dengan kejernihan suara profesional dan bass yang presisi.', 2850000],
-                ['Sennheiser HD 450BT Wireless', 'Headphone perjalanan dengan daya tahan baterai hingga 30 jam dan konektivitas nirkabel.', 2199000],
-            ],
-            'earbuds' => [
-                ['Apple AirPods Pro 2nd Gen', 'Earbuds dengan Active Noise Cancelling, mode Transparansi, dan audio spasial personal.', 3799000],
-                ['Samsung Galaxy Buds3 Pro', 'Earbuds premium dengan suara Hi-Fi 24-bit, ANC adaptif, dan desain ringan.', 2999000],
-                ['Marshall Motif II A.N.C.', 'Earbuds bergaya klasik dengan noise cancelling aktif dan daya tahan baterai hingga 30 jam bersama case.', 3299000],
-            ],
-            'speaker' => [
-                ['JBL Charge 6', 'Speaker portabel tahan air dengan bass bertenaga dan power bank bawaan.', 2699000],
-                ['Marshall Emberton III', 'Speaker Bluetooth ringkas dengan suara 360 derajat dan daya tahan baterai hingga 32 jam.', 2499000],
-                ['Sonos Roam 2', 'Speaker portabel dengan koneksi Wi-Fi dan Bluetooth, tahan air, serta dukungan kontrol suara.', 3199000],
-            ],
-            'smartwatch' => [
-                ['Apple Watch Series 10', 'Smartwatch dengan layar besar, pemantauan aktivitas, dan fitur keselamatan.', 5999000],
-                ['Samsung Galaxy Watch7', 'Smartwatch Wear OS dengan pemantauan tidur dan aktivitas olahraga.', 4299000],
-                ['Garmin Forerunner 165', 'Jam olahraga dengan GPS dan pemantauan aktivitas untuk pelari.', 3899000],
-            ],
-            'keyboard' => [
-                ['Keychron K8 Pro', 'Keyboard mekanikal wireless layout tenkeyless dengan hot-swappable switch.', 1899000],
-                ['Logitech MX Mechanical', 'Keyboard mekanikal nirkabel low-profile dengan pencahayaan pintar.', 2299000],
-                ['Royal Kludge RK84', 'Keyboard mekanikal 75 persen dengan koneksi triple mode dan hot-swappable switch.', 899000],
-            ],
-        ];
+                $productSku = sprintf('FASH-%03d', $index + 1);
+                $slug = Str::slug($definition['name']);
 
-        foreach ($products as $categorySlug => $items) {
-            $category = ProductCategory::query()
-                ->where('slug', $categorySlug)
-                ->first();
-
-            if (! $category) {
-                throw new RuntimeException("Product category [{$categorySlug}] was not created.");
-            }
-
-            foreach ($items as [$name, $description, $price]) {
-                // firstOrCreate preserves other edits; weight is synchronized for shipping tests.
-                $product = Product::query()->firstOrCreate(
-                    ['slug' => Str::slug($name)],
+                // Suppress Product's legacy auto-default-variant hook. This seeder
+                // creates the complete variant set explicitly below.
+                $product = Product::withoutEvents(fn () => Product::query()->updateOrCreate(
+                    ['slug' => $slug],
                     [
-                        'name' => $name,
-                        'description' => $description,
-                        'image' => $images[$name],
-                        'price' => $price,
-                        'stock' => 10,
-                        'weight_gram' => $categoryWeights[$categorySlug],
+                        'name' => $definition['name'],
+                        'description' => $definition['description'],
+                        'image' => $definition['image'],
+                        'price' => $definition['base_price'],
+                        'stock' => 0,
+                        'weight_gram' => $definition['weight_gram'],
                         'category_id' => $category->id,
+                        'sku' => $productSku,
+                        'is_active' => true,
+                        'is_featured' => $definition['featured'],
+                        'meta_title' => $definition['name'].' | RevStore',
+                        'meta_description' => Str::limit($definition['description'], 155),
+                        'length_cm' => $definition['dimensions'][0],
+                        'width_cm' => $definition['dimensions'][1],
+                        'height_cm' => $definition['dimensions'][2],
                     ],
+                ));
+
+                $colorOption = ProductOption::query()->updateOrCreate(
+                    ['product_id' => $product->id, 'code' => 'color'],
+                    ['name' => 'Warna', 'display_type' => 'color', 'sort_order' => 1],
                 );
 
-                $product->update([
-                    'image' => $images[$name],
-                    'weight_gram' => $categoryWeights[$categorySlug],
-                ]);
+                $sizeOption = ProductOption::query()->updateOrCreate(
+                    ['product_id' => $product->id, 'code' => 'size'],
+                    ['name' => $definition['size_label'], 'display_type' => 'button', 'sort_order' => 2],
+                );
 
-                // Keep the seeded product's own primary image in the gallery table.
+                $colorValues = [];
+                foreach ($definition['colors'] as $position => [$value, $label, $hex]) {
+                    $colorValues[$value] = ProductOptionValue::query()->updateOrCreate(
+                        ['product_option_id' => $colorOption->id, 'value' => $value],
+                        [
+                            'label' => $label,
+                            'color_hex' => $hex,
+                            'sort_order' => $position,
+                        ],
+                    );
+                }
+
+                $sizeValues = [];
+                foreach ($definition['sizes'] as $position => $size) {
+                    $sizeValues[$size] = ProductOptionValue::query()->updateOrCreate(
+                        ['product_option_id' => $sizeOption->id, 'value' => $size],
+                        ['label' => $size, 'color_hex' => null, 'sort_order' => $position],
+                    );
+                }
+
+                $variantSkus = [];
+                $variantIndex = 0;
+                foreach ($colorValues as $color => $colorValue) {
+                    foreach ($sizeValues as $size => $sizeValue) {
+                        $variantSku = sprintf('%s-%s-%s', $productSku, strtoupper($color), strtoupper($size));
+                        $variantSkus[] = $variantSku;
+                        $variantIndex++;
+
+                        $price = $definition['base_price'] + ($variantIndex % 3 === 0 ? 25000 : 0);
+                        $stock = 8 + (($index + $variantIndex) % 18);
+
+                        $variant = ProductVariant::query()->updateOrCreate(
+                            ['sku' => $variantSku],
+                            [
+                                'product_id' => $product->id,
+                                'barcode' => null,
+                                'name' => $colorValue->label.' / '.$sizeValue->label,
+                                'price' => $price,
+                                'compare_at_price' => $price + 100000,
+                                'cost_price' => (int) round($price * 0.55),
+                                'stock' => $stock,
+                                'weight_gram' => $definition['weight_gram'],
+                                'length_cm' => $definition['dimensions'][0],
+                                'width_cm' => $definition['dimensions'][1],
+                                'height_cm' => $definition['dimensions'][2],
+                                'is_default' => $variantIndex === 1,
+                                'is_active' => true,
+                            ],
+                        );
+
+                        $variant->optionValues()->sync([$colorValue->id, $sizeValue->id]);
+                    }
+                }
+
+                // Remove obsolete variants belonging to this seeded product only.
+                $product->variants()->whereNotIn('sku', $variantSkus)->delete();
+
+                $variants = $product->variants()->get();
+                $product->forceFill([
+                    'price' => $variants->min('price'),
+                    'stock' => $variants->sum('stock'),
+                    'compare_at_price' => $variants->min('compare_at_price'),
+                    'cost_price' => $variants->min('cost_price'),
+                    'weight_gram' => $variants->firstWhere('is_default', true)?->weight_gram ?? $definition['weight_gram'],
+                ])->save();
+
+                // Keep the product-level image as the primary gallery image.
                 $product->images()->update(['is_primary' => false]);
                 $product->images()->updateOrCreate(
                     ['sort_order' => 0],
-                    ['path' => $images[$name], 'is_primary' => true],
+                    ['path' => $definition['image'], 'is_primary' => true],
                 );
-            }
+            });
         }
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function products(): array
+    {
+        return [
+            [
+                'name' => 'Essential Cotton T-Shirt',
+                'category' => 'atasan',
+                'description' => 'Kaos basic berbahan katun lembut dengan potongan regular fit, nyaman untuk aktivitas sehari-hari.',
+                'base_price' => 129000,
+                'weight_gram' => 220,
+                'dimensions' => [28, 22, 2],
+                'size_label' => 'Ukuran',
+                'sizes' => ['S', 'M', 'L'],
+                'colors' => [['black', 'Hitam', '#171717'], ['white', 'Putih', '#F5F5F4'], ['navy', 'Navy', '#1E3A5F']],
+                'featured' => true,
+                'image' => 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=1200&auto=format&fit=crop',
+            ],
+            [
+                'name' => 'Classic Pique Polo',
+                'category' => 'atasan',
+                'description' => 'Polo shirt pique dengan kerah klasik dan detail kancing minimalis untuk tampilan smart casual.',
+                'base_price' => 189000,
+                'weight_gram' => 280,
+                'dimensions' => [30, 24, 3],
+                'size_label' => 'Ukuran',
+                'sizes' => ['M', 'L', 'XL'],
+                'colors' => [['black', 'Hitam', '#171717'], ['cream', 'Krem', '#E8DDC8'], ['forest', 'Forest Green', '#315747']],
+                'featured' => false,
+                'image' => 'https://images.unsplash.com/photo-1625910513413-5fc45e7d3f18?q=80&w=1200&auto=format&fit=crop',
+            ],
+            [
+                'name' => 'Oxford Casual Shirt',
+                'category' => 'atasan',
+                'description' => 'Kemeja oxford serbaguna dengan tekstur kain halus, cocok dipadukan dengan celana chino maupun denim.',
+                'base_price' => 259000,
+                'weight_gram' => 320,
+                'dimensions' => [32, 25, 3],
+                'size_label' => 'Ukuran',
+                'sizes' => ['M', 'L', 'XL'],
+                'colors' => [['sky', 'Sky Blue', '#9FC7DD'], ['white', 'Putih', '#F5F5F4'], ['blue', 'Biru', '#345B8C']],
+                'featured' => true,
+                'image' => 'https://images.unsplash.com/photo-1598033129183-c4f50c736f10?q=80&w=1200&auto=format&fit=crop',
+            ],
+            [
+                'name' => 'Relaxed Fit Denim Jeans',
+                'category' => 'bawahan',
+                'description' => 'Celana denim relaxed fit dengan bahan kokoh namun tetap nyaman untuk digunakan sepanjang hari.',
+                'base_price' => 329000,
+                'weight_gram' => 650,
+                'dimensions' => [34, 28, 5],
+                'size_label' => 'Ukuran',
+                'sizes' => ['30', '32', '34'],
+                'colors' => [['indigo', 'Indigo', '#263B63'], ['black', 'Black Denim', '#252525']],
+                'featured' => true,
+                'image' => 'https://images.unsplash.com/photo-1542272604-787c3835535d?q=80&w=1200&auto=format&fit=crop',
+            ],
+            [
+                'name' => 'Everyday Chino Pants',
+                'category' => 'bawahan',
+                'description' => 'Celana chino dengan siluet tapered dan material stretch ringan untuk gaya kasual rapi.',
+                'base_price' => 279000,
+                'weight_gram' => 520,
+                'dimensions' => [33, 27, 4],
+                'size_label' => 'Ukuran',
+                'sizes' => ['30', '32', '34'],
+                'colors' => [['khaki', 'Khaki', '#B7A27A'], ['black', 'Hitam', '#171717'], ['olive', 'Olive', '#626B45']],
+                'featured' => false,
+                'image' => 'https://images.unsplash.com/photo-1473966968600-fa801b869a1a?q=80&w=1200&auto=format&fit=crop',
+            ],
+            [
+                'name' => 'Minimal Zip Hoodie',
+                'category' => 'outerwear',
+                'description' => 'Hoodie zipper minimalis dengan fleece lembut, saku depan, dan potongan relaxed untuk layering.',
+                'base_price' => 349000,
+                'weight_gram' => 720,
+                'dimensions' => [34, 30, 7],
+                'size_label' => 'Ukuran',
+                'sizes' => ['M', 'L', 'XL'],
+                'colors' => [['charcoal', 'Charcoal', '#424242'], ['oat', 'Oat', '#D8CDBB'], ['navy', 'Navy', '#1E3A5F']],
+                'featured' => true,
+                'image' => 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?q=80&w=1200&auto=format&fit=crop',
+            ],
+            [
+                'name' => 'Linen Blend Midi Dress',
+                'category' => 'dress',
+                'description' => 'Midi dress berbahan linen blend dengan detail pinggang dan tampilan ringan untuk suasana santai.',
+                'base_price' => 389000,
+                'weight_gram' => 420,
+                'dimensions' => [34, 28, 5],
+                'size_label' => 'Ukuran',
+                'sizes' => ['S', 'M', 'L'],
+                'colors' => [['sage', 'Sage', '#A6B49A'], ['black', 'Hitam', '#171717'], ['terracotta', 'Terracotta', '#B86F54']],
+                'featured' => true,
+                'image' => 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?q=80&w=1200&auto=format&fit=crop',
+            ],
+            [
+                'name' => 'Tailored Everyday Blazer',
+                'category' => 'outerwear',
+                'description' => 'Blazer tailored dengan struktur ringan dan potongan modern, ideal untuk kebutuhan formal maupun smart casual.',
+                'base_price' => 549000,
+                'weight_gram' => 780,
+                'dimensions' => [38, 30, 8],
+                'size_label' => 'Ukuran',
+                'sizes' => ['M', 'L', 'XL'],
+                'colors' => [['black', 'Hitam', '#171717'], ['stone', 'Stone', '#B9B1A3']],
+                'featured' => false,
+                'image' => 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?q=80&w=1200&auto=format&fit=crop',
+            ],
+            [
+                'name' => 'Canvas Low-Top Sneakers',
+                'category' => 'sepatu',
+                'description' => 'Sneakers low-top berbahan kanvas dengan outsole fleksibel untuk menemani aktivitas harian.',
+                'base_price' => 429000,
+                'weight_gram' => 850,
+                'dimensions' => [33, 22, 12],
+                'size_label' => 'EU',
+                'sizes' => ['39', '40', '41'],
+                'colors' => [['white', 'Putih', '#F5F5F4'], ['black', 'Hitam', '#171717'], ['sand', 'Sand', '#C9B99A']],
+                'featured' => true,
+                'image' => 'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?q=80&w=1200&auto=format&fit=crop',
+            ],
+            [
+                'name' => 'Everyday Leather Sneakers',
+                'category' => 'sepatu',
+                'description' => 'Sneakers kulit sintetis dengan desain bersih dan bantalan empuk untuk gaya kasual modern.',
+                'base_price' => 599000,
+                'weight_gram' => 920,
+                'dimensions' => [34, 23, 12],
+                'size_label' => 'EU',
+                'sizes' => ['40', '41', '42'],
+                'colors' => [['white', 'Putih', '#F5F5F4'], ['black', 'Hitam', '#171717']],
+                'featured' => false,
+                'image' => 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=1200&auto=format&fit=crop',
+            ],
+            [
+                'name' => 'Daily Canvas Tote Bag',
+                'category' => 'tas',
+                'description' => 'Tote bag kanvas berkapasitas lega dengan kompartemen utama untuk kebutuhan harian.',
+                'base_price' => 159000,
+                'weight_gram' => 350,
+                'dimensions' => [38, 34, 4],
+                'size_label' => 'Kapasitas',
+                'sizes' => ['Small', 'Regular'],
+                'colors' => [['natural', 'Natural', '#D7C6A5'], ['black', 'Hitam', '#171717'], ['olive', 'Olive', '#626B45']],
+                'featured' => false,
+                'image' => 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?q=80&w=1200&auto=format&fit=crop',
+            ],
+            [
+                'name' => 'Urban Everyday Backpack',
+                'category' => 'tas',
+                'description' => 'Backpack ringan dengan ruang laptop dan saku organizer untuk mobilitas kerja maupun kuliah.',
+                'base_price' => 459000,
+                'weight_gram' => 780,
+                'dimensions' => [46, 30, 16],
+                'size_label' => 'Kapasitas',
+                'sizes' => ['18L', '22L'],
+                'colors' => [['black', 'Hitam', '#171717'], ['navy', 'Navy', '#1E3A5F'], ['grey', 'Abu-abu', '#929292']],
+                'featured' => true,
+                'image' => 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?q=80&w=1200&auto=format&fit=crop',
+            ],
+            [
+                'name' => 'Ribbed Long Sleeve Top',
+                'category' => 'atasan',
+                'description' => 'Atasan lengan panjang bertekstur rib dengan material stretch yang nyaman dan mudah dipadukan.',
+                'base_price' => 179000,
+                'weight_gram' => 240,
+                'dimensions' => [29, 23, 3],
+                'size_label' => 'Ukuran',
+                'sizes' => ['S', 'M', 'L'],
+                'colors' => [['ivory', 'Ivory', '#EAE3D5'], ['black', 'Hitam', '#171717'], ['mauve', 'Mauve', '#A77C86']],
+                'featured' => false,
+                'image' => 'https://images.unsplash.com/photo-1564257577-6a9e5f4b8a4a?q=80&w=1200&auto=format&fit=crop',
+            ],
+            [
+                'name' => 'Utility Cargo Trousers',
+                'category' => 'bawahan',
+                'description' => 'Celana cargo dengan saku fungsional, potongan relaxed, dan bahan ringan untuk gaya urban.',
+                'base_price' => 319000,
+                'weight_gram' => 590,
+                'dimensions' => [35, 29, 5],
+                'size_label' => 'Ukuran',
+                'sizes' => ['30', '32', '34'],
+                'colors' => [['olive', 'Olive', '#626B45'], ['black', 'Hitam', '#171717']],
+                'featured' => true,
+                'image' => 'https://images.unsplash.com/photo-1517438476312-10d79c077509?q=80&w=1200&auto=format&fit=crop',
+            ],
+            [
+                'name' => 'Soft Knit Cardigan',
+                'category' => 'outerwear',
+                'description' => 'Cardigan rajut lembut dengan bukaan kancing depan untuk layering yang praktis dan elegan.',
+                'base_price' => 369000,
+                'weight_gram' => 510,
+                'dimensions' => [33, 28, 6],
+                'size_label' => 'Ukuran',
+                'sizes' => ['S', 'M', 'L'],
+                'colors' => [['oat', 'Oat', '#D8CDBB'], ['brown', 'Cokelat', '#795548'], ['grey', 'Abu-abu', '#929292']],
+                'featured' => false,
+                'image' => 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?q=80&w=1200&auto=format&fit=crop',
+            ],
+            [
+                'name' => 'Compact Crossbody Bag',
+                'category' => 'tas',
+                'description' => 'Tas crossbody compact dengan strap adjustable dan kompartemen praktis untuk barang esensial.',
+                'base_price' => 289000,
+                'weight_gram' => 390,
+                'dimensions' => [24, 18, 8],
+                'size_label' => 'Ukuran',
+                'sizes' => ['Small', 'Regular'],
+                'colors' => [['black', 'Hitam', '#171717'], ['tan', 'Tan', '#B8895B'], ['cream', 'Krem', '#E8DDC8']],
+                'featured' => true,
+                'image' => 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?q=80&w=1200&auto=format&fit=crop',
+            ],
+        ];
     }
 }

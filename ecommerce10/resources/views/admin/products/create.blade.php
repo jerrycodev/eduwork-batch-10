@@ -1,4 +1,29 @@
+{{-- Dokumentasi: Halaman pembuatan produk; field utama dirender oleh komponen products._form. --}}
 <x-app-layout>
-    <x-slot name="header"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 class="text-xl font-bold tracking-tight text-gray-900">Create product</h2><p class="mt-1 text-sm text-gray-500">Add a new item to your catalog.</p></div><a href="{{ route('products.index') }}" class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"><i data-lucide="arrow-left" class="h-4 w-4"></i>Back to products</a></div></x-slot>
-    <div class="py-8"><div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"><section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"><div class="border-b border-gray-100 px-5 py-4 sm:px-7"><h3 class="font-semibold text-gray-900">Product information</h3><p class="mt-1 text-sm text-gray-500">Enter the details below. Fields marked required must be completed.</p></div><div class="p-5 sm:p-7">@include('admin.products._form', ['action' => route('products.store'), 'submitLabel' => 'Create Product', 'product' => null])</div></section></div></div>
+    <x-slot name="header">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h2 class="text-xl font-bold tracking-tight text-gray-900">Create product</h2>
+                <p class="mt-1 text-sm text-gray-500">Add a new item to your catalog.</p>
+            </div><a href="{{ route('products.index') }}"
+                class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"><i
+                    data-lucide="arrow-left" class="h-4 w-4"></i>Back to products</a>
+        </div>
+    </x-slot>
+    <div class="py-8">
+        <div class="px-4 sm:px-6 lg:px-8">
+            <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                <div class="border-b border-gray-100 px-5 py-4 sm:px-7">
+                    <h3 class="font-semibold text-gray-900">Product information</h3>
+                    <p class="mt-1 text-sm text-gray-500">Enter the details below. Fields marked required must be
+                        completed.</p>
+                </div>
+                <div class="p-5 sm:p-7">@include('admin.products._form', [
+                    'action' => route('products.store'),
+                    'submitLabel' => 'Create Product',
+                    'product' => null,
+                ])</div>
+            </section>
+        </div>
+    </div>
 </x-app-layout>
