@@ -6,6 +6,7 @@ use App\Events\OrderStatusUpdated;
 use App\Models\Cart;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Services\BiteshipShippingService;
 use App\Services\InventoryService;
 use App\Services\MidtransPaymentService;
@@ -39,16 +40,82 @@ class OrderController extends Controller
         return view('orders.index', compact('orders'));
     }
 
-    /** Display all orders in the admin area. */
-    public function adminIndex(): View
+    /** Display all orders in the admin area with operational metrics and filters. */
+    public function adminIndex(Request $request): View
     {
-        $orders = Order::query()
-            ->withCount('orderItems')
-            ->with('cancellationRequest')
-            ->latest()
-            ->paginate(15);
+        $validated = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'status' => ['nullable', 'in:pending,processing,shipped,delivered,completed,cancelled,success'],
+            'payment_status' => ['nullable', 'in:unpaid,pending,paid,failed,expired,refunded,partially_refunded'],
+            'follow_up' => ['nullable', 'in:payment,fulfillment,delivery,delivery_today,delivery_overdue,cancellation,return'],
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
+        ]);
 
-        return view('admin.orders.index', compact('orders'));
+        $baseQuery = Order::query();
+        $metrics = [
+            'total' => (clone $baseQuery)->count(),
+            'awaiting_payment' => (clone $baseQuery)->whereIn('payment_status', ['unpaid', 'pending'])->where('status', 'pending')->count(),
+            'ready_to_process' => (clone $baseQuery)->where('status', 'pending')->where('payment_status', 'paid')->count(),
+            'in_delivery' => (clone $baseQuery)->where('status', 'shipped')->count(),
+            'delivery_due_today' => (clone $baseQuery)->where('status', 'shipped')->whereDate('estimated_delivery_at', today())->count(),
+            'delivery_overdue' => (clone $baseQuery)->where('status', 'shipped')->whereNotNull('estimated_delivery_at')->whereDate('estimated_delivery_at', '<', today())->count(),
+            'cancellation' => (clone $baseQuery)->whereHas('cancellationRequest', fn ($query) => $query->whereIn('status', ['requested', 'approved']))->count(),
+            'returns' => (clone $baseQuery)->whereHas('returnRequest', fn ($query) => $query
+                ->where(function ($status) {
+                    $status->where('status', 'requested')
+                        ->orWhere(fn ($resolution) => $resolution->where('status', 'item_received')->whereIn('resolution_status', ['pending', 'initiating', 'processing']));
+                }))->count(),
+        ];
+
+        $query = Order::query()
+            ->withCount('orderItems')
+            ->with(['cancellationRequest', 'returnRequest']);
+
+        if (filled($validated['search'] ?? null)) {
+            $search = trim($validated['search']);
+            $query->where(fn ($orders) => $orders
+                ->where('order_number', 'like', "%{$search}%")
+                ->orWhere('user_name', 'like', "%{$search}%")
+                ->orWhere('user_email', 'like', "%{$search}%")
+                ->orWhere('tracking_number', 'like', "%{$search}%")
+            );
+        }
+
+        if (filled($validated['status'] ?? null)) {
+            $query->where('status', $validated['status']);
+        }
+
+        if (filled($validated['payment_status'] ?? null)) {
+            $query->where('payment_status', $validated['payment_status']);
+        }
+
+        if (filled($validated['date_from'] ?? null)) {
+            $query->whereDate('created_at', '>=', $validated['date_from']);
+        }
+
+        if (filled($validated['date_to'] ?? null)) {
+            $query->whereDate('created_at', '<=', $validated['date_to']);
+        }
+
+        match ($validated['follow_up'] ?? null) {
+            'payment' => $query->whereIn('payment_status', ['unpaid', 'pending'])->where('status', 'pending'),
+            'fulfillment' => $query->where('status', 'pending')->where('payment_status', 'paid'),
+            'delivery' => $query->where('status', 'shipped')->whereNotNull('estimated_delivery_at')->whereDate('estimated_delivery_at', '<=', today()),
+            'delivery_today' => $query->where('status', 'shipped')->whereDate('estimated_delivery_at', today()),
+            'delivery_overdue' => $query->where('status', 'shipped')->whereNotNull('estimated_delivery_at')->whereDate('estimated_delivery_at', '<', today()),
+            'cancellation' => $query->whereHas('cancellationRequest', fn ($cancellation) => $cancellation->whereIn('status', ['requested', 'approved'])),
+            'return' => $query->whereHas('returnRequest', fn ($return) => $return
+                ->where(function ($status) {
+                    $status->where('status', 'requested')
+                        ->orWhere(fn ($resolution) => $resolution->where('status', 'item_received')->whereIn('resolution_status', ['pending', 'initiating', 'processing']));
+                })),
+            default => null,
+        };
+
+        $orders = $query->latest()->paginate(15)->withQueryString();
+
+        return view('admin.orders.index', compact('orders', 'metrics'));
     }
 
     /** Return live Biteship rates for the authenticated customer cart and saved address. */
@@ -60,7 +127,7 @@ class OrderController extends Controller
             return response()->json(['message' => 'Alamat pengiriman tidak ditemukan.'], 422);
         }
 
-        $cartItems = Cart::query()->with('product')->where('user_id', $request->user()->id)->get();
+        $cartItems = Cart::query()->with(['product', 'variant'])->where('user_id', $request->user()->id)->get();
         if ($cartItems->isEmpty() || $cartItems->contains(fn (Cart $item) => ! $item->product)) {
             return response()->json(['message' => 'Keranjang kosong atau berisi produk yang tidak tersedia.'], 422);
         }
@@ -189,6 +256,7 @@ class OrderController extends Controller
 
                 if (
                     ! $product ||
+                    ! $product->is_active ||
                     $cartItem->quantity < 1 ||
                     $cartItem->quantity > $product->stock
                 ) {
@@ -198,14 +266,27 @@ class OrderController extends Controller
                     ]);
                 }
 
-                $lineTotal = (int) $product->price * (int) $cartItem->quantity;
+                $variant = $cartItem->product_variant_id
+                    ? ProductVariant::query()->where('product_id', $product->id)->lockForUpdate()->find($cartItem->product_variant_id)
+                    : ProductVariant::query()->where('product_id', $product->id)->where('is_default', true)->lockForUpdate()->first();
+
+                if (! $variant || ! $variant->is_active || $cartItem->quantity > $variant->stock) {
+                    throw ValidationException::withMessages(['cart' => 'Variant produk '.($product->name).' tidak tersedia atau stok tidak mencukupi.']);
+                }
+
+                $lineTotal = (int) $variant->price * (int) $cartItem->quantity;
                 $total += $lineTotal;
+                $variantName = $variant->optionValues()->with('option')->get()
+                    ->map(fn ($value) => $value->option->name.': '.$value->label)->implode(', ');
 
                 $orderLines[] = [
                     'product_id' => $product->id,
+                    'product_variant_id' => $variant->id,
                     'product_name' => $product->name,
+                    'product_sku' => $variant->sku,
+                    'product_variant_name' => $variantName ?: ($variant->name ?? 'Default'),
                     'quantity' => $cartItem->quantity,
-                    'price' => $product->price,
+                    'price' => $variant->price,
                     'total' => $lineTotal,
                 ];
             }
@@ -231,6 +312,8 @@ class OrderController extends Controller
                 'shipping_etd' => $verifiedRate['duration'],
                 'total' => $total + $shippingCost,
                 'status' => 'pending',
+                'payment_status' => 'pending',
+                'payment_expires_at' => now()->addMinutes((int) config('midtrans.payment_expiry_minutes', 30)),
             ]);
 
             $order->orderItems()->createMany($orderLines);
@@ -239,6 +322,7 @@ class OrderController extends Controller
             foreach ($cartItems as $cartItem) {
                 $inventory->change(
                     productId: (string) $cartItem->product_id,
+                    variantId: (string) $cartItem->product_variant_id,
                     delta: -(int) $cartItem->quantity,
                     type: 'out',
                     userId: (string) $user->id,
@@ -256,6 +340,17 @@ class OrderController extends Controller
         });
 
         $request->session()->forget('checkout_shipping_quote');
+        $request->attributes->set('customer_activity_subject', $order);
+        $request->attributes->set('customer_activity_metadata', [
+            'order_number' => $order->order_number,
+            'item_count' => $order->orderItems()->count(),
+            'items' => $order->orderItems()->get(['product_name', 'product_sku', 'product_variant_name', 'quantity', 'price', 'total'])->toArray(),
+            'subtotal' => (int) $order->subtotal,
+            'shipping_cost' => (int) $order->shipping_cost,
+            'total' => (int) $order->total,
+            'currency' => 'IDR',
+            'payment_status' => $order->payment_status,
+        ]);
 
         $paymentReady = true;
 
@@ -265,6 +360,7 @@ class OrderController extends Controller
             report($exception);
             $paymentReady = false;
         }
+        $request->attributes->set('customer_activity_secondary_action', $paymentReady ? 'payment.initiated' : 'payment.initialization_failed');
 
         // The order still exists; send its invoice even if Midtrans setup needs to be retried.
         app(OrderEmailService::class)->send($order->fresh()->load('orderItems'), 'order_created');
@@ -291,7 +387,24 @@ class OrderController extends Controller
             'cancellationRequest',
         ]);
 
-        return view('orders.show', compact('order'));
+        $trackingData = null;
+        $trackingError = null;
+
+        if (
+            filled($order->biteship_tracking_id)
+            && ! $order->cancellationRequest
+            && ! $order->returnRequest
+            && $order->status !== 'cancelled'
+        ) {
+            try {
+                $trackingData = app(BiteshipShippingService::class)->getTrackingPage($order->biteship_tracking_id);
+            } catch (\Throwable $exception) {
+                report($exception);
+                $trackingError = 'Informasi tracking belum dapat dimuat. Silakan coba muat ulang halaman.';
+            }
+        }
+
+        return view('orders.show', compact('order', 'trackingData', 'trackingError'));
     }
 
     /** Update fulfillment status manually by an administrator. */
@@ -299,7 +412,6 @@ class OrderController extends Controller
     {
         $validated = $request->validate([
             'status' => ['required', 'in:pending,processing,shipped,delivered,cancelled'],
-            'tracking_number' => ['nullable', 'string', 'max:100'],
         ]);
 
         $result = DB::transaction(function () use ($order, $validated): array {
@@ -309,8 +421,8 @@ class OrderController extends Controller
             $nextStatus = $validated['status'];
             $allowedTransitions = [
                 'pending' => ['processing', 'cancelled'],
-                'processing' => ['shipped', 'cancelled'],
-                'shipped' => ['delivered'],
+                'processing' => [],
+                'shipped' => [],
                 'delivered' => [],
                 'completed' => [],
                 'cancelled' => [],
@@ -333,14 +445,21 @@ class OrderController extends Controller
                 throw ValidationException::withMessages(['status' => 'Pesanan sedang dalam proses pembatalan dan fulfillment ditahan sampai pengajuan ditolak atau diselesaikan.']);
             }
 
-            if ($nextStatus === 'shipped' && blank($validated['tracking_number'] ?? null) && blank($lockedOrder->tracking_number)) {
-                throw ValidationException::withMessages(['tracking_number' => 'Nomor resi wajib diisi sebelum pesanan ditandai dikirim.']);
+            if (in_array($nextStatus, ['shipped', 'delivered'], true) && $nextStatus !== $lockedOrder->status) {
+                throw ValidationException::withMessages(['status' => 'Status pengiriman Shipped dan Delivered hanya diperbarui otomatis dari webhook Biteship.']);
             }
 
             $updates = ['status' => $nextStatus];
             if ($nextStatus === 'shipped') {
-                $updates['tracking_number'] = $validated['tracking_number'] ?? $lockedOrder->tracking_number;
                 $updates['shipped_at'] = $lockedOrder->shipped_at ?? now();
+
+                if (! $lockedOrder->estimated_delivery_at) {
+                    preg_match_all('/\\d+/', (string) $lockedOrder->shipping_etd, $etdMatches);
+                    $estimatedDays = collect($etdMatches[0] ?? [])->map(fn ($value) => (int) $value)->max();
+                    $updates['estimated_delivery_at'] = $estimatedDays
+                        ? ($lockedOrder->shipped_at ?? now())->copy()->addDays($estimatedDays)
+                        : null;
+                }
             }
             if ($nextStatus === 'delivered') {
                 $updates['delivered_at'] = $lockedOrder->delivered_at ?? now();
@@ -358,6 +477,7 @@ class OrderController extends Controller
                 foreach ($lockedOrder->orderItems()->get() as $item) {
                     $inventory->change(
                         productId: (string) $item->product_id,
+                        variantId: $item->product_variant_id ? (string) $item->product_variant_id : null,
                         delta: (int) $item->quantity,
                         type: 'in',
                         referenceType: Order::class,
@@ -381,6 +501,16 @@ class OrderController extends Controller
 
         $order->refresh();
 
+        $shipmentError = null;
+        if ($order->status === 'processing' && $order->payment_status === 'paid' && ! $order->biteship_order_id) {
+            try {
+                $order = app(BiteshipShippingService::class)->createShipment($order);
+            } catch (\Throwable $exception) {
+                report($exception);
+                $shipmentError = $exception->getMessage();
+            }
+        }
+
         if ($previousStatus !== $order->status || $previousTrackingNumber !== $order->tracking_number) {
             $trackingChanged = $previousTrackingNumber !== $order->tracking_number;
 
@@ -401,7 +531,26 @@ class OrderController extends Controller
             ]);
         }
 
-        return redirect()->route('orders.show', $order)->with('success', 'Status pesanan berhasil diperbarui.');
+        if ($shipmentError !== null) {
+            return redirect()->route('orders.show', $order)->with('error', 'Status tersimpan sebagai Processing, tetapi pengiriman Biteship belum berhasil dibuat: '.$shipmentError.' Admin dapat mencoba ulang setelah memperbaiki penyebabnya.');
+        }
+
+        return redirect()->route('orders.show', $order)->with('success', $order->biteship_order_id ? 'Status pesanan tersimpan dan pengiriman Biteship telah terhubung.' : 'Status pesanan berhasil diperbarui.');
+    }
+
+    /** Retry shipment creation after a previous Biteship API failure. */
+    public function retryBiteshipShipment(Order $order): RedirectResponse
+    {
+        abort_unless($order->payment_status === 'paid' && $order->status === 'processing', 422, 'Pesanan harus lunas dan berstatus Processing.');
+        try {
+            $order = app(BiteshipShippingService::class)->createShipment($order);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return back()->with('error', 'Pengiriman Biteship belum berhasil dibuat: '.$exception->getMessage());
+        }
+
+        return back()->with('success', 'Pengiriman Biteship berhasil dibuat. ID: '.$order->biteship_order_id);
     }
 
     /** Confirm receipt and complete an order by its owner. */
@@ -433,10 +582,21 @@ class OrderController extends Controller
     }
 
     /** Display an order in the admin dashboard. */
-    public function adminShow(Order $order): View
+    public function adminShow(Order $order, BiteshipShippingService $biteship): View
     {
         $order->load('user', 'orderItems.product', 'returnRequest', 'cancellationRequest');
+        $trackingData = null;
+        $trackingError = null;
 
-        return view('admin.orders.show', compact('order'));
+        if (filled($order->biteship_tracking_id)) {
+            try {
+                $trackingData = $biteship->getTrackingPage($order->biteship_tracking_id);
+            } catch (\Throwable $exception) {
+                report($exception);
+                $trackingError = $exception->getMessage();
+            }
+        }
+
+        return view('admin.orders.show', compact('order', 'trackingData', 'trackingError'));
     }
 }

@@ -11,6 +11,9 @@ use Throwable;
 
 class OrderEmailService
 {
+    /**
+     * Mengirim email atau notifikasi transaksional sesuai jenis peristiwa.
+     */
     public function send(Order $order, string $type): void
     {
         if (blank($order->user_email)) {
@@ -28,6 +31,9 @@ class OrderEmailService
         $this->queue($order, $log);
     }
 
+    /**
+     * Mengulangi proses integrasi setelah memeriksa kondisi dan status terakhir.
+     */
     public function retry(EmailDeliveryLog $log): void
     {
         $log = DB::transaction(function () use ($log): EmailDeliveryLog {

@@ -11,6 +11,9 @@ class AutoCompleteDeliveredOrders extends Command
 
     protected $description = 'Automatically complete delivered orders after the confirmation window.';
 
+    /**
+     * Menjalankan alur bisnis untuk menangani event atau permintaan yang diterima.
+     */
     public function handle(): int
     {
         $completed = Order::query()

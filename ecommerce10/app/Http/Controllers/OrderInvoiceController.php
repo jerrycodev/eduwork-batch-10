@@ -5,12 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Auth;
 
 class OrderInvoiceController extends Controller
 {
     public function __invoke(Order $order): Response
     {
-        abort_unless((string) $order->user_id === (string) auth()->id() || auth()->user()?->role === 'admin', 403);
+        abort_unless((string) $order->user_id === (string) Auth::id() || Auth::user()?->role === 'admin', 403);
 
         $order->load('orderItems');
 

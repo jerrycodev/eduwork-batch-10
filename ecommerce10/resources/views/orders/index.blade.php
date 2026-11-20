@@ -1,14 +1,8 @@
-<x-layout-component>
-    <div class="mb-7 flex flex-wrap items-end justify-between gap-4 sm:mb-8">
-        <div>
-            <p class="mb-2 text-sm font-semibold text-indigo-600">Order history</p>
-            <h1 class="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">Pesanan Saya</h1>
-            <p class="mt-1.5 text-sm text-gray-500">Riwayat pesanan yang sudah tercatat.</p>
-        </div>
-        <a href="{{ route('shop') }}"
-            class="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"><i
-                data-lucide="shopping-bag" class="h-4 w-4"></i>Lanjut Belanja</a>
-    </div>
+<x-storefront-layout>
+    <div class="container">
+    <x-ui.page-header eyebrow="Akun Saya" title="Pesanan Saya" description="Pantau status dan riwayat pesanan Anda.">
+        <x-slot:actions><x-ui.link-button :href="route('shop')" variant="secondary"><i data-lucide="shopping-bag" class="h-4 w-4"></i>Lanjut Belanja</x-ui.link-button></x-slot:actions>
+    </x-ui.page-header>
 
     @if (session('success'))
         <div class="mb-5 flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800"
@@ -19,13 +13,13 @@
     @if ($orders->isEmpty())
         <section
             class="flex min-h-[360px] flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-gray-50/70 px-6 py-12 text-center">
-            <span class="flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600"><i
+            <span class="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-50 text-primary-600"><i
                     data-lucide="package-search" class="h-8 w-8"></i></span>
             <h2 class="mt-5 font-semibold text-gray-900">Belum ada pesanan</h2>
             <p class="mt-2 max-w-sm text-sm leading-6 text-gray-500">Pesanan yang kamu buat akan muncul di halaman ini.
                 Yuk, temukan produk yang kamu butuhkan.</p>
             <a href="{{ route('shop') }}"
-                class="mt-5 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">Mulai
+                class="mt-5 inline-flex items-center gap-2 rounded-lg bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-700">Mulai
                 Belanja<i data-lucide="arrow-right" class="h-4 w-4"></i></a>
         </section>
     @else
@@ -34,7 +28,7 @@
                 <div>
                     <h2 class="font-semibold text-gray-900">Riwayat Pesanan</h2>
                     <p class="mt-1 text-sm text-gray-500">{{ $orders->total() }} pesanan tercatat</p>
-                </div><span class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">Akun
+                </div><span class="rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700">Akun
                     Saya</span>
             </div>
             <div class="overflow-x-auto">
@@ -105,7 +99,7 @@
                                     </span>
                                 </td>
                                 <td class="px-5 py-4 text-right"><a href="{{ route('orders.customer.show', $order) }}"
-                                        class="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50 hover:text-indigo-700">Lihat
+                                        class="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-primary-600 transition hover:bg-primary-50 hover:text-primary-700">Lihat
                                         detail<i data-lucide="arrow-up-right" class="h-3.5 w-3.5"></i></a></td>
                             </tr>
                         @endforeach
@@ -117,4 +111,5 @@
             <div class="mt-5">{{ $orders->links() }}</div>
         @endif
     @endif
-</x-layout-component>
+    </div>
+</x-storefront-layout>

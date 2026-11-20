@@ -31,21 +31,26 @@ function makeFulfillmentOrder(User $owner, array $attributes = []): Order
     ], $attributes));
 }
 
-test('admin must add tracking number before marking order shipped', function () {
+test('only Biteship webhook can move a processing order to shipped', function () {
+    config(['biteship.webhook.signature_key' => 'X-Biteship-Signature', 'biteship.webhook.signature_secret' => 'test-secret']);
     $admin = User::factory()->create(['role' => 'admin']);
     $customer = User::factory()->create();
-    $order = makeFulfillmentOrder($customer, ['status' => 'processing']);
+    $order = makeFulfillmentOrder($customer, [
+        'status' => 'processing',
+        'biteship_order_id' => 'bite-order-123',
+        'shipping_etd' => '1 - 2 days',
+    ]);
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->patch(route('orders.status.update', $order), ['status' => 'shipped'])
-        ->assertSessionHasErrors('tracking_number');
+        ->assertSessionHasErrors('status');
 
-    $this->assertDatabaseHas('orders', ['id' => $order->id, 'status' => 'processing']);
-
-    $this->patch(route('orders.status.update', $order), [
-        'status' => 'shipped',
-        'tracking_number' => 'JNE123456789',
-    ])->assertRedirect(route('orders.show', $order));
+    $this->postJson(route('webhooks.biteship'), [
+        'event' => 'order.status',
+        'order_id' => 'bite-order-123',
+        'status' => 'picked',
+        'courier_waybill_id' => 'JNE123456789',
+    ], ['X-Biteship-Signature' => 'test-secret'])->assertOk();
 
     expect($order->fresh()->status)->toBe('shipped')
         ->and($order->fresh()->tracking_number)->toBe('JNE123456789')
@@ -77,7 +82,7 @@ test('admin cancellation restores stock in the same order transition and does no
         'total' => 150000,
     ]);
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->patch(route('orders.status.update', $order), ['status' => 'cancelled'])
         ->assertRedirect(route('orders.show', $order));
 
@@ -98,7 +103,7 @@ test('admin cannot skip shipping steps or complete an order directly', function 
     $customer = User::factory()->create();
     $order = makeFulfillmentOrder($customer, ['status' => 'processing']);
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->patch(route('orders.status.update', $order), ['status' => 'delivered'])
         ->assertSessionHasErrors('status');
 
@@ -117,11 +122,11 @@ test('customer can confirm delivered order and only the owner may confirm it', f
         'auto_complete_at' => now()->addDays(3),
     ]);
 
-    $this->actingAs($other)
+    $this->actingAs($other, 'customer')
         ->post(route('orders.confirm-received', $order))
         ->assertForbidden();
 
-    $this->actingAs($owner)
+    $this->actingAs($owner, 'customer')
         ->post(route('orders.confirm-received', $order))
         ->assertRedirect();
 
@@ -167,7 +172,7 @@ test('customer can submit a return request with photo evidence and admin can rev
         'auto_complete_at' => now()->addDays(2),
     ]);
 
-    $this->actingAs($owner)
+    $this->actingAs($owner, 'customer')
         ->post(route('orders.returns.store', $order), [
             'reason' => 'damaged',
             'description' => 'Produk mengalami kerusakan pada bagian casing.',
@@ -185,11 +190,11 @@ test('customer can submit a return request with photo evidence and admin can rev
     Storage::disk('local')->assertExists($returnRequest->evidence_paths[0]);
     Storage::disk('local')->assertExists($returnRequest->evidence_paths[1]);
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->get(route('order-returns.evidence', [$returnRequest, 0]))
         ->assertOk();
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->patch(route('order-returns.update', $returnRequest), [
             'status' => 'approved',
             'admin_note' => 'Silakan kirim barang kembali.',
@@ -203,19 +208,19 @@ test('customer can submit a return request with photo evidence and admin can rev
     expect($returnRequest->fresh()->status)->toBe('approved')
         ->and($returnRequest->fresh()->return_address)->toBe('Jl. Contoh No. 10, Jakarta');
 
-    $this->actingAs($owner)
+    $this->actingAs($owner, 'customer')
         ->post(route('orders.returns.shipment', $returnRequest), [
             'return_courier' => 'JNE',
             'return_tracking_number' => 'RET123456',
         ])->assertRedirect();
     expect($returnRequest->fresh()->status)->toBe('return_shipped');
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->post(route('order-returns.receive', $returnRequest), ['inspection_note' => 'Barang diterima dan diperiksa.'])
         ->assertRedirect();
     expect($returnRequest->fresh()->status)->toBe('item_received');
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->post(route('order-returns.resolve', $returnRequest), [
             'resolution_type' => 'refund',
             'refund_method' => 'manual',
@@ -225,7 +230,7 @@ test('customer can submit a return request with photo evidence and admin can rev
         ])->assertRedirect();
     expect($returnRequest->fresh()->resolution_status)->toBe('processing');
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->post(route('order-returns.complete', $returnRequest), ['resolution_reference' => 'TRF-REFUND-001'])
         ->assertRedirect();
     expect($returnRequest->fresh()->status)->toBe('completed')
@@ -242,13 +247,13 @@ test('admin can request additional return documents and customer can submit a vi
         'auto_complete_at' => now()->addDays(2),
     ]);
 
-    $this->actingAs($owner)->post(route('orders.returns.store', $order), [
+    $this->actingAs($owner, 'customer')->post(route('orders.returns.store', $order), [
         'reason' => 'damaged',
         'description' => 'Produk mengalami kerusakan pada bagian casing.',
     ])->assertRedirect();
     $returnRequest = OrderReturnRequest::query()->firstOrFail();
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->post(route('order-returns.revisions.request', $returnRequest), [
             'message' => 'Mohon lampirkan video unboxing yang memperlihatkan paket saat dibuka.',
             'required_documents' => ['video_unboxing'],
@@ -258,12 +263,12 @@ test('admin can request additional return documents and customer can submit a vi
     expect($returnRequest->fresh()->status)->toBe('revision_requested')
         ->and($revision->status)->toBe('requested');
 
-    $this->actingAs($owner)
+    $this->actingAs($owner, 'customer')
         ->post(route('orders.returns.revisions.submit', [$returnRequest, $revision]), [
             'evidence' => [UploadedFile::fake()->image('not-a-video.jpg')],
         ])->assertSessionHasErrors('evidence');
 
-    $this->actingAs($owner)
+    $this->actingAs($owner, 'customer')
         ->post(route('orders.returns.revisions.submit', [$returnRequest, $revision]), [
             'customer_note' => 'Berikut video saat paket dibuka.',
             'evidence' => [UploadedFile::fake()->create('unboxing.mp4', 2048, 'video/mp4')],
@@ -276,7 +281,7 @@ test('admin can request additional return documents and customer can submit a vi
         ->and($revision->evidence_original_names)->toBe(['unboxing.mp4']);
     Storage::disk('local')->assertExists($revision->evidence_paths[0]);
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->get(route('order-returns.revisions.evidence', [$returnRequest, $revision, 0]))
         ->assertOk();
 });
@@ -312,7 +317,7 @@ test('admin can send replacement against the original order and inventory is rec
         'item_received_at' => now(),
     ]);
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->post(route('order-returns.resolve', $returnRequest), [
             'resolution_type' => 'replacement',
             'replacement_courier' => 'JNE',
@@ -325,7 +330,7 @@ test('admin can send replacement against the original order and inventory is rec
         ->and(StockMovement::query()->where('reference_type', OrderReturnRequest::class)->where('reference_id', $returnRequest->id)->count())->toBe(1)
         ->and(Order::query()->count())->toBe(1);
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->post(route('order-returns.complete', $returnRequest))
         ->assertRedirect();
 
@@ -341,7 +346,7 @@ test('return request accepts at most one unboxing video', function () {
         'delivered_at' => now()->subDay(),
     ]);
 
-    $this->actingAs($owner)
+    $this->actingAs($owner, 'customer')
         ->post(route('orders.returns.store', $order), [
             'reason' => 'damaged',
             'description' => 'Produk mengalami kerusakan pada bagian casing.',
@@ -370,7 +375,7 @@ test('customer cannot confirm an order while a return request is active', functi
         'status' => 'requested',
     ]);
 
-    $this->actingAs($owner)
+    $this->actingAs($owner, 'customer')
         ->post(route('orders.confirm-received', $order))
         ->assertSessionHasErrors('order');
 
@@ -392,11 +397,11 @@ test('return request is only available to the owner within seven days of deliver
 
     $payload = ['reason' => 'other', 'description' => 'Saya ingin mengembalikan pesanan ini.'];
 
-    $this->actingAs($other)
+    $this->actingAs($other, 'customer')
         ->post(route('orders.returns.store', $available), $payload)
         ->assertForbidden();
 
-    $this->actingAs($owner)
+    $this->actingAs($owner, 'customer')
         ->post(route('orders.returns.store', $expired), $payload)
         ->assertSessionHasErrors('return');
 
@@ -411,7 +416,7 @@ test('paid pending order shows that payment is verified and awaits admin process
         'paid_at' => now(),
     ]);
 
-    $this->actingAs($customer)
+    $this->actingAs($customer, 'customer')
         ->get(route('orders.customer.show', $order))
         ->assertOk()
         ->assertSee('Pembayaran terverifikasi', false)
@@ -426,7 +431,7 @@ test('unpaid pending order continues to show that payment is awaited', function 
         'payment_status' => 'pending',
     ]);
 
-    $this->actingAs($customer)
+    $this->actingAs($customer, 'customer')
         ->get(route('orders.customer.show', $order))
         ->assertOk()
         ->assertSee('Menunggu pembayaran');
@@ -442,7 +447,7 @@ test('customer tracking switches to cancellation flow while a cancellation reque
         'status' => 'requested',
     ]);
 
-    $this->actingAs($customer)
+    $this->actingAs($customer, 'customer')
         ->get(route('orders.customer.show', $order))
         ->assertOk()
         ->assertSee('Proses Pembatalan')
@@ -466,7 +471,7 @@ test('customer tracking shows refund completion for a completed paid cancellatio
         'resolved_at' => now(),
     ]);
 
-    $this->actingAs($customer)
+    $this->actingAs($customer, 'customer')
         ->get(route('orders.customer.show', $order))
         ->assertOk()
         ->assertSee('Proses Pembatalan')
@@ -490,7 +495,7 @@ test('customer tracking shows return request progress separately from order fulf
         'reviewed_at' => now(),
     ]);
 
-    $this->actingAs($customer)
+    $this->actingAs($customer, 'customer')
         ->get(route('orders.customer.show', $order))
         ->assertOk()
         ->assertSee('Proses Pengembalian')
@@ -503,7 +508,7 @@ test('customer order detail only exposes its private realtime subscription when 
     $customer = User::factory()->create();
     $order = makeFulfillmentOrder($customer);
 
-    $this->actingAs($customer)
+    $this->actingAs($customer, 'customer')
         ->get(route('orders.customer.show', $order))
         ->assertOk()
         ->assertDontSee('data-order-realtime', false);
@@ -523,7 +528,7 @@ test('admin status changes broadcast to the order private channel after the upda
     $customer = User::factory()->create();
     $order = makeFulfillmentOrder($customer, ['status' => 'pending']);
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->patch(route('orders.status.update', $order), ['status' => 'processing'])
         ->assertRedirect(route('orders.show', $order));
 
@@ -542,34 +547,46 @@ test('only the order owner and administrators may authorize its private channel'
     $admin = User::factory()->create(['role' => 'admin']);
     $order = makeFulfillmentOrder($owner);
 
-    $this->actingAs($owner)->postJson('/broadcasting/auth', [
+    $this->actingAs($owner, 'customer')->postJson('/broadcasting/auth', [
         'socket_id' => '1234.5678',
         'channel_name' => 'private-orders.'.$order->id,
     ])->assertOk();
 
-    $this->actingAs($otherCustomer)->postJson('/broadcasting/auth', [
+    $this->actingAs($otherCustomer, 'customer')->postJson('/broadcasting/auth', [
         'socket_id' => '1234.5678',
         'channel_name' => 'private-orders.'.$order->id,
     ])->assertForbidden();
 
-    $this->actingAs($admin)->postJson('/broadcasting/auth', [
+    $this->actingAs($admin, 'admin')->postJson('/broadcasting/auth', [
         'socket_id' => '1234.5678',
         'channel_name' => 'private-orders.'.$order->id,
     ])->assertOk();
 });
 
-test('order processing shipping and delivery transitions queue transactional emails', function () {
+test('Biteship webhook shipping and delivery transitions queue transactional emails', function () {
     Mail::fake();
+    config(['biteship.webhook.signature_key' => 'X-Biteship-Signature', 'biteship.webhook.signature_secret' => 'test-secret']);
     $admin = User::factory()->create(['role' => 'admin']);
     $customer = User::factory()->create();
-    $order = makeFulfillmentOrder($customer, ['status' => 'pending']);
+    $order = makeFulfillmentOrder($customer, [
+        'status' => 'pending',
+        'recipient_name' => 'Receiver',
+        'user_phone' => '08123456789',
+        'address' => 'Jalan Test',
+        'zip' => '12345',
+        'shipping_courier_code' => 'jne',
+        'shipping_service_code' => 'reg',
+    ]);
 
-    $this->actingAs($admin)->patch(route('orders.status.update', $order), ['status' => 'processing'])->assertRedirect();
-    $this->patch(route('orders.status.update', $order), [
-        'status' => 'shipped',
-        'tracking_number' => 'JNE-EMAIL-123',
-    ])->assertRedirect();
-    $this->patch(route('orders.status.update', $order), ['status' => 'delivered'])->assertRedirect();
+    $this->actingAs($admin, 'admin')->patch(route('orders.status.update', $order), ['status' => 'processing'])->assertRedirect();
+    $order->forceFill(['biteship_order_id' => 'bite-email-123'])->save();
+
+    $this->postJson(route('webhooks.biteship'), [
+        'event' => 'order.status', 'order_id' => 'bite-email-123', 'status' => 'in_transit', 'courier_waybill_id' => 'JNE-EMAIL-123',
+    ], ['X-Biteship-Signature' => 'test-secret'])->assertOk();
+    $this->postJson(route('webhooks.biteship'), [
+        'event' => 'order.status', 'order_id' => 'bite-email-123', 'status' => 'delivered',
+    ], ['X-Biteship-Signature' => 'test-secret'])->assertOk();
 
     Mail::assertQueued(OrderTransactionalMail::class, 3);
     Mail::assertQueued(OrderTransactionalMail::class, fn (OrderTransactionalMail $mail): bool => $mail->type === 'order_processing');
@@ -593,7 +610,7 @@ test('refund resolution rejects an amount above the remaining refundable balance
         'item_received_at' => now(),
     ]);
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->post(route('order-returns.resolve', $returnRequest), [
             'resolution_type' => 'refund',
             'refund_method' => 'midtrans',
@@ -638,7 +655,7 @@ test('Midtrans refund completion requires matching remote transaction and refund
         ]);
     $this->app->instance(MidtransPaymentService::class, $payments);
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->post(route('order-returns.complete', $returnRequest))
         ->assertSessionHasErrors('resolution');
 

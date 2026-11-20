@@ -15,6 +15,9 @@ use Illuminate\Validation\ValidationException;
 
 class OrderReturnRequestController extends Controller
 {
+    /**
+     * Memvalidasi dan memproses permintaan pembuatan data baru sesuai aturan bisnis.
+     */
     public function store(Request $request, Order $order): RedirectResponse
     {
         abort_unless($request->user()->role !== 'admin', 403);
@@ -210,6 +213,9 @@ class OrderReturnRequestController extends Controller
         return Storage::disk('local')->response($path, $name);
     }
 
+    /**
+     * Memvalidasi dan menyimpan perubahan data dengan tetap menjaga aturan bisnis.
+     */
     public function update(Request $request, OrderReturnRequest $returnRequest): RedirectResponse
     {
         $validated = $request->validate([
@@ -356,6 +362,7 @@ class OrderReturnRequestController extends Controller
                 foreach ($items as $item) {
                     app(InventoryService::class)->change(
                         productId: (string) $item->product_id,
+                        variantId: $item->product_variant_id ? (string) $item->product_variant_id : null,
                         delta: -((int) $item->quantity),
                         type: 'out',
                         userId: (string) $request->user()->id,

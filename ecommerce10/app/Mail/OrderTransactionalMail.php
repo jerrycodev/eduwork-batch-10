@@ -34,6 +34,9 @@ class OrderTransactionalMail extends Mailable implements ShouldQueue
         );
     }
 
+    /**
+     * Mencatat kegagalan proses beserta informasi error untuk investigasi.
+     */
     public function failed(Throwable $exception): void
     {
         if ($this->deliveryLogId) {

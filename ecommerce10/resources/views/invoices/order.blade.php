@@ -39,7 +39,7 @@
         <thead><tr><th>Produk</th><th class="right">Qty</th><th class="right">Harga</th><th class="right">Subtotal</th></tr></thead>
         <tbody>
             @foreach ($order->orderItems as $item)
-                <tr><td>{{ $item->product_name }}</td><td class="right">{{ $item->quantity }}</td><td class="right">Rp {{ number_format($item->price, 0, ',', '.') }}</td><td class="right">Rp {{ number_format($item->total, 0, ',', '.') }}</td></tr>
+                <tr><td>{{ $item->product_name }}@if ($item->product_variant_name && $item->product_variant_name !== 'Default')<br><small>{{ $item->product_variant_name }}</small>@endif @if ($item->product_sku)<br><small>SKU: {{ $item->product_sku }}</small>@endif</td><td class="right">{{ $item->quantity }}</td><td class="right">Rp {{ number_format($item->price, 0, ',', '.') }}</td><td class="right">Rp {{ number_format($item->total, 0, ',', '.') }}</td></tr>
             @endforeach
         </tbody>
     </table>

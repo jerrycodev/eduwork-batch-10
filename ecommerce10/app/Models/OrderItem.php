@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['order_id', 'product_id', 'product_name', 'quantity', 'price', 'total'])]
+#[Fillable(['order_id', 'product_id', 'product_variant_id', 'product_name', 'product_sku', 'product_variant_name', 'quantity', 'price', 'total'])]
 class OrderItem extends Model
 {
     use HasUuids;
@@ -20,5 +20,10 @@ class OrderItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function variant(): BelongsTo
+    {
+        return $this->belongsTo(ProductVariant::class, 'product_variant_id');
     }
 }

@@ -120,7 +120,7 @@ test('checkout rejects a forged shipping rate key without creating an order', fu
 test('checkout rejects an empty cart', function () {
     $user = User::factory()->create();
 
-    $this->actingAs($user)
+    $this->actingAs($user, 'customer')
         ->from(route('cart'))
         ->post(route('checkout.store'), [])
         ->assertRedirect(route('cart'))
@@ -162,14 +162,14 @@ test('customer can read only their own orders', function () {
         'status' => 'pending',
     ]);
 
-    $this->actingAs($otherUser)
+    $this->actingAs($otherUser, 'customer')
         ->get(route('orders.customer.index'))
         ->assertOk()
         ->assertDontSee($order->order_number);
 
     $this->get(route('orders.customer.show', $order))->assertForbidden();
 
-    $this->actingAs($owner)
+    $this->actingAs($owner, 'customer')
         ->get(route('orders.customer.show', $order))
         ->assertOk()
         ->assertSee($order->order_number);
@@ -182,7 +182,7 @@ test('guest cannot access order pages or create orders', function () {
 
 test('admin can view the separate simple orders table', function () {
     $admin = User::factory()->create(['role' => 'admin']);
-    $customer = User::factory()->create(['role' => 'user']);
+    $customer = User::factory()->create(['role' => 'customer']);
     $order = Order::query()->create([
         'user_id' => $customer->id,
         'cart_id' => null,
@@ -192,7 +192,7 @@ test('admin can view the separate simple orders table', function () {
         'status' => 'pending',
     ]);
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->get(route('orders.index'))
         ->assertOk()
         ->assertSee('Order ID')
@@ -202,16 +202,16 @@ test('admin can view the separate simple orders table', function () {
 });
 
 test('customer cannot access admin orders page', function () {
-    $customer = User::factory()->create(['role' => 'user']);
+    $customer = User::factory()->create(['role' => 'customer']);
 
-    $this->actingAs($customer)
+    $this->actingAs($customer, 'customer')
         ->get(route('orders.index'))
-        ->assertRedirect(route('home'));
+        ->assertRedirect(route('admin.login'));
 });
 
 test('admin can view a dedicated order detail page', function () {
     $admin = User::factory()->create(['role' => 'admin']);
-    $customer = User::factory()->create(['role' => 'user']);
+    $customer = User::factory()->create(['role' => 'customer']);
     $order = Order::query()->create([
         'user_id' => $customer->id,
         'cart_id' => null,
@@ -229,7 +229,7 @@ test('admin can view a dedicated order detail page', function () {
         'total' => 250000,
     ]);
 
-    $this->actingAs($admin)
+    $this->actingAs($admin, 'admin')
         ->get(route('orders.show', $order))
         ->assertOk()
         ->assertSee('Detail Order')
@@ -296,9 +296,9 @@ test('customer can download their invoice PDF but cannot download another custom
         'total' => 125000,
     ]);
 
-    $this->actingAs($other)->get(route('orders.invoice', $order))->assertForbidden();
+    $this->actingAs($other, 'customer')->get(route('orders.invoice', $order))->assertForbidden();
 
-    $response = $this->actingAs($owner)->get(route('orders.invoice', $order))->assertOk();
+    $response = $this->actingAs($owner, 'customer')->get(route('orders.invoice', $order))->assertOk();
     expect($response->headers->get('content-type'))->toContain('application/pdf')
         ->and($response->getContent())->toStartWith('%PDF');
 });
@@ -331,4 +331,46 @@ test('order-created email contains an order link and a PDF invoice attachment', 
         ->and($pdfBytes)->toStartWith('%PDF')
         ->and($mail->render())->toContain('Lanjutkan Pembayaran')
         ->and($mail->render())->toContain($order->order_number);
+});
+
+test('checkout reuses cached Biteship rates for identical payloads and separates changed cart quantities', function () {
+    config([
+        'biteship.api_key' => 'biteship_test.fake-key',
+        'biteship.warehouse.postal_code' => '16431',
+        'biteship.couriers' => 'jne,sicepat,jnt',
+        'biteship.rates_cache_ttl' => 300,
+    ]);
+    Http::fake([
+        'api.biteship.com/v1/rates/couriers' => Http::response([
+            'success' => true,
+            'pricing' => [[
+                'courier_code' => 'jne',
+                'courier_name' => 'JNE',
+                'courier_service_code' => 'REG',
+                'courier_service_name' => 'Regular',
+                'price' => 15000,
+                'duration' => '2 - 3 days',
+            ]],
+        ], 200),
+    ]);
+
+    $user = User::factory()->create();
+    $address = $user->addresses()->create(addressPayload(['postal_code' => '16515', 'is_default' => true]));
+    $product = makeOrderTestProduct();
+    $cart = Cart::query()->create(['user_id' => $user->id, 'product_id' => $product->id, 'quantity' => 1]);
+
+    $first = $this->actingAs($user, 'customer')
+        ->postJson(route('checkout.shipping-rates'), ['address_id' => $address->id])
+        ->assertOk();
+    $second = $this->postJson(route('checkout.shipping-rates'), ['address_id' => $address->id])
+        ->assertOk();
+
+    expect($second->json('rates')[0]['price'])->toBe($first->json('rates')[0]['price']);
+    Http::assertSentCount(1);
+
+    $cart->update(['quantity' => 2]);
+    $this->postJson(route('checkout.shipping-rates'), ['address_id' => $address->id])->assertOk();
+    $this->postJson(route('checkout.shipping-rates'), ['address_id' => $address->id])->assertOk();
+
+    Http::assertSentCount(2);
 });

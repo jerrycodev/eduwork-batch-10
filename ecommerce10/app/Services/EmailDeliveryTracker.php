@@ -11,6 +11,9 @@ class EmailDeliveryTracker
 {
     private const HEADER = 'X-Email-Delivery-Log-ID';
 
+    /**
+     * Mencatat percobaan pengiriman email sebelum pesan dikirim.
+     */
     public function sending(MessageSending $event): void
     {
         $log = $this->findFromMessage($event->message);
@@ -23,6 +26,9 @@ class EmailDeliveryTracker
         }
     }
 
+    /**
+     * Memperbarui status log setelah email berhasil dikirim.
+     */
     public function sent(MessageSent $event): void
     {
         $log = $this->findFromMessage($event->message);
@@ -37,6 +43,9 @@ class EmailDeliveryTracker
         }
     }
 
+    /**
+     * Mencatat kegagalan proses beserta informasi error untuk investigasi.
+     */
     public function failed(string $logId, Throwable $exception): void
     {
         EmailDeliveryLog::query()->whereKey($logId)->update([

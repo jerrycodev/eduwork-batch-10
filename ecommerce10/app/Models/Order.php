@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
-#[Fillable(['order_number', 'user_id', 'cart_id', 'user_name', 'user_email', 'recipient_name', 'user_phone', 'address', 'city', 'state', 'zip', 'country', 'total', 'subtotal', 'shipping_cost', 'shipping_courier', 'shipping_courier_code', 'shipping_service', 'shipping_service_code', 'shipping_etd', 'tracking_number', 'shipped_at', 'delivered_at', 'confirmed_at', 'completed_at', 'auto_complete_at', 'cancellation_reason', 'stock_restored_at', 'status', 'payment_status', 'payment_order_id', 'snap_token', 'snap_redirect_url', 'transaction_id', 'payment_type', 'paid_at', 'payment_payload'])]
+#[Fillable(['order_number', 'user_id', 'cart_id', 'user_name', 'user_email', 'recipient_name', 'user_phone', 'address', 'city', 'state', 'zip', 'country', 'total', 'subtotal', 'shipping_cost', 'shipping_courier', 'shipping_courier_code', 'shipping_service', 'shipping_service_code', 'shipping_etd', 'tracking_number', 'biteship_order_id', 'biteship_tracking_id', 'biteship_waybill_id', 'biteship_status', 'biteship_price', 'biteship_order_created_at', 'biteship_last_synced_at', 'shipped_at', 'estimated_delivery_at', 'delivery_follow_up_last_notified_at', 'delivery_follow_up_reminder_count', 'delivered_at', 'confirmed_at', 'completed_at', 'auto_complete_at', 'cancellation_reason', 'stock_restored_at', 'status', 'payment_status', 'payment_expires_at', 'payment_order_id', 'snap_token', 'snap_redirect_url', 'transaction_id', 'payment_type', 'paid_at', 'payment_payload'])]
 class Order extends Model
 {
     use HasUuids;
@@ -35,7 +35,14 @@ class Order extends Model
     {
         return [
             'paid_at' => 'datetime',
+            'payment_expires_at' => 'datetime',
             'shipped_at' => 'datetime',
+            'biteship_price' => 'integer',
+            'biteship_order_created_at' => 'datetime',
+            'biteship_last_synced_at' => 'datetime',
+            'estimated_delivery_at' => 'datetime',
+            'delivery_follow_up_last_notified_at' => 'datetime',
+            'delivery_follow_up_reminder_count' => 'integer',
             'delivered_at' => 'datetime',
             'confirmed_at' => 'datetime',
             'completed_at' => 'datetime',
@@ -62,6 +69,21 @@ class Order extends Model
     public function returnRequest(): HasOne
     {
         return $this->hasOne(OrderReturnRequest::class);
+    }
+
+    public function biteshipReconciliationChecks(): HasMany
+    {
+        return $this->hasMany(BiteshipReconciliationCheck::class)->latest('checked_at');
+    }
+
+    public function biteshipWebhookLogs(): HasMany
+    {
+        return $this->hasMany(BiteshipWebhookLog::class)->latest('received_at');
+    }
+
+    public function paymentWebhookLogs(): HasMany
+    {
+        return $this->hasMany(PaymentWebhookLog::class)->latest('received_at');
     }
 
     public function paymentReconciliationChecks(): HasMany
