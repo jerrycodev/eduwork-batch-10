@@ -1,731 +1,998 @@
-# E-Commerce Laravel : Tugas Sesi 10 - 23
-
-## Deskripsi
-
-Folder `ecommerce10` berisi proyek e-commerce berbasis Laravel yang dibangun secara bertahap mulai dari sesi 10 sampai sesi 23. Proyek mencakup setup Laravel dan MySQL, controller dan halaman Blade, migration dan seeder, relasi model, autentikasi, pengelolaan produk dan kategori, upload gambar, pembatasan akses admin, serta dashboard admin dengan metrik dan analitik yang dihitung dari data database, termasuk pelacakan klik produk dan ringkasan status pesanan.
-
-README ini disusun per sesi agar riwayat pengerjaan mudah dibaca dan dapat diperbarui ketika ada tugas sesi berikutnya.
-
-## Daftar Tugas
-
-| Sesi | Topik | Fokus |
-| --- | --- | --- |
-| 10 | Laravel Basics & Project Introduction with AI | Setup proyek Laravel, route dasar, model, dan controller awal |
-| 11 | Blade Templating & Controller Essentials | Controller untuk mengelola produk dan halaman |
-| 12 | Dynamic Page Creation | Halaman Blade dinamis dan komponen navbar/footer |
-| 13 | Database Migration & Dummy Data Using AI | Migration tabel dan seeder data dummy |
-| 14 | Eloquent Relationship & Pagination | Relasi model Product/ProductCategory, data produk dari database, dan pagination |
-| 15 | Authentication with Laravel Breeze | Instalasi Laravel Breeze, login, registrasi, dan kustomisasi tampilan bawaan |
-| 16 | Admin Product & Category Management | Menu navigasi, tabel daftar kategori dan produk, serta tombol tambah, edit, dan hapus |
-| 17 | Product & Category Create/Edit Forms | Form tambah/edit produk dan kategori, validasi, serta upload gambar produk |
-| 18 | Dashboard Summary & Analytics | Ringkasan jumlah produk, kategori, dan klik produk, serta grafik dashboard |
-| 19 | Role & Admin Middleware | Kolom role pada users, middleware admin, dan pembatasan akses route dashboard |
-| 20 | Complete Back-End Product System | Form tambah produk dan kategori, route POST, validasi input, dan penyimpanan data ke database |
-| 21 | Product Editing & Deletion System | Form edit produk, pembaruan data, serta penghapusan produk dan kategori |
-| 22 | Final Dashboard Adjustments with AI | Penyesuaian Product Controller, pengelolaan edit/hapus kategori, dan penyempurnaan dashboard admin |
-| 23 | Streamlined Back-End Finalization Using AI | Kolom dan pelacakan klik produk, DashboardController berbasis database, grafik jumlah pesanan, dan ringkasan status order |
-
-## Tugas Sesi 10 : Laravel Basics & Project Introduction with AI
-
-### Deskripsi
-
-Membuat proyek Laravel baru untuk membangun website e-commerce, menyiapkan route dasar, mengonfigurasi database, serta membuat model dan controller awal untuk Product dan Order.
-
-### Fitur
-
-- Proyek Laravel baru dengan konfigurasi database MySQL.
-- Route dasar: `/`, `/products`, `/cart`, dan `/checkout`.
-- Route tambahan: `/shop`, `/product/{id}`, dan `/orders`.
-- Model awal: `Product`, `ProductCategory`, `Cart`, `Order`, `OrderItem`, dan `User`.
-- Controller awal untuk mengelola Product dan Order.
-- Halaman katalog sementara menggunakan data dummy dari model `Product`.
-
-### Dibangun Menggunakan
-
-- Laravel 13
-- PHP 8.3+
-- MySQL
-
-### File Terkait
-
-```text
-routes/web.php
-app/Models/
-app/Http/Controllers/
-```
-
-## Tugas Sesi 11 : Blade Templating & Controller Essentials
-
-### Deskripsi
-
-Menambahkan controller dasar untuk mengelola produk dan halaman, lalu memindahkan logika halaman dari route ke controller agar struktur aplikasi lebih rapi.
-
-### Fitur
-
-- `HomeController` untuk halaman utama, detail produk, dan keranjang.
-- `ProductController` dan `ProductCategoryController` sebagai resource controller untuk pengelolaan produk dan kategori.
-- `CartController`, `OrderController`, dan `OrderItemController` untuk alur keranjang dan pesanan.
-- Route halaman diarahkan ke controller dan diberi nama route.
-
-### Dibangun Menggunakan
-
-- Laravel 13
-- PHP 8.3+
-
-### File Terkait
-
-```text
-app/Http/Controllers/HomeController.php
-app/Http/Controllers/ProductController.php
-app/Http/Controllers/ProductCategoryController.php
-app/Http/Controllers/CartController.php
-app/Http/Controllers/OrderController.php
-app/Http/Controllers/OrderItemController.php
-routes/web.php
-```
-
-## Tugas Sesi 12 : Dynamic Page Creation
-
-### Deskripsi
-
-Membuat halaman-halaman dinamis menggunakan Blade dan menampilkan data yang dikirim dari controller, serta memisahkan bagian tampilan yang berulang menjadi komponen Blade.
-
-### Fitur
-
-- Halaman utama dan daftar produk (`/`, `/shop`, `/products`) dengan grid kartu produk.
-- Halaman detail produk (`/product/{id}`) dengan breadcrumb.
-- Halaman keranjang belanja (`/cart`).
-- Layout Blade yang dapat digunakan ulang oleh semua halaman.
-- Komponen Blade untuk navbar, footer, product card, breadcrumb, dan alert.
-- Styling menggunakan Tailwind CSS 4, aset shadcn HTML, ikon Lucide, dan Vite.
-
-### Dibangun Menggunakan
-
-- Laravel Blade
-- Tailwind CSS 4
-- Vite
-- JavaScript (Lucide Icons)
-
-### File Terkait
-
-```text
-resources/views/home/index.blade.php
-resources/views/product/description.blade.php
-resources/views/cart/index.blade.php
-resources/views/components/header.blade.php
-resources/views/components/footer.blade.php
-resources/views/components/layout-component.blade.php
-resources/views/components/product-card.blade.php
-resources/views/components/breadcrumb.blade.php
-resources/views/components/alert.blade.php
-app/View/Components/
-```
-
-## Tugas Sesi 13 : Database Migration & Dummy Data Using AI
-
-### Deskripsi
-
-Membuat migration untuk struktur tabel e-commerce dan seeder untuk mengisi data dummy produk dan kategori agar halaman memiliki data awal yang dapat diuji.
-
-### Fitur
-
-- Migration tabel `product_categories`, `products`, `carts`, `orders`, dan `order_items`.
-- Foreign key untuk menghubungkan produk dengan kategori, keranjang dengan pengguna/produk, serta pesanan dengan item pesanan.
-- Seeder `ProductCategorySeeder` untuk 5 kategori: Headphone, Earbuds, Speaker, Smartwatch, dan Keyboard.
-- Seeder `ProductSeeder` untuk 16 produk dummy dengan minimal 3 produk pada setiap kategori.
-- `DatabaseSeeder` menjalankan seeder produk dan aman dijalankan berulang tanpa membuat data ganda.
-
-Catatan: pada implementasi ini, detail produk dalam pesanan disimpan di tabel `order_items`, sehingga satu pesanan dapat memiliki lebih dari satu produk.
-
-### Dibangun Menggunakan
-
-- Laravel Migration
-- Laravel Seeder
-- Eloquent ORM
-- MySQL
-
-### File Terkait
-
-```text
-database/migrations/
-├── 0001_01_01_000000_create_users_table.php
-├── 0001_01_01_000001_create_cache_table.php
-├── 0001_01_01_000002_create_jobs_table.php
-├── 2026_10_23_135642_create_product_categories_table.php
-├── 2026_10_23_135643_create_products_table.php
-├── 2026_10_23_135644_create_carts_table.php
-├── 2026_10_23_135645_create_orders_table.php
-└── 2026_10_23_135646_create_order_items_table.php
-
-database/seeders/
-├── DatabaseSeeder.php
-├── ProductCategorySeeder.php
-└── ProductSeeder.php
-```
-
-## Tugas Sesi 14 : Eloquent Relationship & Pagination
-
-![Thumbnail](.thumbnails/tugas_sesi_14_home.png)
-![Thumbnail](.thumbnails/tugas_sesi_14_product_detail.png)
-
-### Deskripsi
-
-Menghubungkan model menggunakan relasi Eloquent, lalu menampilkan data produk dari database menggunakan controller dan Blade. Daftar produk dibatasi dengan pagination agar data yang tampil dalam satu halaman tetap rapi. Mulai sesi 14, proyek menggunakan database MySQL.
-
-### Fitur
-
-- Model `Product` dengan relasi `category()`, `carts()`, dan `orderItems()`, serta model `ProductCategory` dengan relasi `products()`.
-- Relasi pendukung antar model: `Cart` ke `User`/`Product`/`Order`, `Order` ke `User`/`Cart`/`OrderItem`, `OrderItem` ke `Order`/`Product`, dan `User` ke `Cart`/`Order`.
-- `HomeController@index` mengambil produk dari database dengan `paginate(8)` dan `withQueryString()`, mendukung filter kategori lewat query `?category=slug`, serta mengirim daftar kategori dengan jumlah produknya (`withCount('products')`).
-- `ProductController@show` menampilkan detail produk berdasarkan route model binding beserta breadcrumb kategori.
-- Halaman home menampilkan daftar kategori yang dapat diklik dan grid produk dengan komponen `product-card`.
-- Pagination Tailwind pada halaman daftar produk.
-- Data dummy hardcoded pada model `Product` dihapus dan diganti data dari database hasil seeder.
-- Seeder produk menggunakan gambar berbeda untuk setiap kategori (headphone, earbuds, speaker, smartwatch, keyboard).
-
-### Dibangun Menggunakan
-
-- Eloquent ORM
-- MySQL
-- Route Model Binding
-- Laravel Pagination
-- Laravel Blade
-- Tailwind CSS 4
-
-### File Terkait
-
-```text
-app/Models/Product.php
-app/Models/ProductCategory.php
-app/Models/Cart.php
-app/Models/Order.php
-app/Models/OrderItem.php
-app/Models/User.php
-app/Http/Controllers/HomeController.php
-app/Http/Controllers/ProductController.php
-app/Http/Controllers/CartController.php
-resources/views/home/index.blade.php
-resources/views/product/description.blade.php
-resources/views/vendor/pagination/tailwind.blade.php
-resources/views/vendor/pagination/simple-tailwind.blade.php
-database/seeders/ProductSeeder.php
-routes/web.php
-```
-
-## Tugas Sesi 15 : Authentication with Laravel Breeze
-
-![Thumbnail](.thumbnails/tugas_sesi_15_dashboard.png)
-![Thumbnail](.thumbnails/tugas_sesi_15_login.png)
-![Thumbnail](.thumbnails/tugas_sesi_15_register.png)
-
-### Deskripsi
-
-Menginstal Laravel Breeze untuk menambahkan fitur autentikasi seperti login dan registrasi, kemudian menyesuaikan file Blade bawaan Breeze agar sesuai dengan identitas aplikasi e-commerce ini. Fitur autentikasi ini menggunakan database MySQL yang sama dengan tugas sesi 14.
-
-### Fitur
-
-- Instalasi Laravel Breeze dengan stack Blade untuk fitur autentikasi.
-- Halaman login, registrasi, lupa password, reset password, verifikasi email, dan konfirmasi password.
-- Fitur logout, dashboard untuk pengguna yang sudah login, serta pengelolaan profil (ubah data profil, ubah password, dan hapus akun).
-- Route autentikasi dipisahkan pada `routes/auth.php`, sedangkan route dashboard dan profil dilindungi middleware `auth` dan `verified`.
-- Kustomisasi tampilan bawaan Breeze: logo aplikasi diganti ikon toko (Lucide `store`) dan nama situs menggunakan `config('app.name')` dengan nilai `Ecommerce`.
-- Penyesuaian halaman `welcome`, layout guest, navigation bar, serta komponen Blade bawaan Breeze agar selaras dengan tema aplikasi.
-- Dependency frontend Breeze: Alpine.js dan `@tailwindcss/forms`.
-- Test fitur autentikasi dan profil dari Breeze.
-
-### Dibangun Menggunakan
-
-- Laravel Breeze 2
-- Laravel Blade
-- Alpine.js
-- Tailwind CSS 4
-- `@tailwindcss/forms`
-- MySQL
-- Vite
-
-### File Terkait
-
-```text
-app/Http/Controllers/Auth/
-app/Http/Controllers/ProfileController.php
-app/Http/Requests/Auth/LoginRequest.php
-app/Http/Requests/ProfileUpdateRequest.php
-app/View/Components/AppLayout.php
-app/View/Components/GuestLayout.php
-app/Models/User.php
-routes/auth.php
-routes/web.php
-resources/views/auth/
-resources/views/layouts/
-resources/views/profile/
-resources/views/components/application-logo.blade.php
-resources/views/dashboard.blade.php
-resources/views/welcome.blade.php
-resources/css/app.css
-resources/js/app.js
-tests/Feature/Auth/
-tests/Feature/ProfileTest.php
-```
-
-## Tugas Sesi 16 : Admin Product & Category Management
-
-![Thumbnail](.thumbnails/tugas_sesi_16_product-categories.png)
-![Thumbnail](.thumbnails/tugas_sesi_16_products.png)
-
-### Deskripsi
-
-Menambahkan menu navigasi menuju halaman daftar kategori dan produk, lalu membuat halaman admin untuk menampilkan data produk dan kategori dalam bentuk tabel beserta tombol tambah, edit, dan hapus.
-
-### Fitur
-
-- Menu navigasi `Products` dan `Product Categories` pada navigation bar untuk pengguna yang sudah login.
-- Route resource `products` dan `product-categories` di bawah prefix `/dashboard`, dilindungi middleware `auth` dan `verified`.
-- Halaman daftar kategori menampilkan tabel berisi nama, slug, jumlah produk, total harga, dan total stok produk pada setiap kategori.
-- Halaman daftar kategori menyediakan tombol `Create Category`, `View`, `Edit`, dan `Delete`.
-- Halaman daftar produk menampilkan tabel berisi gambar, nama, harga, stok, kategori, dan deskripsi produk.
-- Halaman daftar produk menyediakan tombol `Create Product`, `View`, `Edit`, dan `Delete`.
-- Pencarian produk berdasarkan nama, filter berdasarkan kategori, serta pengurutan berdasarkan nama, harga, dan stok (naik/turun).
-- Pagination 5 produk per halaman dan query filter tetap terbawa saat berpindah halaman.
-- Perhitungan jumlah produk, total harga, dan total stok kategori menggunakan `withCount()` dan `withSum()`.
-- Penyesuaian tampilan pagination Tailwind menggunakan style tombol aplikasi.
-
-### Dibangun Menggunakan
-
-- Laravel Resource Controller
-- Eloquent ORM (`withCount`, `withSum`)
-- MySQL
-- Laravel Blade
-- Tailwind CSS 4
-- Lucide Icons
-
-### File Terkait
-
-```text
-app/Http/Controllers/ProductController.php
-app/Http/Controllers/ProductCategoryController.php
-resources/views/admin/categories/index.blade.php
-resources/views/admin/products/index.blade.php
-resources/views/layouts/navigation.blade.php
-resources/views/vendor/pagination/tailwind.blade.php
-routes/web.php
-```
-
-## Tugas Sesi 17 : Product & Category Create/Edit Forms
-
-![Thumbnail](.thumbnails/tugas_sesi_17_create_product_form.png)
-![Thumbnail](.thumbnails/tugas_sesi_17_edit_product_form.png)
-![Thumbnail](.thumbnails/tugas_sesi_17_create_product_category_form.png)
-![Thumbnail](.thumbnails/tugas_sesi_17_edit_product_category_form.png)
-
-### Deskripsi
-
-Membuat form untuk menambah dan mengedit produk serta kategori produk. Form produk memiliki halaman tersendiri, sedangkan form kategori ditampilkan dalam dialog pada halaman daftar kategori. Setiap form dilengkapi validasi, pembuatan slug otomatis, dan upload gambar produk.
-
-### Fitur
-
-- Halaman tambah produk (`/dashboard/products/create`) dan edit produk (`/dashboard/products/{product}/edit`) menggunakan partial form yang sama.
-- Field produk: nama, slug, deskripsi, kategori, harga, stok, dan gambar.
-- Form tambah dan edit kategori berupa dialog pada halaman daftar kategori, dengan field nama dan slug.
-- Validasi server-side: field wajib, slug produk/kategori unik, kategori harus ada, serta harga dan stok berupa bilangan bulat minimal 0.
-- Validasi client-side menggunakan Pristine.js dan pembuatan slug otomatis menggunakan Slugify.
-- Upload gambar produk melalui endpoint `file-uploads` dengan dukungan drag and drop, preview, dan hapus gambar.
-- Validasi file gambar: JPG, JPEG, PNG, GIF, atau WEBP dengan ukuran maksimal 2 MB, disimpan pada disk `public`.
-- Gambar yang diunggah ikut dihapus dari storage ketika produk dihapus.
-- Notifikasi sukses setelah produk atau kategori berhasil dibuat, diperbarui, atau dihapus.
-- Halaman detail produk admin dengan tombol untuk melihat produk di halaman shop dan mengedit produk.
-- Status aktif menu navigasi mengikuti seluruh route `products.*` dan `product-categories.*`.
-- Test fitur untuk pembuatan, validasi, penghapusan produk, halaman edit, dan upload file.
-
-### Dibangun Menggunakan
-
-- Laravel Resource Controller
-- Eloquent ORM
-- MySQL
-- Laravel Blade
-- Laravel Storage
-- Tailwind CSS 4
-- Pristine.js
-- Slugify
-- Vite
-- Pest
-
-### File Terkait
-
-```text
-app/Http/Controllers/ProductController.php
-app/Http/Controllers/ProductCategoryController.php
-app/Http/Controllers/FileUploadController.php
-app/Http/Controllers/HomeController.php
-resources/views/admin/products/index.blade.php
-resources/views/admin/products/create.blade.php
-resources/views/admin/products/edit.blade.php
-resources/views/admin/products/detail.blade.php
-resources/views/admin/products/_form.blade.php
-resources/views/admin/products/_file_upload.blade.php
-resources/views/admin/categories/index.blade.php
-resources/views/admin/categories/_form.blade.php
-resources/js/product.form.js
-resources/js/category.form.js
-resources/js/file_upload.form.js
-vite.config.js
-routes/web.php
-tests/Feature/ProductTest.php
-tests/Feature/FileUploadTest.php
-```
-
-## Tugas Sesi 18 : Dashboard Summary & Analytics
-
-![Thumbnail](.thumbnails/tugas_sesi_18_dashboard.png)
-
-### Deskripsi
-
-Membuat tampilan dashboard utama yang menampilkan ringkasan informasi tentang jumlah produk, jumlah kategori produk, dan jumlah klik produk, dilengkapi grafik analitik serta tabel klik produk.
-
-### Fitur
-
-- `DashboardController@index` menghitung jumlah produk dan kategori langsung dari database menggunakan Eloquent.
-- Kartu ringkasan menampilkan Total Products, Total Categories, Total Orders, dan Total Customers.
-- Tabel `Products Clicks` menjadi ringkasan jumlah klik produk dan menampilkan 5 produk terbaru beserta jumlah klik bulan lalu, bulan ini, total klik, serta persentase tren.
-- Data klik produk disimulasikan dari ID produk untuk kebutuhan tampilan dashboard.
-- Grafik `Orders Analytic` berupa line chart berisi data income dan expense per bulan.
-- Grafik `Operating System` berupa doughnut chart berisi distribusi sistem operasi.
-- Data grafik dikirim dari controller dalam bentuk JSON dan dirender menggunakan Chart.js.
-- Route dashboard dipindahkan ke controller dan tetap dilindungi middleware `auth` serta `verified`.
-- Test fitur dashboard untuk memastikan ringkasan dan elemen grafik tampil.
-
-### Dibangun Menggunakan
-
-- Laravel Controller
-- Eloquent ORM
-- MySQL
-- Laravel Blade
-- Tailwind CSS 4
-- Chart.js
-- Lucide Icons
-- Vite
-- Pest
-
-### File Terkait
-
-```text
-app/Http/Controllers/DashboardController.php
-resources/views/dashboard.blade.php
-resources/js/dashboard.js
-vite.config.js
-routes/web.php
-tests/Feature/DashboardTest.php
-```
-
-## Tugas Sesi 19 : Role & Admin Middleware
-
-![Thumbnail](.thumbnails/tugas_sesi_19_admin_dashboard.png)
-![Thumbnail](.thumbnails/tugas_sesi_19_user_profile.png)
-
-### Deskripsi
-
-Menambahkan kolom role pada tabel users melalui migration, membuat middleware untuk membatasi akses hanya untuk admin, lalu menerapkan middleware tersebut pada route dashboard dan pengelolaan produk/kategori.
-
-### Fitur
-
-- Migration awal `add_role_to_users_table` dahulu menggunakan nilai default `user`; migration `use_customer_role_name` menormalkan data role pelanggan menjadi `customer`, lalu migration `set_customer_role_default` menetapkan default database menjadi `customer`.
-- Model `User` menambahkan `role` ke atribut fillable.
-- `AdminMiddleware` memeriksa pengguna yang sudah login dan memiliki role `admin`; pengguna lain diarahkan ke halaman home dengan pesan error.
-- Alias middleware `admin` didaftarkan pada `bootstrap/app.php`.
-- Route dashboard, produk, kategori, dan upload file dibatasi menggunakan middleware `admin`.
-- Blade directive `@admin` ditambahkan untuk menampilkan menu Dashboard, Products, dan Product Categories hanya kepada admin.
-- Menu admin juga disembunyikan pada tampilan navigasi responsif untuk pengguna non-admin.
-- `UserFactory` mengisi role default `customer`, sedangkan `DatabaseSeeder` membuat akun admin `admin@ecommerce.com` dengan password `password`.
-- Data pengguna dummy menggunakan locale Indonesia (`id_ID`).
-
-### Dibangun Menggunakan
-
-- Laravel Migration
-- Laravel Middleware
-- Laravel Blade Directive
-- Eloquent ORM
-- Laravel Seeder & Factory
-- MySQL
-
-### File Terkait
-
-```text
-database/migrations/2026_10_26_132001_add_role_to_users_table.php
-app/Http/Middleware/AdminMiddleware.php
-bootstrap/app.php
-app/Models/User.php
-app/Providers/AppServiceProvider.php
-database/factories/UserFactory.php
-database/seeders/DatabaseSeeder.php
-resources/views/layouts/navigation.blade.php
-routes/web.php
-```
-
-## Tugas Sesi 20 : Complete Back-End Product System
-
-### Deskripsi
-
-Melengkapi proses back-end untuk menambahkan produk dan kategori produk. Form produk ditampilkan pada halaman tersendiri, sedangkan form kategori menggunakan dialog pada halaman daftar kategori. Data dikirim melalui route POST, divalidasi di controller, lalu disimpan ke database.
-
-### Fitur
-
-- `ProductController@create` menampilkan halaman form tambah produk beserta daftar kategori.
-- Form tambah produk dikirim ke route bernama `products.store` dengan method POST.
-- Form tambah kategori ditampilkan melalui dialog pada halaman daftar kategori dan dikirim ke route `product-categories.store` dengan method POST.
-- `ProductController@store` memvalidasi nama, slug unik, deskripsi, gambar, harga, stok, dan kategori sebelum membuat data produk.
-- `ProductCategoryController@store` memvalidasi nama dan slug sebelum membuat data kategori.
-- Pesan sukses ditampilkan setelah produk atau kategori berhasil ditambahkan.
-- Validasi sisi client pada form kategori menggunakan Pristine.js dan pembuatan slug otomatis menggunakan Slugify.
-
-### Dibangun Menggunakan
-
-- Laravel Controller dan Resource Routing
-- Laravel Validation
-- Eloquent ORM
-- MySQL
-- Laravel Blade
-- Pristine.js
-- Slugify
-
-### File Terkait
-
-```text
-app/Http/Controllers/ProductController.php
-app/Http/Controllers/ProductCategoryController.php
-resources/views/admin/products/create.blade.php
-resources/views/admin/products/_form.blade.php
-resources/views/admin/categories/index.blade.php
-resources/views/admin/categories/_form.blade.php
-resources/js/category.form.js
-routes/web.php
-```
-
-Catatan: form tambah kategori saat ini menggunakan dialog pada halaman daftar kategori. Method `ProductCategoryController@create` masih kosong dan belum digunakan oleh alur tersebut.
-
-## Tugas Sesi 21 : Product Editing & Deletion System
-
-### Deskripsi
-
-Menambahkan fitur untuk mengubah dan menghapus data produk serta kategori produk melalui halaman admin. Produk dapat diedit pada halaman khusus dengan form yang menggunakan kembali komponen form produk, sedangkan kategori diedit melalui dialog pada halaman daftar kategori.
-
-### Fitur
-
-- Tombol Edit pada daftar produk membuka halaman edit melalui route `products.edit`.
-- `ProductController@edit` mengambil data produk dan daftar kategori untuk mengisi form.
-- Form edit menggunakan partial `admin.products._form` yang sama dengan form tambah, dengan method PUT menuju route `products.update`.
-- `ProductController@update` memvalidasi input, termasuk keunikan slug dengan mengecualikan produk yang sedang diedit, kemudian memperbarui data produk.
-- Form edit menampilkan gambar produk saat ini dan mendukung pengelolaan gambar melalui komponen upload.
-- Tombol Delete mengirim request DELETE ke route `products.destroy`; controller menghapus data produk dan file gambar terkait dari storage publik.
-- Kategori dapat diedit melalui dialog yang mengisi data kategori dan mengirim request PUT ke route `product-categories.update`.
-- `ProductCategoryController@update` memvalidasi dan memperbarui data kategori.
-- Produk dan kategori dapat dihapus melalui route DELETE masing-masing.
-- Route resource produk dan kategori berada di bawah prefix `/dashboard` dan dilindungi middleware `admin`.
-
-### Dibangun Menggunakan
-
-- Laravel Resource Controller dan Resource Routing
-- Laravel Validation
-- Eloquent ORM
-- Laravel Blade
-- Laravel Storage
-- JavaScript
-- MySQL
-
-### File Terkait
-
-```text
-app/Http/Controllers/ProductController.php
-app/Http/Controllers/ProductCategoryController.php
-resources/views/admin/products/index.blade.php
-resources/views/admin/products/edit.blade.php
-resources/views/admin/products/_form.blade.php
-resources/views/admin/categories/index.blade.php
-resources/views/admin/categories/_form.blade.php
-resources/js/category.form.js
-routes/web.php
-tests/Feature/ProductTest.php
-```
-
-Catatan: validasi slug pada `ProductCategoryController@update` saat ini masih menerapkan aturan unik tanpa mengecualikan kategori yang sedang diedit. Akibatnya, penyimpanan edit kategori dengan slug yang tidak berubah dapat ditolak oleh validasi.
-
-## Tugas Sesi 22 : Final Dashboard Adjustments with AI
-
-### Deskripsi
-
-Melakukan penyesuaian akhir pada pengelolaan produk dan kategori melalui controller serta melengkapi dashboard admin. Fitur edit dan hapus produk/kategori diintegrasikan dengan route resource, sementara dashboard menampilkan ringkasan data, visualisasi analitik, dan daftar produk berdasarkan jumlah klik.
-
-### Fitur
-
-- Menyempurnakan alur `ProductController` untuk menampilkan daftar produk, form edit, memperbarui data, dan menghapus produk berdasarkan ID melalui route resource.
-- Menampilkan form edit produk dengan data produk saat ini dan pilihan kategori.
-- Memvalidasi perubahan data produk, termasuk validasi slug unik yang mengecualikan produk yang sedang diedit.
-- Menyediakan pengelolaan kategori melalui `ProductCategoryController`, termasuk edit melalui dialog dan penghapusan berdasarkan ID.
-- Menampilkan ringkasan jumlah produk, kategori, dan pesanan pada dashboard admin.
-- Menampilkan grafik analitik pesanan yang membandingkan data income dan expense per bulan.
-- Menampilkan visualisasi distribusi operating system.
-- Menampilkan daftar produk dengan informasi klik bulan sebelumnya, klik bulan berjalan, total klik, dan tren perubahan.
-- Menggunakan middleware `admin` untuk melindungi dashboard dan route pengelolaan produk serta kategori.
-
-### Dibangun Menggunakan
-
-- Laravel Controller dan Resource Routing
-- Laravel Validation dan Eloquent ORM
-- Laravel Blade
-- MySQL
-- JavaScript dan Chart.js
-- Laravel Middleware
-
-### File Terkait
-
-```text
-app/Http/Controllers/ProductController.php
-app/Http/Controllers/ProductCategoryController.php
-app/Http/Controllers/DashboardController.php
-routes/web.php
-resources/views/dashboard.blade.php
-resources/views/admin/products/
-resources/views/admin/categories/
-resources/js/dashboard.js
-resources/js/category.form.js
-```
-
-### Catatan Implementasi
-
-- Jumlah produk, kategori, dan pesanan pada kartu statistik diambil dari database. Jumlah pelanggan masih menggunakan nilai statis.
-- Data grafik income/expense dan distribusi operating system masih berupa data simulasi.
-- Data klik dan tren produk pada dashboard juga dihitung menggunakan nilai simulasi, bukan catatan aktivitas pengunjung aktual.
-- Validasi slug pada `ProductCategoryController@update` masih perlu disesuaikan agar kategori dapat disimpan ketika slug tidak berubah.
-
-## Tugas Sesi 23 : Streamlined Back-End Finalization Using AI
-
-### Deskripsi
-
-Menyelesaikan integrasi dashboard admin dengan data aktual dari database. Menambahkan pencatatan jumlah kunjungan pada setiap halaman detail produk, menghitung total produk, total klik, kategori, dan pesanan, serta menyajikan statistik jumlah pesanan per bulan dan jumlah pesanan berdasarkan status.
-
-### Fitur
-
-- Menambahkan kolom `click` bertipe unsigned big integer dengan nilai awal `0` pada tabel `products` melalui migration baru.
-- Menambahkan atribut `click` ke daftar fillable pada model `Product`.
-- Menambah jumlah klik produk secara otomatis setiap kali halaman detail produk dibuka melalui `HomeController@productDetail`.
-- Menampilkan empat metrik dashboard dari database: total produk, total klik produk, total kategori, dan total pesanan.
-- Mengurutkan lima produk dengan jumlah klik tertinggi berdasarkan nilai `products.click`.
-- Mengganti grafik income/expense simulasi menjadi grafik jumlah pesanan per bulan pada tahun berjalan berdasarkan tabel `orders`.
-- Mengganti visualisasi Operating System menjadi Order Status yang menghitung jumlah pesanan berdasarkan nilai `orders.status`.
-- Menampilkan status umum seperti Pending, Processing, Success, Failed, Refund, dan Cancelled, termasuk status tambahan yang ditemukan pada database.
-- Memastikan seluruh angka dashboard berasal dari agregasi database, bukan angka analitik buatan.
-
-### Dibangun Menggunakan
-
-- Laravel Migration
-- Laravel Controller
-- Eloquent ORM dan Query Builder
-- MySQL
-- Laravel Blade
-- JavaScript
-- Chart.js
-- Pest Feature Tests
-
-### File Terkait
-
-```text
-database/migrations/2026_11_04_000001_add_click_to_products_table.php
-app/Models/Product.php
-app/Http/Controllers/HomeController.php
-app/Http/Controllers/DashboardController.php
-resources/views/dashboard.blade.php
-resources/js/dashboard.js
-tests/Feature/ProductTest.php
-tests/Feature/DashboardTest.php
-```
-
-### Catatan Implementasi
-
-- Nilai klik dihitung satu kali per produk untuk setiap session browser. Refresh halaman atau membuka kembali produk yang sama selama session masih aktif tidak menambah hitungan; produk lain tetap memiliki penghitung session tersendiri. Session baru dapat dihitung sebagai kunjungan baru.
-- Grafik bulanan menampilkan jumlah order yang dibuat pada masing-masing bulan di tahun berjalan.
-- Status pesanan dihitung secara dinamis dari kolom `orders.status`. Status umum tetap ditampilkan dengan nilai `0` jika belum memiliki pesanan.
-- Skema tabel `orders` belum memiliki kolom biaya/pengeluaran, sehingga grafik income/expense tidak lagi ditampilkan dan diganti dengan jumlah pesanan aktual.
-- Migration penambahan kolom klik sudah dijalankan pada database MySQL yang dikonfigurasi di project.
-
-## Cara Menjalankan
-
-Pastikan PHP 8.3+, Composer, Node.js, npm, dan MySQL sudah terpasang. Sejak tugas sesi 14, proyek menggunakan database MySQL.
-
-Buat database MySQL terlebih dahulu:
+# RevStore — Platform E-Commerce Laravel
+
+RevStore adalah aplikasi e-commerce berbasis Laravel yang menyediakan storefront untuk customer dan area administrasi terpisah untuk mengelola katalog, varian, inventori, pesanan, pembayaran, pengiriman, refund, serta aktivitas operasional.
+
+> README ini disusun agar pengunjung repository dapat memahami aplikasi, arsitektur database, dan alur pengguna sebelum memasangnya. Jika ingin mencoba aplikasi secara lokal, mulai dari bagian **Setup dan Instalasi**.
+
+**Live Preview:** [https://revstore.jerrycodev.my.id](https://revstore.jerrycodev.my.id) · **Source Code:** [GitHub Repository](https://github.com/jerrycodev/eduwork-batch-10/tree/main/ecommerce10)
+
+![RevStore Storefront](docs/screenshots/01-storefront-home.png)
+
+<p align="center">
+  <strong>Storefront · Product Catalog · Checkout · Order Fulfillment · Payment & Shipping Audit</strong>
+</p>
+
+## Daftar Isi
+
+- [1. Gambaran Aplikasi](#1-gambaran-aplikasi)
+- [2. Setup dan Instalasi Lokal](#2-setup-dan-instalasi-lokal)
+- [3. Konfigurasi Integrasi Eksternal](#3-konfigurasi-integrasi-eksternal)
+- [4. Akun Demo](#4-akun-demo)
+- [5. Desain Database — ER Diagram](#5-desain-database--er-diagram)
+- [6. User Flow](#6-user-flow)
+- [7. Demo Flow Customer](#7-demo-flow-customer)
+- [8. Demo Flow Admin](#8-demo-flow-admin)
+- [9. Pembatalan, Retur, dan Refund](#9-pembatalan-retur-dan-refund)
+- [10. Galeri Screenshot](#10-galeri-screenshot)
+- [11. Struktur Proyek dan Dokumentasi](#11-struktur-proyek-dan-dokumentasi)
+- [12. Testing](#12-testing)
+- [13. Lisensi dan Kredit](#13-lisensi-dan-kredit)
+
+---
+
+## 1. Gambaran Aplikasi
+
+RevStore menghubungkan pengalaman belanja customer dengan proses operasional admin dalam satu aplikasi.
+
+### Fitur customer
+
+- Registrasi, login, verifikasi email, reset password, dan pengelolaan profil.
+- Penggantian alamat email dengan verifikasi ke alamat baru.
+- Katalog produk, kategori, pencarian, detail produk, galeri gambar, dan pilihan varian.
+- Varian produk dengan opsi seperti warna (termasuk kode warna HEX) dan ukuran.
+- Keranjang, wishlist, pengelolaan alamat, dan checkout.
+- Pilihan tarif pengiriman berdasarkan alamat dan data produk.
+- Pembayaran melalui Midtrans, invoice PDF, dan bukti pembayaran.
+- Riwayat pesanan, status pembayaran, tracking pengiriman, dan notifikasi.
+- Konfirmasi penerimaan pesanan, ulasan produk, pembatalan, dan pengajuan retur.
+
+### Fitur admin
+
+- Dashboard ringkasan penjualan dan operasional.
+- Pengelolaan kategori, produk, gambar, SEO, opsi, varian, SKU, barcode, harga, dan stok.
+- Inventory management dan riwayat pergerakan stok.
+- Pengelolaan pesanan, pemenuhan, pengiriman, pembatalan, retur, dan refund.
+- Moderasi ulasan dan pengelolaan akun admin.
+- Payment reconciliation, webhook audit, dan status resolution.
+- Biteship reconciliation, webhook logs, dan riwayat shipment.
+- Admin activity logs, customer activity logs, serta email delivery logs.
+
+### Teknologi utama
+
+| Area | Teknologi |
+|---|---|
+| Backend | PHP 8.3+, Laravel 13 |
+| Database | MySQL 8+ atau MariaDB yang kompatibel |
+| Frontend | Blade, Tailwind CSS 4, Alpine.js, JavaScript |
+| Asset build | Vite, Node.js, npm |
+| Interaksi dan ikon | Livewire (package tersedia), Lucide, Axios |
+| Grafik | Chart.js |
+| Pembayaran | Midtrans PHP SDK |
+| Pengiriman | Biteship API |
+| Data wilayah | `aliziodev/laravel-wilayah` |
+| Dokumen | Laravel DomPDF |
+| Realtime opsional | Laravel Reverb dan Laravel Echo |
+| Testing | Pest |
+
+---
+
+## 2. Setup dan Instalasi Lokal
+
+### 2.1 Persyaratan
+
+Pastikan perangkat sudah memiliki:
+
+- Git.
+- PHP 8.3 atau lebih baru beserta ekstensi Laravel, PDO MySQL, OpenSSL, Mbstring, Fileinfo, GD, Intl, XML, dan ZIP.
+- Composer 2.
+- Node.js dan npm yang kompatibel dengan lockfile proyek.
+- MySQL 8+ atau MariaDB yang kompatibel.
+- (Opsional) Docker untuk menjalankan Mailpit.
+
+Periksa versi perangkat:
 
 ```bash
-mysql -u root -p -e "CREATE DATABASE ecommerce10;"
+php -v
+composer --version
+node --version
+npm --version
 ```
+
+### 2.2 Clone repository
+
+```bash
+git clone https://github.com/jerrycodev/eduwork-batch-10.git
+cd eduwork-batch-10/ecommerce10
+```
+
+Jika repository dipindahkan atau URL berubah, sesuaikan alamat clone dengan URL repository yang aktif.
+
+### 2.3 Install dependency
 
 ```bash
 composer install
-cp .env.example .env
-php artisan key:generate
+npm ci
 ```
 
-Pastikan konfigurasi database pada file `.env` menggunakan MySQL:
+Package wilayah Indonesia sudah tercantum pada `composer.json` dan `composer.lock`; tidak perlu memasangnya kembali dengan `composer require`.
+
+### 2.4 Siapkan environment dan database
+
+Salin template environment:
+
+```bash
+cp .env.example .env
+```
+
+Buat database lokal, misalnya `revstore`, lalu sesuaikan bagian berikut di `.env`:
 
 ```dotenv
+APP_NAME="RevStore"
+APP_ENV=local
+APP_DEBUG=true
+APP_URL=http://127.0.0.1:8000
+APP_TIMEZONE=Asia/Jakarta
+
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
-DB_DATABASE=ecommerce10
+DB_DATABASE=revstore
 DB_USERNAME=root
-DB_PASSWORD=
+DB_PASSWORD=password-database-lokal
+
+SESSION_DRIVER=database
+CACHE_STORE=database
+QUEUE_CONNECTION=database
+FILESYSTEM_DISK=public
+SESSION_SECURE_COOKIE=false
 ```
 
-Setelah konfigurasi database benar, jalankan migration, storage link untuk upload gambar, dan frontend:
+Buat application key:
 
 ```bash
-php artisan migrate --seed
-php artisan storage:link
-npm install
-npm run dev
+php artisan key:generate
 ```
 
-Jalankan server Laravel pada terminal terpisah:
+Jangan commit `.env`, application key, password, API key, atau secret webhook ke repository.
+
+### 2.5 Jalankan migration
 
 ```bash
-php artisan serve
+php artisan migrate
 ```
 
-Kemudian buka `http://127.0.0.1:8000` di browser. Halaman login tersedia di `/login`, registrasi di `/register`, dan dashboard pengguna di `/dashboard`.
+Migration aplikasi membuat tabel domain e-commerce, autentikasi, pesanan, pembayaran, pengiriman, audit, serta tabel wilayah yang disediakan package. Periksa hasilnya dengan:
 
-Untuk menjalankan ulang seeder:
+```bash
+php artisan migrate:status
+```
+
+### 2.6 Seed data wilayah Indonesia
+
+RevStore menggunakan [`aliziodev/laravel-wilayah`](https://github.com/aliziodev/laravel-wilayah) untuk dropdown alamat bertingkat. Jalankan setelah migration:
+
+```bash
+php artisan wilayah:seed
+```
+
+Perintah ini mengisi provinsi, kabupaten/kota, kecamatan, desa/kelurahan, dan kode pos yang tersedia. Seeder wilayah berbeda dari seeder data contoh aplikasi.
+
+### 2.7 Seed data aplikasi
+
+Pastikan `APP_ENV=local`, lalu jalankan:
 
 ```bash
 php artisan db:seed
 ```
 
-## Struktur Proyek
+Pada environment `local` atau `testing`, `DatabaseSeeder`:
+
+- Membuat customer demo `demo1@ecommerce.test` dan `demo2@ecommerce.test` jika belum ada.
+- Menjalankan katalog contoh berisi enam kategori dan 16 produk dengan opsi, varian, dan gambar.
+- Menghindari duplikasi data katalog saat dijalankan ulang dan tidak mereset stok varian yang sudah ada.
+
+Password factory untuk akun demo adalah `password`. Ganti password akun demo sebelum digunakan di lingkungan yang dapat diakses publik. Seeder tidak membuat akun demo customer atau katalog contoh di production.
+
+Untuk membuat akun admin lokal melalui seeder, tambahkan nilai sendiri ke `.env`:
+
+```dotenv
+ADMIN_NAME="Administrator"
+ADMIN_EMAIL=admin@revstore.test
+ADMIN_PASSWORD=ganti-dengan-password-lokal-yang-kuat
+```
+
+Kemudian jalankan:
+
+```bash
+php artisan db:seed
+```
+
+Seeder hanya membuat akun admin jika email tersebut belum ada; password admin yang sudah ada tidak akan di-reset. Jangan gunakan kredensial contoh ini sebagai akun production.
+
+### 2.8 Storage dan frontend
+
+```bash
+php artisan storage:link
+npm run build
+```
+
+Untuk pengembangan frontend dengan hot reload, gunakan `npm run dev` pada terminal terpisah.
+
+### 2.9 Jalankan aplikasi
+
+Terminal pertama:
+
+```bash
+php artisan serve
+```
+
+Terminal kedua untuk email/pekerjaan antrean:
+
+```bash
+php artisan queue:work --tries=3 --backoff=10
+```
+
+Buka [http://127.0.0.1:8000](http://127.0.0.1:8000).
+
+> **Catatan:** checkout yang memakai tarif pengiriman dan pembayaran membutuhkan konfigurasi Biteship dan Midtrans. Storefront dan bagian yang tidak memerlukan layanan eksternal tetap dapat dieksplorasi tanpa mengaktifkan transaksi live.
+
+### 2.10 Email lokal (opsional)
+
+Mailpit dapat digunakan untuk menangkap email pengembangan tanpa mengirim ke inbox sungguhan:
+
+```bash
+docker run -d --name revstore-mailpit \
+  -p 1025:1025 -p 8025:8025 \
+  axllent/mailpit:latest
+```
+
+Konfigurasikan `.env`:
+
+```dotenv
+MAIL_MAILER=smtp
+MAIL_SCHEME=
+MAIL_HOST=127.0.0.1
+MAIL_PORT=1025
+MAIL_USERNAME=
+MAIL_PASSWORD=
+MAIL_FROM_ADDRESS="noreply@revstore.test"
+MAIL_FROM_NAME="${APP_NAME}"
+```
+
+Buka [http://127.0.0.1:8025](http://127.0.0.1:8025) untuk melihat email yang ditangkap Mailpit.
+
+---
+
+## 3. Konfigurasi Integrasi Eksternal
+
+Integrasi eksternal dapat dikonfigurasi setelah aplikasi lokal berjalan. Gunakan kredensial sandbox/test untuk demonstrasi.
+
+### 3.1 Midtrans — pembayaran
+
+Isi konfigurasi berikut di `.env` dengan kredensial sandbox dari dashboard Midtrans:
+
+```dotenv
+MIDTRANS_MERCHANT_ID=
+MIDTRANS_CLIENT_KEY=
+MIDTRANS_SERVER_KEY=
+MIDTRANS_IS_PRODUCTION=false
+```
+
+Callback/notification URL aplikasi:
+
+```text
+POST https://domain-publik-anda/midtrans/callback
+```
+
+Untuk pengembangan lokal, gunakan tunnel HTTPS agar layanan Midtrans dapat mengakses callback lokal. Jangan menganggap redirect browser sebagai bukti pembayaran; status pembayaran harus diverifikasi dari notifikasi provider dan data transaksi yang tersimpan.
+
+### 3.2 Biteship — tarif, shipment, dan tracking
+
+Isi `.env` dengan API key test, data warehouse, dan secret webhook:
+
+```dotenv
+BITESHIP_BASE_URL=https://api.biteship.com
+BITESHIP_TRACKING_ENVIRONMENT=development
+BITESHIP_API_KEY=
+BITESHIP_COURIERS=jne,sicepat,jnt,anteraja,pos
+BITESHIP_TIMEOUT=15
+BITESHIP_RATES_CACHE_TTL=300
+
+BITESHIP_WAREHOUSE_NAME="RevStore Warehouse"
+BITESHIP_WAREHOUSE_PHONE=
+BITESHIP_WAREHOUSE_EMAIL=
+BITESHIP_WAREHOUSE_ADDRESS=
+BITESHIP_WAREHOUSE_POSTAL_CODE=
+BITESHIP_WAREHOUSE_NOTE=
+
+BITESHIP_WEBHOOK_SIGNATURE_KEY=X-Biteship-Signature
+BITESHIP_WEBHOOK_SIGNATURE_SECRET=
+```
+
+Webhook Biteship diterima pada:
+
+```text
+POST https://domain-publik-anda/webhooks/biteship
+```
+
+Sesuaikan nama header signature dan secret dengan pengaturan pada dashboard Biteship. Warehouse harus berisi nama, nomor telepon, alamat, dan kode pos yang valid. Email dan catatan warehouse bersifat opsional. `BITESHIP_WAREHOUSE_ID` tidak diperlukan oleh implementasi saat ini.
+
+### 3.3 SMTP dan queue
+
+Email transaksional dikirim melalui konfigurasi `MAIL_*` Laravel. Di production, gunakan SMTP yang benar dan jalankan queue worker secara persisten. Periksa `/dashboard/email-delivery-logs` jika pengiriman email perlu ditelusuri.
+
+### 3.4 Realtime (opsional)
+
+Realtime tidak aktif secara default. Untuk mengaktifkan pembaruan status pesanan/notifikasi, siapkan Laravel Reverb dan nilai `REVERB_*`, `VITE_REVERB_*`, serta sakelar berikut:
+
+```dotenv
+BROADCAST_CONNECTION=reverb
+REALTIME_ENABLED=true
+REALTIME_ORDER_STATUS_ENABLED=true
+REALTIME_NOTIFICATIONS_ENABLED=true
+```
+
+Jalankan layanan Reverb, queue worker, dan Vite sesuai kebutuhan pengembangan:
+
+```bash
+php artisan reverb:start
+php artisan queue:work
+npm run dev
+```
+
+Setelah mengubah `.env`, bersihkan cache konfigurasi:
+
+```bash
+php artisan config:clear
+```
+
+Panduan deployment lebih lengkap tersedia di [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md), sedangkan detail wilayah dan shipping tersedia di [`docs/WILAYAH-SETUP.md`](docs/WILAYAH-SETUP.md) dan [`docs/SHIPPING-SETUP.md`](docs/SHIPPING-SETUP.md).
+
+---
+
+## 4. Akun Demo
+
+### Customer
+
+| Email | Password lokal |
+|---|---|
+| `demo1@ecommerce.test` | `password` |
+| `demo2@ecommerce.test` | `password` |
+
+Akun customer tersebut dibuat oleh seeder hanya pada environment `local` dan `testing`. Jika belum tersedia, pastikan `APP_ENV=local` lalu jalankan `php artisan db:seed`.
+
+### Admin
+
+Akun admin dibuat menggunakan `ADMIN_NAME`, `ADMIN_EMAIL`, dan `ADMIN_PASSWORD` pada `.env`, kemudian menjalankan `php artisan db:seed`. Login admin terpisah melalui:
+
+```text
+http://127.0.0.1:8000/admin/login
+```
+
+Customer login melalui `/login`. Jangan menggunakan akun demo atau password default pada production.
+
+---
+
+## 5. Desain Database — ER Diagram
+
+Database menggunakan UUID untuk sebagian besar primary key domain. Diagram berikut merangkum relasi domain utama berdasarkan migration dan foreign key aplikasi. Tabel internal Laravel seperti `cache`, `jobs`, `sessions`, dan `password_reset_tokens` tidak ditampilkan agar diagram lebih mudah dibaca.
+
+### 5.1 Katalog, opsi, dan inventori
+
+```mermaid
+erDiagram
+    PRODUCT_CATEGORIES o|--o{ PRODUCTS : groups
+    PRODUCTS ||--o{ PRODUCT_IMAGES : has
+    PRODUCTS ||--o{ PRODUCT_VARIANTS : offers
+    PRODUCTS ||--o{ PRODUCT_OPTIONS : defines
+    PRODUCT_OPTIONS ||--o{ PRODUCT_OPTION_VALUES : contains
+    PRODUCT_VARIANTS ||--o{ PRODUCT_VARIANT_OPTION_VALUES : maps
+    PRODUCT_OPTION_VALUES ||--o{ PRODUCT_VARIANT_OPTION_VALUES : maps
+    PRODUCT_VARIANTS o|--o{ PRODUCT_IMAGES : illustrates
+    PRODUCTS o|--o{ STOCK_MOVEMENTS : tracks
+    PRODUCT_VARIANTS o|--o{ STOCK_MOVEMENTS : tracks
+
+    PRODUCT_CATEGORIES {
+        uuid id PK
+        string name
+        string slug
+    }
+    PRODUCTS {
+        uuid id PK
+        uuid category_id FK
+        string name
+        string slug
+        string sku
+        int price
+        int stock
+        boolean is_active
+    }
+    PRODUCT_IMAGES {
+        uuid id PK
+        uuid product_id FK
+        uuid product_variant_id FK
+        string path
+        boolean is_primary
+    }
+    PRODUCT_VARIANTS {
+        uuid id PK
+        uuid product_id FK
+        string sku
+        int price
+        int stock
+        int weight_gram
+    }
+    PRODUCT_OPTIONS {
+        uuid id PK
+        uuid product_id FK
+        string name
+        string code
+    }
+    PRODUCT_OPTION_VALUES {
+        uuid id PK
+        uuid product_option_id FK
+        string value
+        string color_hex
+    }
+    PRODUCT_VARIANT_OPTION_VALUES {
+        uuid product_variant_id FK
+        uuid product_option_value_id FK
+    }
+    STOCK_MOVEMENTS {
+        uuid id PK
+        uuid product_id FK
+        uuid product_variant_id FK
+        uuid created_by FK
+        int quantity
+    }
+```
+
+Satu produk dapat memiliki banyak varian dan opsi. Kombinasi varian dengan nilai opsi disimpan pada tabel pivot `product_variant_option_values`. Gambar dapat terkait ke produk atau ke varian tertentu. Pergerakan stok menyimpan referensi produk/varian dan pembuat perubahan jika tersedia.
+
+### 5.2 Customer, keranjang, pesanan, dan review
+
+```mermaid
+erDiagram
+    USERS ||--o{ USER_ADDRESSES : owns
+    USERS ||--o{ CARTS : has
+    PRODUCTS ||--o{ CARTS : added
+    PRODUCT_VARIANTS o|--o{ CARTS : selected
+    USERS ||--o{ ORDERS : places
+    CARTS o|--o| ORDERS : checkout_source
+    ORDERS ||--|{ ORDER_ITEMS : contains
+    PRODUCTS ||--o{ ORDER_ITEMS : referenced
+    PRODUCT_VARIANTS o|--o{ ORDER_ITEMS : selected
+    USERS ||--o{ WISHLIST_ITEMS : saves
+    PRODUCTS ||--o{ WISHLIST_ITEMS : saved
+    USERS ||--o{ PRODUCT_REVIEWS : writes
+    PRODUCTS ||--o{ PRODUCT_REVIEWS : receives
+    PRODUCT_REVIEWS ||--o{ PRODUCT_REVIEW_MEDIA : includes
+
+    USERS {
+        uuid id PK
+        string name
+        string email
+        string role
+        string pending_email
+    }
+    USER_ADDRESSES {
+        uuid id PK
+        uuid user_id FK
+        string recipient_name
+        string postal_code
+        boolean is_default
+    }
+    CARTS {
+        uuid id PK
+        uuid user_id FK
+        uuid product_id FK
+        uuid product_variant_id FK
+        int quantity
+    }
+    ORDERS {
+        uuid id PK
+        uuid user_id FK
+        uuid cart_id FK
+        string order_number
+        int subtotal
+        int shipping_cost
+        int total
+        string status
+        string payment_status
+    }
+    ORDER_ITEMS {
+        uuid id PK
+        uuid order_id FK
+        uuid product_id FK
+        uuid product_variant_id FK
+        string product_sku
+        int quantity
+        int price
+        int total
+    }
+    WISHLIST_ITEMS {
+        uuid id PK
+        uuid user_id FK
+        uuid product_id FK
+    }
+    PRODUCT_REVIEWS {
+        uuid id PK
+        uuid product_id FK
+        uuid user_id FK
+        int rating
+        boolean is_approved
+    }
+    PRODUCT_REVIEW_MEDIA {
+        uuid id PK
+        uuid product_review_id FK
+        string path
+        string media_type
+    }
+```
+
+`order_items` menyimpan snapshot nama produk, SKU, nama varian, harga, dan kuantitas saat transaksi dibuat. Karena itu, rincian historis pesanan tidak bergantung sepenuhnya pada perubahan nama atau harga katalog setelah pembelian.
+
+### 5.3 Fulfillment, retur, pembayaran, dan audit
+
+```mermaid
+erDiagram
+    ORDERS ||--o{ ORDER_SHIPMENTS : ships
+    ORDERS ||--o| ORDER_CANCELLATION_REQUESTS : cancellation
+    ORDERS ||--o| ORDER_RETURN_REQUESTS : return
+    ORDER_RETURN_REQUESTS ||--o{ ORDER_RETURN_REVISIONS : revisions
+    ORDERS o|--o{ PAYMENT_WEBHOOK_LOGS : receives
+    ORDERS ||--o{ PAYMENT_RECONCILIATION_CHECKS : checks
+    ORDERS ||--o{ PAYMENT_RECONCILIATION_ALERTS : alerts
+    ORDERS ||--o{ PAYMENT_STATUS_RESOLUTIONS : resolves
+    ORDERS o|--o{ BITESHIP_WEBHOOK_LOGS : receives
+    ORDERS ||--o{ BITESHIP_RECONCILIATION_CHECKS : checks
+    ORDERS o|--o{ EMAIL_DELIVERY_LOGS : notifies
+    USERS o|--o{ ADMIN_ACTIVITY_LOGS : acts
+    USERS o|--o{ CUSTOMER_ACTIVITY_LOGS : acts
+
+    ORDER_SHIPMENTS {
+        uuid id PK
+        uuid order_id FK
+        int attempt
+        string reference_id
+        string biteship_order_id
+        string waybill_id
+        string status
+    }
+    ORDER_CANCELLATION_REQUESTS {
+        uuid id PK
+        uuid order_id FK
+        uuid user_id FK
+        string status
+        string reason
+    }
+    ORDER_RETURN_REQUESTS {
+        uuid id PK
+        uuid order_id FK
+        uuid user_id FK
+        string status
+        string reason
+    }
+    ORDER_RETURN_REVISIONS {
+        uuid id PK
+        uuid order_return_request_id FK
+        uuid requested_by FK
+        string status
+    }
+    PAYMENT_WEBHOOK_LOGS {
+        uuid id PK
+        uuid order_id FK
+        string transaction_status
+        boolean signature_valid
+    }
+    PAYMENT_RECONCILIATION_CHECKS {
+        uuid id PK
+        uuid order_id FK
+        uuid checked_by FK
+        string result
+    }
+    PAYMENT_RECONCILIATION_ALERTS {
+        bigint id PK
+        uuid order_id FK
+        string finding_code
+    }
+    PAYMENT_STATUS_RESOLUTIONS {
+        uuid id PK
+        uuid order_id FK
+        uuid admin_id FK
+        string previous_status
+        string new_status
+    }
+    BITESHIP_WEBHOOK_LOGS {
+        uuid id PK
+        uuid order_id FK
+        string reference_id
+        string remote_status
+    }
+    BITESHIP_RECONCILIATION_CHECKS {
+        uuid id PK
+        uuid order_id FK
+        uuid checked_by FK
+        string result
+    }
+    EMAIL_DELIVERY_LOGS {
+        uuid id PK
+        uuid order_id FK
+        string recipient
+        string type
+        string status
+    }
+    ADMIN_ACTIVITY_LOGS {
+        uuid id PK
+        uuid user_id FK
+        string action
+        string subject_type
+    }
+    CUSTOMER_ACTIVITY_LOGS {
+        uuid id PK
+        uuid user_id FK
+        string action
+        string subject_type
+    }
+```
+
+Relasi `order_id` pada email delivery log dan webhook log dapat bernilai null karena tidak semua email atau webhook terkait langsung ke satu pesanan. Relasi actor pada audit juga nullable agar riwayat tetap dapat disimpan ketika akun terkait sudah tidak tersedia. `payment_reconciliation_alerts.id` menggunakan auto-increment bigint, sedangkan sebagian besar tabel domain menggunakan UUID.
+
+> Diagram ini menampilkan relasi database yang didefinisikan melalui foreign key migration. Kolom kode wilayah pada alamat tidak digambarkan sebagai foreign key ke tabel package wilayah.
+
+---
+
+## 6. User Flow
+
+### 6.1 Customer — belanja sampai pesanan selesai
+
+```mermaid
+flowchart TD
+    A[Customer membuka RevStore] --> B{Sudah punya akun?}
+    B -->|Belum| C[Registrasi]
+    B -->|Sudah| D[Login]
+    C --> D
+    D --> E[Jelajahi katalog]
+    E --> F[Detail produk dan pilih varian]
+    F --> G[Tambahkan ke keranjang]
+    G --> H[Checkout]
+    H --> I[Pilih alamat dan tarif pengiriman]
+    I --> J[Buat pesanan]
+    J --> K[Pembayaran Midtrans]
+    K --> L{Pembayaran terverifikasi?}
+    L -->|Tidak / gagal| M[Periksa status atau coba pembayaran lagi]
+    M --> K
+    L -->|Ya| N[Pesanan diproses admin]
+    N --> O[Shipment dibuat melalui Biteship]
+    O --> P[Webhook memperbarui tracking]
+    P --> Q[Customer menerima pesanan]
+    Q --> R[Konfirmasi penerimaan]
+    R --> S[Pesanan completed]
+    S --> T[Tulis ulasan produk]
+```
+
+### 6.2 Admin — persiapan toko dan fulfillment
+
+```mermaid
+flowchart TD
+    A[Admin login] --> B[Dashboard]
+    B --> C[Kelola kategori dan produk]
+    C --> D[Atur opsi, varian, SKU, harga, dan stok]
+    D --> E[Kelola inventory]
+    E --> F[Terima pesanan customer]
+    F --> G{Pembayaran sudah paid?}
+    G -->|Belum| H[Menunggu verifikasi pembayaran]
+    G -->|Sudah| I[Proses pesanan]
+    I --> J[Buat shipment Biteship]
+    J --> K{Shipment berhasil?}
+    K -->|Tidak| L[Periksa Biteship audit dan tindak lanjuti]
+    L --> J
+    K -->|Ya| M[Webhook dan tracking]
+    M --> N[Monitoring sampai delivered]
+    N --> O[Audit dan rekonsiliasi]
+```
+
+### 6.3 Pembatalan dan pengembalian
+
+```mermaid
+flowchart TD
+    A[Customer membuka pesanan] --> B{Jenis pengajuan}
+    B -->|Pembatalan| C[Ajukan pembatalan]
+    C --> D[Admin meninjau]
+    D --> E{Disetujui?}
+    E -->|Tidak| F[Pengajuan ditolak dengan catatan]
+    E -->|Ya| G{Pesanan sudah dibayar?}
+    G -->|Belum| H[Batalkan dan pulihkan stok sesuai alur]
+    G -->|Sudah| I[Proses refund dan verifikasi hasil]
+    I --> J[Refund tercatat]
+    J --> K[Pembatalan diselesaikan]
+    B -->|Retur| L[Ajukan retur dengan alasan dan bukti]
+    L --> M[Admin meninjau]
+    M --> N{Disetujui?}
+    N -->|Tidak| F
+    N -->|Ya| O[Customer mengirim barang kembali]
+    O --> P[Admin menerima dan memeriksa barang]
+    P --> Q{Resolusi}
+    Q -->|Refund| I
+    Q -->|Replacement| R[Catat pengiriman pengganti]
+    R --> S[Retur diselesaikan]
+```
+
+### 6.4 Email dan keamanan akun
+
+```mermaid
+flowchart TD
+    A[Customer mengubah email] --> B[Masukkan email baru dan password saat ini]
+    B --> C[Email baru disimpan sebagai pending]
+    C --> D[Kirim tautan konfirmasi ke email baru]
+    D --> E{Tautan valid dan belum kedaluwarsa?}
+    E -->|Tidak| F[Email lama tetap aktif, kirim ulang jika diperlukan]
+    E -->|Ya| G[Aktifkan email baru dan tandai terverifikasi]
+    G --> H[Kirim notifikasi ke email lama]
+    D --> I[Catat pengiriman pada Email Delivery Logs]
+    H --> I
+```
+
+---
+
+## 7. Demo Flow Customer
+
+Gunakan akun customer demo dari bagian [Akun Demo](#4-akun-demo), atau daftarkan akun baru melalui `/register`.
+
+### Langkah 1 — Registrasi dan login
+
+1. Buka `/register`.
+2. Isi nama, email, dan password.
+3. Login melalui `/login`.
+4. Untuk checkout, pastikan akun memenuhi persyaratan verifikasi email aplikasi.
+
+![Halaman registrasi customer](docs/screenshots/03-customer-register.png)
+
+![Halaman login customer](docs/screenshots/02-customer-login.png)
+
+### Langkah 2 — Jelajahi katalog
+
+1. Buka halaman utama `/`.
+2. Buka `/shop` untuk melihat katalog produk.
+3. Pilih kategori atau gunakan pencarian/filter yang tersedia.
+4. Pilih salah satu produk untuk membuka halaman detail.
+
+![Storefront RevStore](docs/screenshots/01-storefront-home.png)
+
+![Katalog produk](docs/screenshots/04-storefront-shop.png)
+
+### Langkah 3 — Detail produk dan varian
+
+1. Periksa gambar, deskripsi, harga, dan informasi produk.
+2. Pilih opsi varian seperti warna atau ukuran.
+3. Periksa ketersediaan stok varian.
+4. Tambahkan varian yang dipilih ke keranjang.
+
+![Detail produk RevStore](docs/screenshots/05-product-detail.png)
+
+### Langkah 4 — Keranjang dan checkout
+
+1. Buka `/cart`.
+2. Perbarui kuantitas atau hapus item jika diperlukan.
+3. Buka `/checkout`.
+4. Pilih atau tambahkan alamat pengiriman melalui `/addresses`.
+5. Minta tarif pengiriman, lalu pilih kurir dan layanan.
+6. Periksa subtotal produk, ongkir, dan total pembayaran.
+7. Buat pesanan.
+
+![Cart RevStore](docs/screenshots/customer-addresses.png)
+![Cart RevStore](docs/screenshots/customer-cart.png)
+
+### Langkah 5 — Pembayaran
+
+1. Lanjutkan ke instruksi pembayaran Midtrans.
+2. Gunakan skenario pembayaran sandbox.
+3. Periksa halaman hasil pembayaran dan detail pesanan.
+4. Pastikan status `paid` berasal dari callback/notifikasi provider yang terverifikasi, bukan sekadar redirect browser.
+
+![Menu Pembayaran RevStore](docs/screenshots/customer-detail-order-produk-pembayaran.png)
+![Pembayaran RevStore](docs/screenshots/customer-detail-order-pembayaran.png)
+![Pembayaran Terverifikasi RevStore](docs/screenshots/customer-detail-order-pembayaran-terverifikasi.png)
+
+### Langkah 6 — Tracking dan konfirmasi penerimaan
+
+1. Buka `/orders`.
+2. Pilih pesanan dan buka detailnya.
+3. Periksa tab Ringkasan, Produk & Pembayaran, Pengiriman, Review, dan Pengajuan sesuai status pesanan.
+4. Lihat status serta nomor resi ketika tersedia.
+5. Setelah pesanan berstatus `delivered`, customer dapat mengonfirmasi penerimaan.
+6. Pesanan menjadi `completed`; customer dapat menulis ulasan produk.
+
+![Daftar Order RevStore](docs/screenshots/customer-daftar-order.png)
+![Ringkasan Delivered RevStore](docs/screenshots/customer-detail-order-ringkasan-delivered.png)
+---
+
+## 8. Demo Flow Admin
+
+Login admin menggunakan akun yang dibuat melalui `ADMIN_*` di `.env` pada `/admin/login`.
+
+![Halaman login admin](docs/screenshots/06-admin-login.png)
+
+### Langkah 1 — Dashboard
+
+Buka `/dashboard` untuk melihat metrik penjualan, pesanan, customer, produk, dan ringkasan operasional.
+![Admin Dashboard RevStore](docs/screenshots/admin-dashboard.png)
+
+### Langkah 2 — Kategori, produk, dan varian
+
+- Kategori: `/dashboard/product-categories`.
+- Produk: `/dashboard/products`.
+- Inventory: `/dashboard/inventory`.
+
+Tunjukkan pembuatan dan pengeditan produk, gambar, deskripsi, kategori, SEO, opsi, nilai opsi, kombinasi varian, SKU, barcode, harga, berat, dimensi, status aktif, dan stok.
+![Products RevStore](docs/screenshots/admin-products.png)
+![Create Product RevStore](docs/screenshots/admin-product-create.png)
+
+### Langkah 3 — Pesanan dan pengiriman
+
+1. Buka `/dashboard/orders`.
+2. Pilih pesanan yang sudah dibayar.
+3. Periksa item, alamat penerima, subtotal, ongkir, total, dan status pembayaran.
+4. Proses pesanan sesuai alur fulfillment.
+5. Periksa shipment dan tracking Biteship.
+6. Jika ada kegagalan sinkronisasi, gunakan halaman audit untuk mendiagnosisnya.
+
+Status `shipped` dan `delivered` berasal dari pembaruan webhook Biteship. Status `completed` berasal dari konfirmasi penerimaan customer atau proses otomatis aplikasi.
+
+![Admin Orders RevStore](docs/screenshots/admin-orders.png)
+![Admin Orders RevStore](docs/screenshots/admin-orders-1.png)
+![Admin Detail Order RevStore](docs/screenshots/admin-detail-order.png)
+
+### Langkah 4 — Moderasi ulasan dan akun
+
+- Moderasi ulasan: `/dashboard/reviews`.
+- Pengelolaan akun admin: `/dashboard/users`.
+- Profil admin: `/dashboard/profile`.
+![Admin Reviews RevStore](docs/screenshots/admin-reviews.png)
+![Admin Users RevStore](docs/screenshots/admin-users.png)
+![Admin Profile RevStore](docs/screenshots/admin-profile.png)
+
+
+### Langkah 5 — Audit dan monitoring
+
+| Halaman | URL | Kegunaan |
+|---|---|---|
+| Payment reconciliation | `/dashboard/payment-reconciliation` | Pemeriksaan status transaksi dan penyelesaian perbedaan status |
+| Biteship reconciliation | `/dashboard/biteship-reconciliation` | Pemeriksaan shipment dan sinkronisasi pengiriman |
+| Admin activity logs | `/dashboard/activity-logs` | Riwayat aktivitas admin |
+| Customer activity logs | `/dashboard/customer-activity-logs` | Aktivitas customer yang dicatat aplikasi |
+| Email delivery logs | `/dashboard/email-delivery-logs` | Status, percobaan, dan error pengiriman email |
+| Notifications | `/dashboard/notifications` | Notifikasi admin |
+
+![Admin Payment Reconciliation RevStore](docs/screenshots/admin-payment-reconciliation.png)
+![Admin Biteship Reconciliation](docs/screenshots/admin-biteship-audit.png)
+![Admin Activity Logs RevStore](docs/screenshots/admin-activity.png)
+![Customer Activity Logs RevStore](docs/screenshots/admin-customer-activity.png)
+![Email Activity Logs RevStore](docs/screenshots/admin-email-logs.png)
+
+
+---
+
+## 9. Pembatalan, Retur, dan Refund
+
+Gunakan pesanan demo terpisah untuk memperlihatkan skenario pembatalan atau retur. Jangan mengubah pesanan utama yang sedang dipakai untuk demo fulfillment normal.
+
+### 9.1 Pembatalan pesanan
+
+1. Customer membuka detail pesanan dan mengajukan pembatalan jika pesanan memenuhi syarat.
+2. Untuk pesanan belum dibayar, pembatalan mengikuti alur pembatalan langsung dan pemulihan stok aplikasi.
+3. Untuk pesanan yang sudah dibayar, permintaan masuk ke admin untuk ditinjau.
+4. Admin menyetujui atau menolak permintaan. Penolakan disertai catatan.
+5. Jika disetujui, admin memproses refund sesuai metode yang tersedia.
+6. Untuk transaksi yang memenuhi syarat, refund dapat dikirim melalui API Midtrans. Metode manual juga tersedia sesuai alur aplikasi dan harus disertai referensi/bukti.
+7. Setelah refund benar-benar berhasil dan tercatat, admin menyelesaikan pembatalan.
+
+![Pengajuan Pembatalan RevStore](docs/screenshots/customer-detail-order-pengajuan.png)
+![Pengajuan Pembatalan RevStore](docs/screenshots/customer-detail-order-pengajuan-pembatalan.png)
+![Pengajuan Pembatalan RevStore](docs/screenshots/admin-detail-order-cancel.png)
+![Pengajuan Pembatalan RevStore](docs/screenshots/admin-detail-order-cancel-proceed.png)
+![Pengajuan Pembatalan RevStore](docs/screenshots/admin-detail-order-cancel-proceed-waiting.png)
+![Pengajuan Pembatalan RevStore](docs/screenshots/admin-detail-order-cancel-proceed-confirm.png)
+![Pengajuan Pembatalan RevStore](docs/screenshots/admin-detail-order-cancel-proceed-completed.png)
+![Pengajuan Pembatalan RevStore](docs/screenshots/customer-detail-order-ringkasan-cancelled.png)
+
+
+### 9.2 Pengembalian barang (retur)
+
+1. Customer mengajukan retur pada pesanan yang memenuhi syarat; batas pengajuan adalah tujuh hari setelah pesanan diterima.
+2. Customer memilih alasan, menulis deskripsi, dan mengunggah bukti jika diperlukan.
+3. Admin meninjau dan menyetujui atau menolak pengajuan.
+4. Jika disetujui, customer mengirim barang kembali dan mengisi informasi kurir serta nomor resi.
+5. Admin mencatat penerimaan barang retur.
+6. Admin memilih resolusi refund atau replacement.
+7. Refund diproses melalui Midtrans jika memenuhi syarat atau melalui metode manual yang didukung. Replacement dicatat dengan informasi pengiriman pengganti.
+8. Selesaikan retur setelah tindakan resolusi benar-benar dilakukan.
+
+### 9.3 Prinsip verifikasi
+
+- Jangan menyatakan refund berhasil hanya karena tombol proses refund ditekan.
+- Periksa respons provider, status refund, webhook, dan catatan audit.
+- Jangan menyelesaikan pembatalan berbayar sebelum refund tercatat selesai.
+- Gunakan sandbox/test untuk demonstrasi pembayaran dan refund.
+
+Panduan lebih rinci tersedia pada [`docs/ORDER-CANCELLATION.md`](docs/ORDER-CANCELLATION.md) dan [`docs/ORDER-FULFILLMENT.md`](docs/ORDER-FULFILLMENT.md).
+
+---
+
+## 10. Galeri Screenshot
+
+Screenshot berikut diambil dari aplikasi RevStore yang dijalankan secara lokal. Screenshot autentikasi dan storefront bersifat publik; halaman admin setelah login dijelaskan pada demo flow dan dapat ditampilkan setelah menyiapkan akun admin lokal.
+
+| Halaman | Screenshot |
+|---|---|
+| Storefront home | ![Storefront home](docs/screenshots/01-storefront-home.png) |
+| Customer login | ![Customer login](docs/screenshots/02-customer-login.png) |
+| Customer registration | ![Customer registration](docs/screenshots/03-customer-register.png) |
+| Product catalog | ![Product catalog](docs/screenshots/04-storefront-shop.png) |
+| Product detail | ![Product detail](docs/screenshots/05-product-detail.png) |
+| Admin login | ![Admin login](docs/screenshots/06-admin-login.png) |
+
+---
+
+## 11. Struktur Proyek dan Dokumentasi
 
 ```text
 ecommerce10/
 ├── app/
-│   ├── Http/Controllers/       # Controller dashboard, halaman, produk, kategori, upload, cart, order, auth, dan profil
-│   ├── Http/Middleware/        # Middleware pembatasan akses admin
-│   ├── Http/Requests/          # Form request validasi auth dan profil
-│   ├── Models/                 # Model Eloquent beserta relasinya
-│   └── View/Components/        # Class komponen Blade (termasuk layout Breeze)
+│   ├── Http/Controllers/     # Controller customer dan admin
+│   ├── Models/               # Model dan relasi Eloquent
+│   ├── Notifications/        # Email dan notifikasi
+│   └── Services/             # Integrasi dan business logic
+├── config/                   # Konfigurasi aplikasi dan integrasi
 ├── database/
-│   ├── migrations/             # Struktur tabel database
-│   └── seeders/                # Data dummy produk dan kategori
+│   ├── migrations/           # Skema dan relasi database
+│   ├── factories/            # Factory testing/demo
+│   └── seeders/              # Data awal aplikasi
+├── docs/                     # Panduan, demo flow, dan screenshot
 ├── resources/
-│   ├── css/app.css             # Style Tailwind CSS
-│   ├── js/                     # Entry point, script dashboard, form produk/kategori, dan upload
-│   └── views/
-│       ├── dashboard.blade.php # Dashboard utama dengan ringkasan dan grafik
-│       ├── components/         # Navbar, footer, layout, product card, dll.
-│       ├── home/               # Halaman utama dan daftar produk (dengan filter & pagination)
-│       ├── product/            # Halaman detail produk
-│       ├── cart/               # Halaman keranjang
-│       ├── admin/              # Halaman admin daftar, tambah, edit, dan detail produk/kategori
-│       ├── auth/               # Halaman login, registrasi, dan reset password
-│       ├── layouts/            # Layout aplikasi dan guest dari Breeze
-│       ├── profile/            # Halaman pengelolaan profil
-│       └── vendor/pagination/  # Template pagination Tailwind
-├── routes/web.php              # Definisi route utama
-├── routes/auth.php             # Definisi route autentikasi
-├── composer.json               # Dependency PHP
-├── package.json                # Dependency frontend
-├── vite.config.js              # Konfigurasi Vite
+│   ├── css/                  # Styling
+│   ├── js/                   # JavaScript dan Alpine components
+│   └── views/                # Blade storefront, admin, dan email
+├── routes/                   # Web dan authentication routes
+├── storage/                  # File aplikasi (tidak seluruhnya di Git)
+├── tests/                    # Feature dan unit tests
+├── composer.json
+├── package.json
 └── README.md
 ```
+
+### Dokumentasi pendukung
+
+- [Demo Flow](docs/DEMO_FLOW.md) — urutan presentasi dan checklist demonstrasi.
+- [Deployment](docs/DEPLOYMENT.md) — setup dari clone, konfigurasi, deployment, dan checklist rilis.
+- [Shipping Setup](docs/SHIPPING-SETUP.md) — konfigurasi tarif, shipment, dan Biteship.
+- [Wilayah Setup](docs/WILAYAH-SETUP.md) — dataset dan endpoint wilayah Indonesia.
+- [Order Fulfillment](docs/ORDER-FULFILLMENT.md) — proses pemenuhan pesanan.
+- [Order Cancellation](docs/ORDER-CANCELLATION.md) — pembatalan dan refund.
+- [Presentation](docs/PRESENTATION.md) — materi sumber presentasi proyek.
+
+---
+
+## 12. Testing
+
+Jalankan test suite dengan:
+
+```bash
+php artisan test
+```
+
+Atau gunakan script Composer:
+
+```bash
+composer test
+```
+
+Test menggunakan konfigurasi database testing yang terpisah. Jangan arahkan test ke database lokal atau production yang berisi data penting.
+
+---
+
+## 13. Lisensi dan Kredit
+
+Proyek ini menggunakan lisensi MIT sebagaimana didefinisikan pada `composer.json`. Integrasi dan package pihak ketiga tetap mengikuti lisensi masing-masing.
+
+Dibangun sebagai proyek e-commerce Eduwork Batch 10 dengan Laravel dan ekosistem open-source terkait.

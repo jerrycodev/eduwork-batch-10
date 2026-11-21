@@ -1,26 +1,39 @@
-# Development and Production Deployment
+# Persyaratan, Pengembangan, dan Produksi
 
-This guide covers a native Ubuntu/Linux deployment using **Nginx + PHP-FPM**. Docker, Docker Compose, Coolify, and Nixpacks are not required.
+Panduan ini menjelaskan kebutuhan aplikasi, langkah menyiapkan lingkungan pengembangan dari hasil `git clone`, serta persiapan aplikasi untuk lingkungan produksi. Dokumentasi ini hanya membahas aplikasi dan proses rilis; konfigurasi sistem operasi, web server, DNS, sertifikat TLS, firewall, dan infrastruktur server tidak termasuk dalam cakupan.
 
-The application is built with Laravel 13, PHP 8.3+, Composer, Vite, and MySQL/MariaDB.
+Aplikasi menggunakan Laravel 13, PHP 8.3+, Composer, Vite, MySQL/MariaDB, serta package `aliziodev/laravel-wilayah` untuk data wilayah administratif Indonesia.
 
-## 1. Requirements
+## 1. Persyaratan
 
-### Development machine
+### 1.1 Perangkat pengembangan
 
-- Git
-- PHP 8.3 or newer and the PHP extensions listed below
-- Composer 2
-- Node.js and npm (use the versions supported by the lockfile/Vite)
-- MySQL 8+ or a compatible MariaDB server
+- Git.
+- PHP 8.3 atau lebih baru beserta ekstensi PHP yang dibutuhkan Laravel.
+- Composer 2.
+- Node.js dan npm dengan versi yang kompatibel dengan lockfile proyek dan Vite.
+- MySQL 8+ atau MariaDB versi kompatibel.
+- Opsional: Docker untuk menjalankan layanan pendukung lokal seperti Mailpit.
 
-Required PHP extensions for a typical Laravel + MySQL installation:
+### 1.2 Lingkungan produksi
 
-- ctype, curl, dom, fileinfo, filter, hash, mbstring, openssl
-- pdo, pdo_mysql, session, tokenizer, xml
-- bcmath, gd, intl, zip
+- PHP 8.3 atau lebih baru beserta ekstensi yang dibutuhkan.
+- Composer 2, atau dependency yang sudah dipasang pada tahap build/rilis.
+- MySQL 8+ atau MariaDB versi kompatibel.
+- Node.js dan npm pada lingkungan build, kecuali aset frontend dibangun melalui CI.
+- Lingkungan runtime yang mendukung Laravel dan proses aplikasi yang berjalan terus-menerus bila diperlukan.
+- URL aplikasi yang dapat diakses publik melalui HTTPS.
+- Layanan SMTP untuk email transaksional.
 
-Check your local runtime:
+Ekstensi PHP yang umum dibutuhkan untuk Laravel dan MySQL:
+
+- `ctype`, `curl`, `dom`, `fileinfo`, `filter`, `hash`, `mbstring`, `openssl`.
+- `pdo`, `pdo_mysql`, `session`, `tokenizer`, `xml`.
+- `bcmath`, `gd`, `intl`, `zip`.
+
+Pastikan versi PHP CLI kompatibel dengan PHP yang digunakan oleh runtime aplikasi.
+
+Periksa perangkat pengembangan:
 
 ```bash
 php -v
@@ -30,43 +43,39 @@ npm --version
 php -m
 ```
 
-### Production server
+## 2. Menyiapkan lingkungan pengembangan
 
-- Ubuntu 22.04/24.04 (or another supported Linux distribution)
-- Nginx
-- PHP-FPM 8.3 or newer with the required extensions
-- Composer 2
-- Node.js/npm for building frontend assets (or build assets in CI)
-- MySQL/MariaDB
-- A DNS name pointing to the server and a TLS certificate
+Ikuti urutan berikut setelah mendapatkan repository. Contoh di bawah menggunakan repository `eduwork-batch-10` dan direktori aplikasi `ecommerce10`.
 
-Keep PHP CLI and PHP-FPM on compatible PHP versions. The Nginx example below uses the PHP 8.3 FPM socket; change it if the installed PHP version differs.
-
-## 2. Development setup from Git clone
-
-### 2.1 Clone the repository
-
-Replace the URL and branch with the actual repository values:
+### 2.1 Clone repository
 
 ```bash
-git clone https://github.com/jerrycodev/eduwork-batch-10
+git clone https://github.com/jerrycodev/eduwork-batch-10.git
 cd eduwork-batch-10/ecommerce10
 ```
 
-### 2.2 Install dependencies
+Jika repository menggunakan URL atau branch lain, sesuaikan URL dan nama branch dengan akses repository yang diberikan.
+
+### 2.2 Pasang dependency
+
+Pasang dependency PHP dan JavaScript berdasarkan lockfile yang sudah disediakan:
 
 ```bash
 composer install
 npm ci
 ```
 
-### 2.3 Configure the environment
+`composer install` akan memasang package `aliziodev/laravel-wilayah` bersama dependency aplikasi lainnya. Tidak perlu menjalankan `composer require` untuk package tersebut karena sudah tercantum di `composer.json` dan `composer.lock`.
+
+### 2.3 Siapkan file environment
+
+Buat file `.env` dari template:
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` and configure at least:
+Buka `.env`, lalu sesuaikan minimal konfigurasi aplikasi dan database berikut:
 
 ```dotenv
 APP_NAME="Ecommerce"
@@ -80,7 +89,7 @@ DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=ecommerce10
 DB_USERNAME=root
-DB_PASSWORD=your-local-database-password
+DB_PASSWORD=password-database-lokal
 
 SESSION_DRIVER=database
 CACHE_STORE=database
@@ -89,29 +98,119 @@ FILESYSTEM_DISK=public
 SESSION_SECURE_COOKIE=false
 ```
 
-Generate the local application key:
+Buat database `ecommerce10` terlebih dahulu pada MySQL/MariaDB lokal, atau sesuaikan nama database dan kredensial di atas dengan database yang sudah tersedia.
+
+Buat application key:
 
 ```bash
 php artisan key:generate
 ```
 
-Never commit `.env`. Use a different key and credentials for every environment.
+Jangan commit file `.env`. Setiap lingkungan harus memiliki application key dan kredensialnya sendiri.
 
-#### Transactional order emails and invoice PDFs
+### 2.4 Jalankan migrasi database
 
-The application queues customer emails for order creation, verified payment, order processing, shipment (including courier and tracking number), and delivery. The order-created email includes an invoice PDF; the verified-payment email includes a payment receipt PDF. Customers can also download the current invoice/receipt from their authenticated order detail page. The invoice endpoint checks order ownership (administrators may access it for support).
+Setelah konfigurasi database benar, jalankan seluruh migrasi aplikasi:
 
-Emails are queued after the related database transaction commits. Keep a Laravel queue worker running in every environment; otherwise messages remain pending in the `jobs` table and are not delivered:
+```bash
+php artisan migrate
+```
+
+Migrasi ini juga membuat tabel yang dibutuhkan package wilayah, seperti `provinces`, `regencies`, `districts`, dan `villages`, karena migrasinya sudah tersedia di repository.
+
+Periksa status migrasi jika diperlukan:
+
+```bash
+php artisan migrate:status
+```
+
+### 2.5 Isi data wilayah Indonesia
+
+RevStore menggunakan package [`aliziodev/laravel-wilayah`](https://github.com/aliziodev/laravel-wilayah) untuk menyediakan pilihan alamat bertingkat. Setelah migrasi selesai, isi dataset wilayah dengan perintah:
+
+```bash
+php artisan wilayah:seed
+```
+
+Seeder package akan mengisi data administratif Indonesia berupa:
+
+- Provinsi.
+- Kabupaten/kota.
+- Kecamatan.
+- Desa/kelurahan.
+- Kode pos yang tersedia pada dataset.
+
+Perintah `wilayah:seed` perlu dijalankan pada database baru agar pilihan wilayah muncul ketika customer menambahkan alamat. Perintah ini terpisah dari `php artisan db:seed` milik aplikasi.
+
+Perintah tambahan yang berguna:
+
+```bash
+# Melihat versi dataset wilayah yang terpasang
+php artisan wilayah:version
+
+# Sinkronisasi dataset dengan data terbaru dari package
+php artisan wilayah:sync
+
+# Membersihkan cache data wilayah
+php artisan wilayah:cache-clear
+```
+
+Hindari opsi `--fresh` pada database yang sudah digunakan karena opsi tersebut menghapus data wilayah sebelum melakukan seeding ulang. Untuk penggunaan normal, cukup jalankan `php artisan wilayah:seed` saat menyiapkan database baru.
+
+Penjelasan lebih lanjut mengenai fitur dan endpoint wilayah tersedia pada [WILAYAH-SETUP.md](WILAYAH-SETUP.md).
+
+### 2.6 Isi data awal aplikasi
+
+Setelah migrasi dan data wilayah selesai, jalankan seeder aplikasi:
+
+```bash
+php artisan db:seed
+```
+
+Pada lingkungan `local` dan `testing`, seeder aplikasi akan:
+
+- Membuat akun demo `demo1@ecommerce.test` dan `demo2@ecommerce.test` jika akun tersebut belum tersedia.
+- Membuat data katalog contoh yang terdiri dari enam kategori dan 16 produk.
+- Tidak menggandakan kategori atau produk ketika seeder dijalankan kembali.
+- Tidak mereset stok varian yang sudah ada ketika seeder dijalankan kembali.
+
+Pada lingkungan produksi, akun demo dan katalog contoh tidak dibuat.
+
+Untuk membuat akun administrator lokal, tambahkan konfigurasi berikut ke `.env` sebelum menjalankan `php artisan db:seed`:
+
+```dotenv
+ADMIN_NAME="Administrator"
+ADMIN_EMAIL=admin@example.test
+ADMIN_PASSWORD=password-admin-lokal-yang-kuat
+```
+
+Jalankan seeder, lalu hapus nilai password sementara dari `.env`:
+
+```bash
+php artisan db:seed
+```
+
+Jika administrator dengan email tersebut sudah ada, seeder tidak akan mengganti password yang sudah digunakan. Seeder hanya memastikan akun tersebut memiliki role administrator.
+
+### 2.7 Buat symbolic link storage
+
+Jalankan perintah berikut agar file yang disimpan pada disk publik dapat diakses aplikasi:
+
+```bash
+php artisan storage:link
+```
+
+### 2.8 Siapkan email lokal dengan Mailpit (opsional)
+
+Aplikasi mengirim email untuk proses pesanan, pembayaran terverifikasi, pemrosesan pesanan, pengiriman, dan notifikasi terkait. Email pesanan dapat berisi invoice PDF, sedangkan email pembayaran dapat berisi bukti pembayaran PDF.
+
+Email diproses melalui queue. Jalankan worker selama pengembangan agar email tidak menumpuk di tabel `jobs`:
 
 ```bash
 php artisan queue:work --tries=3 --backoff=10
 ```
 
-The default queue connection is `database`. For production, supervise the queue worker with Supervisor, systemd, or the process manager used by your hosting platform. Configure a real SMTP provider using the `MAIL_*` variables below. Do not use Mailpit in production.
-
-#### Local email testing with Mailpit
-
-Mailpit captures outgoing application emails locally; it does not deliver them to real inboxes. Start a Mailpit container if one is not already available:
+Mailpit dapat digunakan untuk menangkap email lokal tanpa mengirimkannya ke inbox sungguhan. Jika Mailpit belum tersedia, jalankan container berikut:
 
 ```bash
 docker run -d --name ecommerce-mailpit \
@@ -120,7 +219,7 @@ docker run -d --name ecommerce-mailpit \
   axllent/mailpit:latest
 ```
 
-For Laravel running directly on the host, use these settings (they are already the defaults in `.env.example`):
+Untuk Laravel yang berjalan langsung pada komputer host, gunakan konfigurasi berikut di `.env`:
 
 ```dotenv
 MAIL_MAILER=smtp
@@ -133,144 +232,79 @@ MAIL_FROM_ADDRESS="noreply@ecommerce.test"
 MAIL_FROM_NAME="${APP_NAME}"
 ```
 
-Open the Mailpit inbox at `http://127.0.0.1:8025`. If Laravel itself runs inside Docker on the same Docker network as Mailpit, set `MAIL_HOST` to the Mailpit service/container network alias (for example, `mailpit`) instead of `127.0.0.1`. After changing mail settings, clear cached configuration:
+Buka kotak masuk Mailpit di `http://127.0.0.1:8025`. Jika Laravel berjalan di dalam Docker pada jaringan yang sama dengan Mailpit, gunakan nama service/container Mailpit sebagai `MAIL_HOST` (misalnya `mailpit`), bukan `127.0.0.1`.
+
+Setelah mengubah konfigurasi email, bersihkan cache konfigurasi:
 
 ```bash
 php artisan config:clear
 ```
 
-For production, replace these local Mailpit values with the credentials and host of a real SMTP provider; see the production environment example in section 4.2.
+Mailpit hanya untuk pengembangan. Gunakan layanan SMTP sungguhan pada lingkungan produksi.
 
-### 2.4 Run migrations and development seeders
+### 2.9 Jalankan aplikasi
 
-```bash
-php artisan migrate
-php artisan db:seed
-php artisan storage:link
-```
-
-The default seeder behaves differently by environment:
-
-- In `local` and `testing`, it creates two stable demo users (`demo1@ecommerce.test` and `demo2@ecommerce.test`) only when they do not already exist, plus the sample product catalog (five categories and 16 products).
-- Sample categories and products are created only when missing. Re-running the seeder does not reset existing product stock, images, prices, or descriptions.
-- In production, sample users and sample catalog data are skipped.
-- An administrator is created/promoted only when both `ADMIN_EMAIL` and `ADMIN_PASSWORD` are supplied. An existing administrator's password is not reset by re-running the seeder.
-
-To provision a local administrator, add these values to your local `.env` before running `php artisan db:seed`:
-
-```dotenv
-ADMIN_NAME="Administrator"
-ADMIN_EMAIL=admin@example.test
-ADMIN_PASSWORD=use-a-unique-local-password
-```
-
-Remove the temporary password from `.env` after the administrator has been created.
-
-### 2.5 Build assets and run the application
-
-For normal frontend development, run Vite in one terminal:
-
-```bash
-npm run dev
-```
-
-Run Laravel in another terminal:
+Buka terminal pertama untuk menjalankan Laravel:
 
 ```bash
 php artisan serve
 ```
 
-Open http://127.0.0.1:8000.
+Buka terminal kedua untuk menjalankan Vite:
 
-To create a production-style frontend build locally:
+```bash
+npm run dev
+```
+
+Jika fitur email/queue sedang diuji, jalankan worker pada terminal ketiga:
+
+```bash
+php artisan queue:work --tries=3 --backoff=10
+```
+
+Akses aplikasi melalui `http://127.0.0.1:8000`.
+
+Untuk membuat build frontend:
 
 ```bash
 npm run build
 ```
 
-### 2.6 Run tests
+### 2.10 Akun dan alur awal demonstrasi
+
+Setelah seeder selesai, akun demo customer yang tersedia pada lingkungan lokal adalah:
+
+- `demo1@ecommerce.test`
+- `demo2@ecommerce.test`
+
+Akun administrator hanya tersedia jika `ADMIN_EMAIL` dan `ADMIN_PASSWORD` diisi saat menjalankan seeder. Login administrator tersedia melalui `/admin/login`, sedangkan login customer melalui `/login`.
+
+Sebelum demonstrasi checkout, pastikan:
+
+- Ada produk aktif dengan minimal satu varian aktif dan stok mencukupi.
+- Customer memiliki alamat pengiriman yang lengkap.
+- Data wilayah sudah terisi melalui `php artisan wilayah:seed`.
+- Jika akan mendemokan ongkir, shipment, pembayaran, atau tracking, konfigurasi integrasi Biteship dan Midtrans sudah disiapkan menggunakan kredensial sandbox/test.
+
+Urutan demonstrasi fitur aplikasi tersedia pada [DEMO_FLOW.md](DEMO_FLOW.md).
+
+### 2.11 Jalankan pengujian
 
 ```bash
 php artisan test
 ```
 
-Run the test suite before pushing changes. Tests should use the isolated testing database configured in `phpunit.xml`, not a production database.
+Jalankan seluruh pengujian sebelum mengirim perubahan. Pengujian harus menggunakan database testing terisolasi sesuai konfigurasi `phpunit.xml`, bukan database pengembangan atau produksi.
 
-## 3. Prepare the Ubuntu production server
+## 3. Persiapan aplikasi untuk produksi
 
-The commands below assume a deployment user named `deploy`, an application path of `/var/www/ecommerce10`, and a domain such as `shop.example.com`. Replace these placeholders with your actual values.
+Bagian ini hanya membahas konfigurasi dan rilis aplikasi. Pengadaan infrastruktur dan konfigurasi web server dilakukan di luar panduan ini.
 
-Install the server packages (package names can vary by Ubuntu release and PHP repository):
+### 3.1 Siapkan environment produksi
 
-```bash
-sudo apt update
-sudo apt install -y nginx mysql-server git unzip curl acl
-sudo apt install -y php8.3-fpm php8.3-cli php8.3-common \
-  php8.3-mysql php8.3-mbstring php8.3-xml php8.3-curl \
-  php8.3-bcmath php8.3-gd php8.3-intl php8.3-zip
-```
+Atur environment melalui pengelola konfigurasi/secret milik platform yang digunakan. Jangan commit file `.env` produksi.
 
-Install Composer 2 and a supported Node.js/npm release using their official installation instructions. Verify the versions:
-
-```bash
-php -v
-php-fpm8.3 -v
-composer --version
-node --version
-npm --version
-nginx -v
-```
-
-Create a deployment user if one does not already exist:
-
-```bash
-sudo adduser --disabled-password --gecos "" deploy
-sudo usermod -aG www-data deploy
-```
-
-Provision a dedicated MySQL database and least-privilege application user. Do not use the MySQL root account in the Laravel `.env` file:
-
-```sql
-CREATE DATABASE ecommerce10 CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'ecommerce10'@'localhost' IDENTIFIED BY 'replace-with-a-strong-production-password';
-GRANT ALL PRIVILEGES ON ecommerce10.* TO 'ecommerce10'@'localhost';
-FLUSH PRIVILEGES;
-```
-
-## 4. Deploy the application
-
-### 4.1 Clone the repository
-
-Run these commands from your sudo-capable administrator account. The clone itself runs as the deployment user:
-
-```bash
-sudo mkdir -p /var/www
-sudo chown deploy:www-data /var/www
-sudo -u deploy -H git clone <repository-url> /var/www/ecommerce10
-sudo -iu deploy
-cd /var/www/ecommerce10
-```
-
-For subsequent releases, fetch and update the intended branch instead of cloning again:
-
-```bash
-git fetch origin
-git checkout <production-branch>
-git pull --ff-only origin <production-branch>
-```
-
-Do not run `git reset --hard` on a working deployment directory. Keep server configuration and uploaded files out of Git.
-
-### 4.2 Configure production environment
-
-Create the environment file and edit it on the server:
-
-```bash
-cp .env.example .env
-nano .env
-```
-
-Set production values (replace every example value):
+Minimal, siapkan konfigurasi setara dengan contoh berikut dan ganti seluruh nilai contoh:
 
 ```dotenv
 APP_NAME="Ecommerce"
@@ -280,11 +314,11 @@ APP_URL=https://shop.example.com
 APP_TIMEZONE=Asia/Jakarta
 
 DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
+DB_HOST=host-database-produksi
 DB_PORT=3306
 DB_DATABASE=ecommerce10
 DB_USERNAME=ecommerce10
-DB_PASSWORD=replace-with-a-strong-production-password
+DB_PASSWORD=password-database-produksi-yang-kuat
 
 SESSION_DRIVER=database
 SESSION_SECURE_COOKIE=true
@@ -293,24 +327,28 @@ QUEUE_CONNECTION=database
 FILESYSTEM_DISK=public
 
 MAIL_MAILER=smtp
-MAIL_HOST=your-smtp-host
+MAIL_HOST=host-smtp-produksi
 MAIL_PORT=587
-MAIL_USERNAME=your-smtp-username
-MAIL_PASSWORD=your-smtp-password
+MAIL_USERNAME=username-smtp
+MAIL_PASSWORD=password-smtp
 MAIL_SCHEME=tls
 MAIL_FROM_ADDRESS=noreply@example.com
 MAIL_FROM_NAME="${APP_NAME}"
 ```
 
-Generate `APP_KEY` once on the server:
+Buat `APP_KEY` satu kali untuk instalasi produksi:
 
 ```bash
 php artisan key:generate
 ```
 
-Keep the generated key for every future release. **Never regenerate the key on an existing installation.** Never commit or expose `.env`, database credentials, SMTP credentials, or production keys.
+Simpan key tersebut secara aman dan gunakan nilai yang sama pada setiap rilis. **Jangan membuat ulang `APP_KEY` pada instalasi yang sudah berjalan**, karena dapat membuat data terenkripsi yang ada tidak dapat dibaca.
 
-### 4.3 Install dependencies and build frontend assets
+Pastikan runtime aplikasi dapat menulis ke `storage/` dan `bootstrap/cache/`. File unggahan pada `storage/app/public` harus tetap tersedia setelah rilis baru.
+
+### 3.2 Pasang dependency dan build aset frontend
+
+Pasang dependency PHP produksi dan buat build frontend berdasarkan lockfile:
 
 ```bash
 composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
@@ -318,249 +356,128 @@ npm ci
 npm run build
 ```
 
-If Node.js is not installed on the production host, build `public/build` in a trusted CI/build environment using the lockfile and deploy the resulting assets with the release.
+Jika Node.js tidak tersedia pada runtime produksi, bangun direktori `public/build` pada lingkungan CI/build tepercaya dan sertakan hasil build tersebut ke dalam artefak rilis.
 
-### 4.4 Run migrations and create storage link
+### 3.3 Jalankan migrasi dan siapkan data wilayah
 
-Back up the database before applying migrations, especially on an existing installation:
+Cadangkan database sebelum menerapkan migrasi, terutama pada instalasi yang sudah berisi data:
 
 ```bash
 php artisan migrate --force
+```
+
+Pada instalasi produksi baru, isi data wilayah setelah migrasi selesai:
+
+```bash
+php artisan wilayah:seed
+```
+
+Data wilayah diperlukan agar customer dapat memilih provinsi, kabupaten/kota, kecamatan, dan desa/kelurahan saat mengelola alamat. Seeder wilayah terpisah dari seeder data contoh aplikasi.
+
+Jangan gunakan `php artisan wilayah:seed --fresh` pada database produksi yang sudah digunakan. Jangan jalankan `migrate:fresh` atau `db:wipe` di produksi.
+
+Buat symbolic link untuk file publik:
+
+```bash
 php artisan storage:link
 ```
 
-Do not run `migrate:fresh` or `db:wipe` on production. Do not run the sample product seeder in production.
+### 3.4 Buat akun administrator produksi
 
-To create the first administrator, temporarily set `ADMIN_NAME`, `ADMIN_EMAIL`, and a strong unique `ADMIN_PASSWORD` in the server environment (or export them for the one command), then run:
+Seeder aplikasi tidak membuat akun demo atau katalog contoh pada lingkungan produksi. Untuk membuat administrator pertama, berikan `ADMIN_NAME`, `ADMIN_EMAIL`, dan `ADMIN_PASSWORD` yang kuat melalui konfigurasi environment/secret yang aman, kemudian jalankan:
 
 ```bash
-ADMIN_NAME="Administrator" \
-ADMIN_EMAIL="admin@your-real-domain.com" \
-ADMIN_PASSWORD="replace-with-a-unique-strong-password" \
 php artisan db:seed --class=DatabaseSeeder --force
 ```
 
-Remove the temporary password from the shell environment or server configuration immediately after provisioning. Re-running this command will not reset an existing administrator's password.
+Hapus secret password sementara dari konfigurasi deployment setelah administrator berhasil dibuat. Menjalankan ulang seeder tidak akan mengganti password administrator yang sudah ada.
 
-### 4.5 Set file permissions
+### 3.5 Optimalkan aplikasi
 
-Before continuing, leave the deployment-user shell with `exit` and return to your sudo-capable administrator account.
-
-Nginx/PHP-FPM must be able to read the application, while only Laravel's runtime directories need to be writable:
+Setelah konfigurasi produksi tersedia dan dependency terpasang, jalankan:
 
 ```bash
-sudo chown -R deploy:www-data /var/www/ecommerce10
-sudo find /var/www/ecommerce10 -type d -exec chmod 755 {} \;
-sudo find /var/www/ecommerce10 -type f -exec chmod 644 {} \;
-sudo find /var/www/ecommerce10/storage /var/www/ecommerce10/bootstrap/cache -type d -exec chmod 2775 {} \;
-sudo find /var/www/ecommerce10/storage /var/www/ecommerce10/bootstrap/cache -type f -exec chmod 664 {} \;
+php artisan optimize
 ```
 
-Do not make the entire project writable by the web server. Keep `.env` readable only by the deployment user and the required privileged processes; for example:
+Jika konfigurasi environment berubah saat rilis, bangun ulang cache konfigurasi:
 
 ```bash
-chmod 640 /var/www/ecommerce10/.env
+php artisan optimize:clear
+php artisan optimize
 ```
 
-Ensure uploaded files under `storage/app/public` are persistent and included in backups.
+Pastikan `storage/` dan `bootstrap/cache/` dapat ditulis oleh runtime aplikasi. File unggahan harus disimpan secara persisten dan masuk ke dalam proses pencadangan.
 
-### 4.6 Optimize Laravel for production
+### 3.6 Queue, scheduler, dan penyimpanan file
 
-Run these commands from your sudo-capable administrator account; Artisan runs as the deployment user:
+- Aplikasi menggunakan session, cache, dan queue berbasis database secara default. Pastikan migrasi database Laravel sudah diterapkan.
+- Jalankan queue worker selama aplikasi menggunakan pekerjaan antrean. Gunakan pengelola proses pada platform untuk menjaga worker tetap berjalan dan restart worker setelah rilis dengan `php artisan queue:restart`.
+- Jika aplikasi menggunakan scheduled task, atur platform untuk menjalankan `php artisan schedule:run` setiap menit.
+- Pastikan direktori `storage/` dan `bootstrap/cache/` dapat ditulis oleh aplikasi.
+- Pertahankan file unggahan antar-rilis. Cadangkan database dan `storage/app/public`.
+- Gunakan SMTP produksi dan uji email registrasi, verifikasi, reset password, serta email transaksi.
+- Pastikan queue worker mengirim invoice pesanan, bukti pembayaran, dan email pembaruan fulfillment.
 
-```bash
-sudo -u deploy -H bash -lc 'cd /var/www/ecommerce10 && php artisan optimize'
-```
+### 3.7 Daftar periksa setiap rilis
 
-When changing environment values or configuration during a release, rebuild the configuration cache:
+Untuk setiap rilis aplikasi:
 
-```bash
-sudo -u deploy -H bash -lc 'cd /var/www/ecommerce10 && php artisan optimize:clear && php artisan optimize'
-```
+1. Aktifkan maintenance mode jika rilis membutuhkan penghentian layanan sementara.
+2. Cadangkan database dan file unggahan.
+3. Ambil branch/commit Git yang akan dirilis dan pasang dependency sesuai lockfile.
+4. Bangun aset frontend.
+5. Jalankan migrasi yang sudah ditinjau menggunakan `php artisan migrate --force`.
+6. Untuk instalasi produksi baru, pastikan `php artisan wilayah:seed` sudah dijalankan. Tidak perlu mengulang seed wilayah pada setiap rilis normal.
+7. Jalankan `php artisan optimize`.
+8. Restart queue worker dan proses aplikasi jangka panjang jika digunakan.
+9. Periksa aplikasi, lalu nonaktifkan maintenance mode.
 
-## 5. Configure Nginx
-
-Create an Nginx server block:
-
-```bash
-sudo nano /etc/nginx/sites-available/ecommerce10
-```
-
-Use the following configuration. Replace the domain and confirm that the PHP-FPM socket matches the installed PHP version:
-
-```nginx
-server {
-    listen 80;
-    listen [::]:80;
-    server_name shop.example.com;
-
-    root /var/www/ecommerce10/public;
-    index index.php;
-
-    charset utf-8;
-    client_max_body_size 20M;
-
-    add_header X-Content-Type-Options nosniff always;
-    add_header X-Frame-Options SAMEORIGIN always;
-    add_header Referrer-Policy strict-origin-when-cross-origin always;
-
-    location / {
-        try_files $uri $uri/ /index.php?$query_string;
-    }
-
-    location = /favicon.ico { access_log off; log_not_found off; }
-    location = /robots.txt  { access_log off; log_not_found off; }
-
-    error_page 404 /index.php;
-
-    location ~ \.php$ {
-        include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
-    }
-
-    location ~ /\.(?!well-known).* {
-        deny all;
-    }
-
-    location ~* ^/(?:\.env|composer\.(?:json|lock)|package(?:-lock)?\.json|artisan) {
-        deny all;
-    }
-}
-```
-
-Enable the site and validate the configuration:
-
-```bash
-sudo ln -s /etc/nginx/sites-available/ecommerce10 /etc/nginx/sites-enabled/ecommerce10
-sudo nginx -t
-sudo systemctl reload nginx
-sudo systemctl enable --now nginx php8.3-fpm
-```
-
-If the default Nginx site conflicts with this domain, disable it after confirming it is not serving another application:
-
-```bash
-sudo rm /etc/nginx/sites-enabled/default
-sudo nginx -t && sudo systemctl reload nginx
-```
-
-**Important:** The Nginx document root must be `/var/www/ecommerce10/public`, never the repository root. Do not expose `.env`, `vendor/`, `storage/`, or other application internals over HTTP.
-
-## 6. Enable HTTPS
-
-Point the domain's DNS A/AAAA records to the server and make sure ports 80 and 443 are reachable. Then install Certbot using the official instructions for your Ubuntu release and issue the certificate:
-
-```bash
-sudo certbot --nginx -d shop.example.com
-sudo certbot renew --dry-run
-```
-
-After HTTPS is active, confirm `APP_URL=https://shop.example.com` and `SESSION_SECURE_COOKIE=true`. Keep `APP_DEBUG=false` in production.
-
-## 7. Queue, scheduler, and storage operations
-
-- The current environment template uses database-backed sessions, cache, and queues. Confirm the standard Laravel database migrations have run.
-- If the application dispatches queued jobs, run a persistent worker under Supervisor or systemd and restart it after deployments with `php artisan queue:restart`. If no jobs are dispatched, a worker is not needed yet.
-- If scheduled tasks are introduced, add a cron entry to run `php artisan schedule:run` every minute as the deployment user.
-- Keep `storage/` and `bootstrap/cache/` writable by PHP-FPM.
-- Keep uploaded files persistent between releases. Back up `storage/app/public` and the database.
-- Configure SMTP and test registration, verification, password-reset, and transactional order emails.
-- Verify queue workers deliver order invoices, payment receipts, and fulfillment status emails.
-
-## 8. Release checklist
-
-For each release:
-
-1. Put the application into maintenance mode if the release requires downtime.
-2. Back up the database and uploaded files.
-3. Fetch the intended Git branch and install locked dependencies.
-4. Build frontend assets.
-5. Run reviewed database migrations with `php artisan migrate --force`.
-6. Run `php artisan optimize`.
-7. Restart queue workers if configured.
-8. Reload Nginx only when its configuration changes.
-9. Verify the site and exit maintenance mode.
-
-Useful verification commands:
+Perintah pemeriksaan pada tingkat aplikasi:
 
 ```bash
 composer audit --no-dev
 php artisan migrate:status
 php artisan route:list --except-vendor
 php artisan about
-php artisan test
-sudo nginx -t
-sudo systemctl status nginx php8.3-fpm --no-pager
 ```
 
-Verify in a browser:
+Periksa melalui browser:
 
-- HTTPS, redirects, and secure cookies
-- Login, registration, and administrator authorization
-- Product listing, product details, and category filtering
-- Product image upload and display
-- Cart and checkout
-- Customer order isolation and admin order management
-- Email delivery
+- HTTPS, redirect, dan secure cookie.
+- Login, registrasi, dan pembatasan akses administrator.
+- Daftar produk, detail produk, dan filter kategori.
+- Unggah dan tampilan gambar produk.
+- Pilihan wilayah saat mengelola alamat customer.
+- Keranjang dan checkout.
+- Pembatasan akses pesanan customer dan pengelolaan pesanan admin.
+- Pengiriman email.
 
-## 9. Backups, security, and troubleshooting
-
-- Back up the database and uploaded files before each release and migration.
-- Never commit `.env`, `APP_KEY`, production credentials, database dumps, or customer uploads.
-- Do not use demo credentials in production. Use a unique administrator password and rotate it through the application's supported account flow.
-- Do not run `php artisan db:seed` in production unless you intend to provision the administrator with the explicit environment variables described above. Development sample users and products are guarded by the application environment.
-- Do not use `migrate:fresh`, `db:wipe`, or `key:generate` on an existing production installation.
-- Inspect Laravel logs in `storage/logs/`, Nginx logs in `/var/log/nginx/`, and PHP-FPM logs when diagnosing errors.
-- A 502 response usually indicates PHP-FPM is stopped, the configured socket is incorrect, or Nginx cannot access it.
-- A 500 response should be investigated in Laravel logs; do not enable `APP_DEBUG` on a public production server.
-- A 404 for uploaded images often means the storage symlink is missing or the uploaded files were not persisted.
-
-## 10. Deployment assumptions and project-specific notes
-
-- This project is a Laravel application, not a static website. Nginx serves files from `public/` and forwards PHP requests to PHP-FPM.
-- The sample product catalog is development/test data. Create real production catalog records through the application/admin workflow.
-- Browser-based end-to-end testing on the actual production domain must be performed after deployment.
-- Confirm PHP-FPM's installed version and socket path before enabling the Nginx site.
-
-
-## Realtime order updates (Laravel Reverb)
-
-Order detail pages subscribe to a private `orders.{orderId}` channel. When an administrator changes fulfillment status or tracking number, Laravel broadcasts `order.status.updated` after the database transaction commits. Only the order owner and administrators can authorize that private channel.
-
-For local development, configure the following in `.env` (the values below are local-only examples):
-
-```dotenv
-BROADCAST_CONNECTION=reverb
-REVERB_APP_ID=local-app-id
-REVERB_APP_KEY=local-app-key
-REVERB_APP_SECRET=local-app-secret
-REVERB_HOST=127.0.0.1
-REVERB_PORT=8080
-REVERB_SCHEME=http
-REVERB_ALLOWED_ORIGINS=localhost,127.0.0.1
-VITE_REVERB_APP_KEY="${REVERB_APP_KEY}"
-VITE_REVERB_HOST="${REVERB_HOST}"
-VITE_REVERB_PORT="${REVERB_PORT}"
-VITE_REVERB_SCHEME="${REVERB_SCHEME}"
-QUEUE_CONNECTION=database
-```
-
-Run the WebSocket server and queue worker alongside the Laravel application:
+Jalankan pengujian otomatis pada lingkungan CI/testing sebelum rilis:
 
 ```bash
-php artisan reverb:start
-php artisan queue:work
-npm run dev
+php artisan test
 ```
 
-Build frontend assets for production with `npm run build`. In production, use a process supervisor for Reverb and the queue worker, configure a TLS-enabled public WebSocket endpoint, set the matching `REVERB_*` and `VITE_REVERB_*` values, and restrict Reverb allowed origins to the storefront domain rather than `*`. Restart long-running Laravel, queue, and Reverb processes after changing environment values.
+### 3.8 Cadangan data, keamanan, dan pemecahan masalah
 
-If Reverb or the queue worker is unavailable, the order page remains usable but will not receive live updates until the connection is restored; refreshing the page still loads the latest persisted order state.
+- Cadangkan database dan file unggahan sebelum rilis maupun migrasi.
+- Jangan commit `.env`, `APP_KEY`, kredensial produksi, dump database, atau file unggahan customer.
+- Jangan gunakan akun demo di produksi. Gunakan password administrator yang unik.
+- Jangan menjalankan `php artisan db:seed` di produksi kecuali memang sedang membuat administrator dengan environment yang dijelaskan di atas. Akun demo dan katalog contoh dilindungi oleh pemeriksaan environment aplikasi.
+- Jangan menjalankan `migrate:fresh`, `db:wipe`, atau `key:generate` pada instalasi produksi yang sudah berjalan.
+- Periksa log Laravel pada `storage/logs/` saat mendiagnosis error aplikasi.
+- Jangan mengaktifkan `APP_DEBUG` pada aplikasi produksi yang dapat diakses publik.
+- Jika gambar unggahan menghasilkan 404, periksa symbolic link storage dan pastikan file unggahan tetap tersedia setelah rilis.
+- Jika pilihan wilayah kosong pada instalasi baru, pastikan migrasi sudah diterapkan dan jalankan `php artisan wilayah:seed`. Periksa juga koneksi database serta cache wilayah.
 
+## 4. Pembaruan status pesanan secara realtime dan notifikasi
 
-## Realtime and in-app notifications
+Halaman detail pesanan dapat berlangganan ke private channel `orders.{orderId}`. Ketika administrator mengubah status fulfillment atau nomor resi, Laravel mengirim event `order.status.updated` setelah transaksi database berhasil disimpan. Hanya pemilik pesanan dan administrator yang dapat mengakses private channel tersebut.
 
-Realtime connections are opt-in. The application stores order notifications in the database even when realtime is disabled, so users can read them the next time they open the application. The default `.env` settings do not open WebSocket connections or broadcast order updates.
+Fitur realtime bersifat opsional. Notifikasi pesanan tetap disimpan di database meskipun realtime tidak aktif, sehingga pengguna tetap dapat membacanya ketika membuka aplikasi. Konfigurasi bawaan `.env.example` tidak mengaktifkan koneksi WebSocket maupun broadcast status pesanan.
+
+Konfigurasi bawaan:
 
 ```dotenv
 BROADCAST_CONNECTION=null
@@ -569,23 +486,44 @@ REALTIME_ORDER_STATUS_ENABLED=false
 REALTIME_NOTIFICATIONS_ENABLED=false
 ```
 
-To enable Reverb, configure its credentials and set `BROADCAST_CONNECTION=reverb`. Then enable only the realtime features you need:
+Untuk mengaktifkan Reverb, siapkan kredensial dan nilai `REVERB_*` serta `VITE_REVERB_*` yang sesuai. Kemudian aktifkan fitur realtime yang diperlukan:
 
 ```dotenv
 BROADCAST_CONNECTION=reverb
 REALTIME_ENABLED=true
 REALTIME_ORDER_STATUS_ENABLED=true
 REALTIME_NOTIFICATIONS_ENABLED=true
+
+REVERB_APP_ID=id-aplikasi
+REVERB_APP_KEY=key-aplikasi
+REVERB_APP_SECRET=secret-aplikasi
+REVERB_HOST=host-reverb
+REVERB_PORT=443
+REVERB_SCHEME=https
+REVERB_ALLOWED_ORIGINS=shop.example.com
+VITE_REVERB_APP_KEY="${REVERB_APP_KEY}"
+VITE_REVERB_HOST="${REVERB_HOST}"
+VITE_REVERB_PORT="${REVERB_PORT}"
+VITE_REVERB_SCHEME="${REVERB_SCHEME}"
 ```
 
-`REALTIME_ENABLED` is the master switch. `REALTIME_ORDER_STATUS_ENABLED` controls live order-detail updates, while `REALTIME_NOTIFICATIONS_ENABLED` controls live notification delivery to the authenticated user's private channel. Each feature flag is independently opt-in and requires the master switch. Database notifications remain enabled regardless of these flags.
+`REALTIME_ENABLED` merupakan sakelar utama. `REALTIME_ORDER_STATUS_ENABLED` mengatur pembaruan langsung pada detail pesanan, sedangkan `REALTIME_NOTIFICATIONS_ENABLED` mengatur pengiriman notifikasi langsung ke private channel pengguna yang sedang login. Kedua fitur memerlukan sakelar utama aktif. Notifikasi database tetap berfungsi tanpa fitur realtime.
 
-Run the Reverb server and queue worker only when realtime delivery is enabled. After changing `.env`, clear cached configuration and restart long-running Laravel, queue, Vite, and Reverb processes so they load the new values:
+Untuk pengembangan lokal, gunakan kredensial Reverb lokal dan jalankan proses yang diperlukan bersama Laravel:
 
 ```bash
-php artisan config:clear
-php artisan queue:restart
 php artisan reverb:start
+php artisan queue:work
+npm run dev
 ```
 
-Payment notifications are created only when a verified Midtrans callback transitions an order into the paid state. Repeated callbacks do not create duplicate payment-success or admin new-order notifications. Administrators receive a notification for each newly paid order; customers receive payment confirmation and subsequent fulfillment status/tracking updates.
+Pada produksi, jalankan Reverb dan queue worker hanya jika pengiriman realtime diaktifkan. Pastikan proses tersebut diawasi oleh pengelola proses platform, gunakan endpoint WebSocket publik dengan TLS, dan batasi origin yang diizinkan ke domain storefront. Setelah mengubah environment, bersihkan cache konfigurasi dan restart proses Laravel, queue, serta Reverb agar menggunakan konfigurasi terbaru:
+
+```bash
+php artisan optimize:clear
+php artisan queue:restart
+```
+
+Notifikasi pembayaran dibuat setelah callback Midtrans yang terverifikasi mengubah status pesanan menjadi lunas. Callback berulang tidak membuat notifikasi pembayaran berhasil atau pesanan baru secara duplikat. Administrator menerima notifikasi untuk pesanan yang baru dibayar; customer menerima konfirmasi pembayaran dan pembaruan status fulfillment/tracking berikutnya.
+
+Jika Reverb atau queue worker tidak tersedia, halaman pesanan tetap dapat digunakan, tetapi tidak menerima pembaruan langsung sampai koneksi pulih. Memuat ulang halaman tetap menampilkan status pesanan terakhir yang tersimpan di database.
