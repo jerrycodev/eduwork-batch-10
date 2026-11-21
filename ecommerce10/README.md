@@ -619,7 +619,6 @@ erDiagram
         uuid id PK
         uuid order_id FK
         string recipient
-        string type
         string status
     }
     ADMIN_ACTIVITY_LOGS {
