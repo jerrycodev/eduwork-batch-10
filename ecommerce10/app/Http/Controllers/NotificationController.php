@@ -60,4 +60,14 @@ class NotificationController extends Controller
 
         return back()->with('success', 'Semua notifikasi ditandai sudah dibaca.');
     }
+
+    /**
+     * Menghapus seluruh notifikasi milik akun yang sedang masuk.
+     */
+    public function destroyAll(Request $request): RedirectResponse
+    {
+        $request->user()->notifications()->delete();
+
+        return back()->with('success', 'Semua notifikasi berhasil dihapus.');
+    }
 }

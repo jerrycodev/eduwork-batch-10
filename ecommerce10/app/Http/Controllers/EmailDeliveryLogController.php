@@ -47,6 +47,7 @@ class EmailDeliveryLogController extends Controller
     public function retry(EmailDeliveryLog $emailDeliveryLog, OrderEmailService $emails): RedirectResponse
     {
         abort_unless($emailDeliveryLog->status === 'failed', 409, 'Only failed emails can be retried.');
+        abort_unless($emailDeliveryLog->order_id !== null, 409, 'Retry is not available for account security emails.');
 
         $emails->retry($emailDeliveryLog);
 

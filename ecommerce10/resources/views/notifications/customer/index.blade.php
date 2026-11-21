@@ -7,12 +7,24 @@
                 <h1 class="text-2xl font-bold tracking-tight text-gray-950 sm:text-3xl">Notifikasi</h1>
                 <p class="mt-2 text-sm leading-6 text-gray-500">Informasi pembayaran dan perkembangan pesanan Anda.</p>
             </div>
-            @if (auth()->user()->unreadNotifications()->exists())
-                <form method="POST" action="{{ route('notifications.read-all') }}">
-                    @csrf
-                    <x-ui.button type="submit" variant="secondary" size="sm">Tandai semua dibaca</x-ui.button>
-                </form>
-            @endif
+            <div class="flex flex-wrap items-center gap-2">
+                @if (auth()->user()->unreadNotifications()->exists())
+                    <form method="POST" action="{{ route('notifications.read-all') }}">
+                        @csrf
+                        <x-ui.button type="submit" variant="secondary" size="sm">Tandai semua dibaca</x-ui.button>
+                    </form>
+                @endif
+                @if ($notifications->total() > 0)
+                    <form method="POST" action="{{ route('notifications.destroy-all') }}"
+                        onsubmit="return confirm('Hapus semua notifikasi? Tindakan ini tidak dapat dibatalkan.')">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="inline-flex min-h-10 items-center justify-center rounded-xl border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-600 shadow-sm transition hover:border-rose-300 hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2">
+                            Hapus semua
+                        </button>
+                    </form>
+                @endif
+            </div>
         </div>
 
         @if (session('success'))

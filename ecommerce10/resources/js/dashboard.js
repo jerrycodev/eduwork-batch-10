@@ -39,22 +39,34 @@ function getDashboardData() {
     }
 }
 
-function createOrdersChart(canvas, orders) {
+function createSalesChart(canvas, sales) {
     new Chart(canvas, {
         type: "line",
         data: {
-            labels: orders.labels,
+            labels: sales.labels,
             datasets: [
                 {
-                    label: "Orders",
-                    data: orders.orders,
-                    borderColor: "#3b82f6",
-                    backgroundColor: "rgba(59, 130, 246, 0.14)",
+                    label: "Penjualan (Rp)",
+                    data: sales.values,
+                    yAxisID: "y",
+                    borderColor: "#0d9488",
+                    backgroundColor: "rgba(13, 148, 136, 0.13)",
                     fill: true,
                     tension: 0.35,
                     borderWidth: 2.5,
-                    pointRadius: 3,
+                    pointRadius: 2.5,
                     pointHoverRadius: 5,
+                },
+                {
+                    label: "Jumlah pesanan",
+                    data: sales.orders,
+                    yAxisID: "y1",
+                    borderColor: "#3b82f6",
+                    backgroundColor: "#3b82f6",
+                    borderDash: [5, 4],
+                    tension: 0.3,
+                    borderWidth: 2,
+                    pointRadius: 2,
                 },
             ],
         },
@@ -63,7 +75,7 @@ function createOrdersChart(canvas, orders) {
             maintainAspectRatio: false,
             interaction: { mode: "index", intersect: false },
             plugins: {
-                legend: { display: false },
+                legend: { display: true, position: "bottom", labels: { usePointStyle: true, boxWidth: 7, padding: 18 } },
                 tooltip: {
                     backgroundColor: "#111827",
                     titleColor: "#f9fafb",
@@ -72,24 +84,24 @@ function createOrdersChart(canvas, orders) {
                     cornerRadius: 8,
                     padding: 12,
                     callbacks: {
-                        label: (context) =>
-                            `Orders: ${new Intl.NumberFormat("id-ID").format(context.parsed.y)}`,
+                        label: (context) => context.dataset.yAxisID === "y"
+                            ? ` ${context.dataset.label}: Rp ${new Intl.NumberFormat("id-ID").format(context.parsed.y)}`
+                            : ` ${context.dataset.label}: ${new Intl.NumberFormat("id-ID").format(context.parsed.y)}`,
                     },
                 },
             },
             scales: {
-                x: {
-                    grid: { display: false },
-                    border: { display: false },
-                    ticks: { maxRotation: 0 },
-                },
+                x: { grid: { display: false }, border: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } },
                 y: {
                     beginAtZero: true,
-                    ticks: {
-                        precision: 0,
-                        callback: (value) =>
-                            new Intl.NumberFormat("id-ID").format(value),
-                    },
+                    position: "left",
+                    ticks: { callback: (value) => new Intl.NumberFormat("id-ID", { notation: "compact" }).format(value) },
+                },
+                y1: {
+                    beginAtZero: true,
+                    position: "right",
+                    grid: { drawOnChartArea: false },
+                    ticks: { precision: 0 },
                 },
             },
         },
@@ -139,22 +151,31 @@ function initializeDashboard() {
     const periodSelect = document.getElementById("dashboard-period");
     const dateInput = document.getElementById("dashboard-date");
     const dateLabel = document.querySelector('label[for="dashboard-date"]');
+    const dateField = document.getElementById("dashboard-date-field");
 
     if (periodSelect && dateInput && !periodSelect.dataset.bound) {
         periodSelect.dataset.bound = "true";
         periodSelect.addEventListener("change", () => {
             const period = periodSelect.value;
+            const currentValue = dateInput.value;
             const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, "0");
-            const day = String(now.getDate()).padStart(2, "0");
+            const year = currentValue.match(/^\d{4}/)?.[0] ?? String(now.getFullYear());
+            const month = currentValue.match(/^\d{4}-(\d{2})/)?.[1]
+                ?? String(now.getMonth() + 1).padStart(2, "0");
+            const day = currentValue.match(/^\d{4}-\d{2}-(\d{2})$/)?.[1]
+                ?? String(now.getDate()).padStart(2, "0");
 
+            if (dateField) dateField.hidden = period === "7days" || period === "30days";
             dateInput.type = period === "day" ? "date" : period === "month" ? "month" : "number";
-            dateInput.value = period === "day" ? `${year}-${month}-${day}` : period === "month" ? `${year}-${month}` : String(year);
+            dateInput.value = period === "day"
+                ? (currentValue.length === 10 ? currentValue : `${year}-${month}-${day}`)
+                : period === "month"
+                    ? (currentValue.length >= 7 ? currentValue.slice(0, 7) : `${year}-${month}`)
+                    : year;
             dateInput.min = period === "year" ? "2000" : "";
             dateInput.max = period === "year" ? "2100" : "";
             dateInput.placeholder = period === "year" ? "YYYY" : "";
-            if (dateLabel) dateLabel.textContent = `Select ${period.charAt(0).toUpperCase()}${period.slice(1)}`;
+            if (dateLabel) dateLabel.textContent = period === "month" ? "Pilih bulan" : period === "day" ? "Pilih tanggal" : "Pilih tahun";
         });
     }
 
@@ -162,12 +183,12 @@ function initializeDashboard() {
 
     if (!data) return;
 
-    const ordersCanvas = document.getElementById("orders-chart");
+    const salesCanvas = document.getElementById("sales-chart");
     const statusCanvas = document.getElementById("order-status-chart");
 
-    if (ordersCanvas && data.orders) {
-        Chart.getChart(ordersCanvas)?.destroy();
-        createOrdersChart(ordersCanvas, data.orders);
+    if (salesCanvas && data.sales) {
+        Chart.getChart(salesCanvas)?.destroy();
+        createSalesChart(salesCanvas, data.sales);
     }
 
     if (statusCanvas && data.order_statuses) {
@@ -178,10 +199,10 @@ function initializeDashboard() {
 
 // Hancurkan instance Chart.js sebelum konten diganti agar tidak terjadi memory leak.
 function destroyDashboardCharts() {
-    const ordersCanvas = document.getElementById("orders-chart");
+    const salesCanvas = document.getElementById("sales-chart");
     const statusCanvas = document.getElementById("order-status-chart");
 
-    if (ordersCanvas) Chart.getChart(ordersCanvas)?.destroy();
+    if (salesCanvas) Chart.getChart(salesCanvas)?.destroy();
     if (statusCanvas) Chart.getChart(statusCanvas)?.destroy();
 }
 

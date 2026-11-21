@@ -147,3 +147,34 @@ test('external notification urls cannot redirect users away from the current hos
         ->post(route('notifications.read', $notification->id))
         ->assertRedirect(url('/phishing'));
 });
+
+
+test('customer can clear all and only their own notifications', function () {
+    $customer = User::factory()->create(['role' => 'customer']);
+    $otherCustomer = User::factory()->create(['role' => 'customer']);
+
+    $customer->notifications()->create([
+        'id' => (string) Str::uuid(),
+        'type' => OrderAlert::class,
+        'data' => ['title' => 'Pembayaran berhasil'],
+    ]);
+    $customer->notifications()->create([
+        'id' => (string) Str::uuid(),
+        'type' => OrderAlert::class,
+        'data' => ['title' => 'Pesanan diperbarui'],
+    ]);
+    $otherNotification = $otherCustomer->notifications()->create([
+        'id' => (string) Str::uuid(),
+        'type' => OrderAlert::class,
+        'data' => ['title' => 'Notifikasi akun lain'],
+    ]);
+
+    $this->actingAs($customer, 'customer')
+        ->from(route('notifications.index'))
+        ->delete(route('notifications.destroy-all'))
+        ->assertRedirect(route('notifications.index'))
+        ->assertSessionHas('success', 'Semua notifikasi berhasil dihapus.');
+
+    expect($customer->notifications()->count())->toBe(0)
+        ->and($otherNotification->fresh())->not->toBeNull();
+});
