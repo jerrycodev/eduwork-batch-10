@@ -42,11 +42,11 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::guard($guard)->attempt($this->only('email', 'password') + ['role' => $role], $this->boolean('remember'))) {
+        if (! Auth::guard($guard)->attempt($this->only('email', 'password') + ['role' => $role, 'is_active' => true], $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+                'email' => 'Email atau password yang Anda masukkan salah. Pastikan kembali data akun Anda.'
             ]);
         }
 
@@ -70,10 +70,7 @@ class LoginRequest extends FormRequest
         $seconds = RateLimiter::availableIn($this->throttleKey());
 
         throw ValidationException::withMessages([
-            'email' => trans('auth.throttle', [
-                'seconds' => $seconds,
-                'minutes' => ceil($seconds / 60),
-            ]),
+            'email' => 'Terlalu banyak percobaan masuk. Silakan coba kembali dalam '.ceil($seconds / 60).' menit.'
         ]);
     }
 

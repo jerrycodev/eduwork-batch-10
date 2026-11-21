@@ -44,6 +44,7 @@ class DatabaseSeeder extends Seeder
 
         // Re-running the seeder must not reset an existing administrator's password.
         $admin->role = 'admin';
+        $admin->email_verified_at = $admin->email_verified_at ?? now();
         $admin->save();
     }
 }

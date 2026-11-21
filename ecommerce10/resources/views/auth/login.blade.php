@@ -2,6 +2,9 @@
     <div class="mb-5"><p class="text-xs font-semibold uppercase tracking-wider text-teal-600">Akun pelanggan</p><h1 class="mt-1 text-xl font-bold text-slate-900">Masuk ke RevStore</h1><p class="mt-1 text-sm text-slate-500">Gunakan akun pelanggan untuk melanjutkan belanja.</p></div>
     <!-- Session Status -->
     <x-auth-session-status class="mb-4" :status="session('status')" />
+    @if (session('status') === 'email-change-confirmed')
+        <div class="mb-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">Alamat email baru berhasil dikonfirmasi dan sekarang menjadi email akun RevStore Anda.</div>
+    @endif
 
     <form method="POST" action="{{ route('login') }}"
         x-data="{ form: $form('post', '{{ route('login') }}', { email: @js(old('email', '')), password: '' }).setValidationTimeout(500) }">

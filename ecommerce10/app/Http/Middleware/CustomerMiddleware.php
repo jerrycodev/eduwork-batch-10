@@ -18,7 +18,7 @@ class CustomerMiddleware
     {
         $guard = Auth::guard('customer');
 
-        if (! $guard->check() || $guard->user()->role !== 'customer') {
+        if (! $guard->check() || $guard->user()->role !== 'customer' || ! $guard->user()->is_active) {
             $guard->logout();
 
             return redirect()->route('login');

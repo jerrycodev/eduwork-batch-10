@@ -18,7 +18,7 @@ class AdminMiddleware
     {
         $guard = Auth::guard('admin');
 
-        if (! $guard->check() || $guard->user()->role !== 'admin') {
+        if (! $guard->check() || $guard->user()->role !== 'admin' || ! $guard->user()->is_active) {
             $guard->logout();
 
             return redirect()->route('admin.login');

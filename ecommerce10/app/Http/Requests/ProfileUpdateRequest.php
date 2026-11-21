@@ -25,6 +25,12 @@ class ProfileUpdateRequest extends FormRequest
                 'email',
                 'max:255',
                 Rule::unique(User::class)->ignore($this->user()->id),
+                Rule::unique('users', 'pending_email')->ignore($this->user()->id),
+            ],
+            'password' => [
+                Rule::requiredIf(fn (): bool => $this->user()->role === 'customer' && $this->input('email') !== $this->user()->email),
+                'nullable',
+                'current_password:customer',
             ],
         ];
     }
