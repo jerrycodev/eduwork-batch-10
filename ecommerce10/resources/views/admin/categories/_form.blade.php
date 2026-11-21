@@ -21,7 +21,7 @@
             </div>
             <div class="form-field space-y-2">
                 <label class="block text-sm font-medium text-gray-700" for="category-slug">Category slug</label>
-                <input class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100" id="category-slug" name="slug" type="text" required>
+                <input class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100" id="category-slug" name="slug" type="text">
             </div>
             <div class="form-field space-y-2">
                 <label class="block text-sm font-medium text-gray-700" for="category-image">Category image</label>

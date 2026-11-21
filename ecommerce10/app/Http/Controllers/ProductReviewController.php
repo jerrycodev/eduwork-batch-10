@@ -35,13 +35,13 @@ class ProductReviewController extends Controller
         $user = $request->user();
         $hasPaidPurchase = $user->orders()
             ->where('payment_status', 'paid')
-            ->where('status', 'completed')
+            ->whereIn('status', ['delivered', 'completed', 'success'])
             ->whereHas('orderItems', fn ($query) => $query->where('product_id', $product->id))
             ->exists();
 
         if (! $hasPaidPurchase) {
             throw ValidationException::withMessages([
-                'review' => 'Anda hanya dapat mengulas produk dari pesanan yang sudah selesai dan dibayar.',
+                'review' => 'Anda hanya dapat mengulas produk dari pesanan yang sudah diterima atau selesai dan dibayar.',
             ]);
         }
 

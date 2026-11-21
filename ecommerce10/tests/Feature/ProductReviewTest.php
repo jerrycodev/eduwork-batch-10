@@ -4,6 +4,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductReview;
+use App\Models\ProductVariant;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -115,6 +116,8 @@ test('admin can approve and hide reviews and only approved reviews affect produc
     $this->actingAs($admin, 'admin')
         ->get(route('reviews.index'))
         ->assertOk()
+        ->assertSee('Lihat Produk')
+        ->assertSee(route('product-detail', $product->slug), false)
         ->assertSee('Review untuk moderasi admin.');
 
     $this->patch(route('reviews.update', $review), ['is_approved' => 1])
@@ -218,6 +221,37 @@ test('shop filters by category and price and sorts products by approved rating',
         ->assertSeeInOrder(['Low Price', 'High Price']);
 });
 
+test('shop price range matches available variant prices instead of only the product base price', function () {
+    $product = makeReviewTestProduct([
+        'name' => 'Variant Price Product',
+        'slug' => 'variant-price-product',
+        'price' => 150000,
+    ]);
+
+    ProductVariant::query()->create([
+        'product_id' => $product->id,
+        'sku' => 'VARIANT-PRICE-80000',
+        'name' => 'Harga Promo',
+        'price' => 80000,
+        'stock' => 5,
+        'weight_gram' => 500,
+        'is_default' => false,
+        'is_active' => true,
+    ]);
+
+    $this->get(route('shop', ['max_price' => 100000]))
+        ->assertOk()
+        ->assertSee('Variant Price Product');
+
+    $this->get(route('shop', ['min_price' => 70000, 'max_price' => 90000]))
+        ->assertOk()
+        ->assertSee('Variant Price Product');
+
+    $this->get(route('shop', ['min_price' => 100000, 'max_price' => 120000]))
+        ->assertOk()
+        ->assertDontSee('Variant Price Product');
+});
+
 test('confirmed paid order detail shows a review form for each product', function () {
     $customer = User::factory()->create();
     $product = makeReviewTestProduct();
@@ -255,7 +289,7 @@ test('order detail shows submitted review state instead of another review form',
         ->assertDontSee('Kirim Ulasan');
 });
 
-test('unconfirmed order does not show product review section', function () {
+test('delivered paid order shows review tab and customer can submit review before final completion', function () {
     $customer = User::factory()->create();
     $product = makeReviewTestProduct();
     $order = makePaidReviewPurchase($customer, $product);
@@ -264,6 +298,31 @@ test('unconfirmed order does not show product review section', function () {
     $this->actingAs($customer, 'customer')
         ->get(route('orders.customer.show', $order))
         ->assertOk()
-        ->assertDontSee('Ulasan Produk')
+        ->assertSee('order-tab-review', false)
+        ->assertSee('Ulasan Produk')
+        ->assertSee('Kirim Ulasan');
+
+    $this->post(route('product-reviews.store', $product), [
+        'rating' => 5,
+        'comment' => 'Produk sudah diterima dengan baik.',
+    ])->assertRedirect();
+
+    $this->assertDatabaseHas('product_reviews', [
+        'product_id' => $product->id,
+        'user_id' => $customer->id,
+        'is_approved' => false,
+    ]);
+});
+
+test('processing order does not show review tab', function () {
+    $customer = User::factory()->create();
+    $product = makeReviewTestProduct();
+    $order = makePaidReviewPurchase($customer, $product);
+    $order->update(['status' => 'processing']);
+
+    $this->actingAs($customer, 'customer')
+        ->get(route('orders.customer.show', $order))
+        ->assertOk()
+        ->assertDontSee('order-tab-review', false)
         ->assertDontSee('Kirim Ulasan');
 });

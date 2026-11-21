@@ -17,17 +17,40 @@ class ProductCategorySeeder extends Seeder
             return;
         }
 
-        foreach ([
-            'Atasan',
-            'Bawahan',
-            'Outerwear',
-            'Dress',
-            'Sepatu',
-            'Tas',
-        ] as $name) {
+        $categories = [
+            [
+                'name' => 'Atasan',
+                'image' => 'seeders/categories/atasan.jpg',
+            ],
+            [
+                'name' => 'Bawahan',
+                'image' => 'seeders/categories/bawahan.jpg',
+            ],
+            [
+                'name' => 'Outerwear',
+                'image' => 'seeders/categories/outerwear.jpg',
+            ],
+            [
+                'name' => 'Dress',
+                'image' => 'seeders/categories/dress.jpg',
+            ],
+            [
+                'name' => 'Sepatu',
+                'image' => 'seeders/categories/sepatu.jpg',
+            ],
+            [
+                'name' => 'Tas',
+                'image' => 'seeders/categories/tas.jpg',
+            ],
+        ];
+
+        foreach ($categories as $category) {
             ProductCategory::query()->updateOrCreate(
-                ['slug' => Str::slug($name)],
-                ['name' => $name],
+                ['slug' => Str::slug($category['name'])],
+                [
+                    'name' => $category['name'],
+                    'image' => $category['image'],
+                ],
             );
         }
     }

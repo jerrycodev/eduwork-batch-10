@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductVariant;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
@@ -14,18 +15,13 @@ class HomeController extends Controller
      */
     public function index()
     {
-        $categorySlug = request('category');
-
         $products = Product::query()
             ->where('is_active', true)
-            ->when($categorySlug, fn (Builder $query, string $slug) => $query->whereHas(
-                'category',
-                fn (Builder $categoryQuery) => $categoryQuery->where('slug', $slug),
-            ))
-            ->with(['category', 'options.values', 'variants'])
+            ->where('is_featured', true)
+            ->with(['category', 'images', 'options.values', 'variants'])
             ->latest()
-            ->paginate(8)
-            ->withQueryString();
+            ->limit(8)
+            ->get();
 
         $activeProducts = fn (Builder $query) => $query->where('is_active', true);
         $categories = ProductCategory::query()
@@ -77,9 +73,15 @@ class HomeController extends Controller
 
     public function shop(Request $request)
     {
+        $maxPriceRules = ['nullable', 'numeric', 'min:0'];
+
+        if ($request->filled('min_price')) {
+            $maxPriceRules[] = 'gte:min_price';
+        }
+
         $validated = $request->validate([
             'min_price' => ['nullable', 'numeric', 'min:0'],
-            'max_price' => ['nullable', 'numeric', 'min:0', 'gte:min_price'],
+            'max_price' => $maxPriceRules,
             'sort' => ['nullable', 'in:latest,price_asc,price_desc,rating_desc,rating_asc,name_asc,name_desc'],
         ]);
 
@@ -105,11 +107,19 @@ class HomeController extends Controller
             $query->whereHas('category', fn ($q) => $q->where('slug', trim($category)));
         }
 
-        if (isset($validated['min_price'])) {
-            $query->where('price', '>=', $validated['min_price']);
-        }
-        if (isset($validated['max_price'])) {
-            $query->where('price', '<=', $validated['max_price']);
+        if (isset($validated['min_price']) || isset($validated['max_price'])) {
+            $query->whereHas('variants', function (Builder $variantQuery) use ($validated): void {
+                $variantQuery->where('is_active', true)
+                    ->where('stock', '>', 0)
+                    ->when(
+                        isset($validated['min_price']),
+                        fn (Builder $priceQuery) => $priceQuery->where('price', '>=', $validated['min_price']),
+                    )
+                    ->when(
+                        isset($validated['max_price']),
+                        fn (Builder $priceQuery) => $priceQuery->where('price', '<=', $validated['max_price']),
+                    );
+            });
         }
 
         match ($sort) {
@@ -124,7 +134,12 @@ class HomeController extends Controller
 
         $products = $query->paginate(12)->withQueryString();
         $categories = ProductCategory::withCount(['products' => fn ($q) => $q->where('is_active', true)->where('stock', '>', 0)])->get();
-        $priceRange = Product::query()->where('is_active', true)->where('stock', '>', 0)->selectRaw('MIN(price) as min_price, MAX(price) as max_price')->first();
+        $priceRange = ProductVariant::query()
+            ->where('is_active', true)
+            ->where('stock', '>', 0)
+            ->whereHas('product', fn (Builder $productQuery) => $productQuery->where('is_active', true)->where('stock', '>', 0))
+            ->selectRaw('MIN(price) as min_price, MAX(price) as max_price')
+            ->first();
 
         return view('home.shop', compact('products', 'search', 'category', 'categories', 'sort', 'priceRange'));
     }

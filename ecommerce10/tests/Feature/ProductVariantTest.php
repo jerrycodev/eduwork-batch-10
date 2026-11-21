@@ -73,6 +73,57 @@ test('admin can create color variants with hex swatches and per-variant inventor
         ->assertSee('Black');
 });
 
+test('admin can create a product with an uploaded gallery image and no legacy image URL', function () {
+    Storage::fake('public');
+    $admin = User::factory()->create(['role' => 'admin']);
+    $category = makeVariantCategory();
+
+    $this->actingAs($admin, 'admin')->post(route('products.store'), [
+        'name' => 'Gallery Image Product',
+        'slug' => 'gallery-image-product',
+        'description' => 'Product created with a gallery upload.',
+        'image' => null,
+        'images' => [UploadedFile::fake()->image('gallery.jpg')],
+        'primary_image' => 'new:0',
+        'price' => 25000,
+        'stock' => 4,
+        'weight_gram' => 300,
+        'category_id' => $category->id,
+    ])->assertRedirect(route('products.index'))
+        ->assertSessionHas('success', 'Product created successfully.');
+
+    $product = Product::query()->where('slug', 'gallery-image-product')->firstOrFail();
+    $image = $product->images()->firstOrFail();
+
+    expect($product->image)->toBe($image->path)
+        ->and($image->is_primary)->toBeTrue()
+        ->and($product->stock)->toBe(4);
+    $storagePath = substr((string) parse_url($image->path, PHP_URL_PATH), strlen('/storage/'));
+    Storage::disk('public')->assertExists($storagePath);
+});
+
+test('variant image validation returns an Indonesian error message', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $category = makeVariantCategory();
+
+    $response = $this->actingAs($admin, 'admin')->post(route('products.store'), [
+        'name' => 'Invalid Variant Image Product',
+        'slug' => 'invalid-variant-image-product',
+        'description' => 'Product with an invalid variant image.',
+        'image' => 'https://example.test/product.jpg',
+        'price' => 25000,
+        'stock' => 0,
+        'weight_gram' => 300,
+        'category_id' => $category->id,
+        'variant_images' => [0 => [UploadedFile::fake()->create('document.pdf', 100, 'application/pdf')]],
+    ]);
+
+    $response->assertSessionHasErrors([
+        'variant_images.0.0' => 'Setiap file gambar varian harus berupa gambar yang valid.',
+    ]);
+    expect(Product::query()->where('slug', 'invalid-variant-image-product')->exists())->toBeFalse();
+});
+
 test('products without options still create a default variant with its own pricing inventory and dimensions', function () {
     $admin = User::factory()->create(['role' => 'admin']);
     $category = makeVariantCategory();

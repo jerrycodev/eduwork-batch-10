@@ -6,6 +6,7 @@ use App\Models\ProductCategory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 /** Mengelola kategori katalog, termasuk penyimpanan dan pembersihan file gambar. */
 class ProductCategoryController extends Controller
@@ -36,10 +37,25 @@ class ProductCategoryController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        $request->merge([
+            'slug' => Str::slug($request->input('slug') ?: $request->input('name')),
+        ]);
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['required', 'string', 'max:255', 'unique:product_categories,slug'],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+        ], [
+            'name.required' => 'Nama kategori wajib diisi.',
+            'name.string' => 'Nama kategori harus berupa teks.',
+            'name.max' => 'Nama kategori maksimal 255 karakter.',
+            'slug.required' => 'Slug kategori wajib diisi.',
+            'slug.string' => 'Slug kategori tidak valid.',
+            'slug.max' => 'Slug kategori maksimal 255 karakter.',
+            'slug.unique' => 'Slug tersebut sudah digunakan. Silakan gunakan nama kategori lain.',
+            'image.image' => 'File kategori harus berupa gambar.',
+            'image.mimes' => 'Format gambar harus JPG, PNG, atau WebP.',
+            'image.max' => 'Ukuran gambar maksimal 5 MB.',
         ]);
 
         unset($validated['image']);
@@ -76,8 +92,19 @@ class ProductCategoryController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'slug' => ['required', 'string', 'max:255', 'unique:product_categories,slug,'.$productCategory->id],
+            'slug' => ['required', 'string', 'max:255', 'unique:product_categories,slug,' . $productCategory->id],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+        ], [
+            'name.required' => 'Nama kategori wajib diisi.',
+            'name.string' => 'Nama kategori harus berupa teks.',
+            'name.max' => 'Nama kategori maksimal 255 karakter.',
+            'slug.required' => 'Slug kategori wajib diisi.',
+            'slug.string' => 'Slug kategori tidak valid.',
+            'slug.max' => 'Slug kategori maksimal 255 karakter.',
+            'slug.unique' => 'Slug tersebut sudah digunakan. Silakan gunakan nama kategori lain.',
+            'image.image' => 'File kategori harus berupa gambar.',
+            'image.mimes' => 'Format gambar harus JPG, PNG, atau WebP.',
+            'image.max' => 'Ukuran gambar maksimal 5 MB.',
         ]);
 
         unset($validated['image']);

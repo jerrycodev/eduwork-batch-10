@@ -8,18 +8,18 @@
                     <h2 class="font-semibold text-gray-900">Filter Produk</h2>
                     <a href="{{ route('shop') }}" class="text-xs font-semibold text-primary-600 hover:text-primary-700">Reset</a>
                 </div>
-                <form action="{{ route('shop') }}" method="GET" class="space-y-6">
+                <form action="{{ route('shop') }}" method="GET" data-boost="false" class="space-y-6">
                     @if ($search)<input type="hidden" name="search" value="{{ $search }}">@endif
                     <section>
                         <h3 class="mb-3 text-sm font-semibold text-gray-900">Kategori</h3>
                         <div class="space-y-2.5">
                             <label class="flex cursor-pointer items-center justify-between gap-2 text-sm text-gray-600">
-                                <span class="flex items-center gap-2"><input type="radio" name="category" value="" @checked(!$category) class="border-gray-300 text-primary-600 focus:ring-primary-500"> Semua kategori</span>
+                                <span class="flex items-center gap-2"><input onchange="this.form.submit()" type="radio" name="category" value="" @checked(!$category) class="border-gray-300 text-primary-600 focus:ring-primary-500"> Semua kategori</span>
                             </label>
                             @foreach ($categories as $item)
                                 <label class="flex cursor-pointer items-center justify-between gap-2 rounded-lg p-1.5 text-sm text-gray-600 transition hover:bg-gray-50">
                                     <span class="flex min-w-0 items-center gap-2.5">
-                                        <input @change="$el.form.requestSubmit()" type="radio" name="category" value="{{ $item->slug }}" @checked($category === $item->slug) class="border-gray-300 text-primary-600 focus:ring-primary-500">
+                                        <input onchange="this.form.submit()" type="radio" name="category" value="{{ $item->slug }}" @checked($category === $item->slug) class="border-gray-300 text-primary-600 focus:ring-primary-500">
                                         @if ($item->image)
                                             <img src="{{ Storage::disk('public')->url($item->image) }}" alt="" loading="lazy" class="h-9 w-10 shrink-0 rounded-md object-cover">
                                         @else
@@ -37,10 +37,10 @@
                         <h3 class="mb-3 text-sm font-semibold text-gray-900">Rentang Harga</h3>
                         <div class="grid grid-cols-2 gap-2">
                             <label class="text-xs text-gray-500">Minimum
-                                <input type="number" name="min_price" min="0" value="{{ request('min_price') }}" placeholder="Rp 0" class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-primary-500 focus:ring-primary-500">
+                                <input type="number" name="min_price" min="0" step="1" inputmode="numeric" value="{{ request('min_price') }}" placeholder="Rp 0" class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-primary-500 focus:ring-primary-500">
                             </label>
                             <label class="text-xs text-gray-500">Maksimum
-                                <input type="number" name="max_price" min="0" value="{{ request('max_price') }}" placeholder="Tanpa batas" class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-primary-500 focus:ring-primary-500">
+                                <input type="number" name="max_price" min="0" step="1" inputmode="numeric" value="{{ request('max_price') }}" placeholder="Tanpa batas" class="mt-1 w-full rounded-lg border-gray-300 text-sm focus:border-primary-500 focus:ring-primary-500">
                             </label>
                         </div>
                         @if ($priceRange?->min_price !== null)
@@ -50,7 +50,7 @@
 
                     <section class="border-t border-gray-100 pt-5">
                         <h3 class="mb-3 text-sm font-semibold text-gray-900">Urutkan</h3>
-                        <select name="sort" class="w-full rounded-lg border-gray-300 bg-white text-sm focus:border-primary-500 focus:ring-primary-500">
+                        <select onchange="this.form.submit()" name="sort" class="w-full rounded-lg border-gray-300 bg-white text-sm focus:border-primary-500 focus:ring-primary-500">
                             <option value="latest" @selected($sort === 'latest')>Terbaru</option>
                             <option value="price_asc" @selected($sort === 'price_asc')>Harga terendah</option>
                             <option value="price_desc" @selected($sort === 'price_desc')>Harga tertinggi</option>

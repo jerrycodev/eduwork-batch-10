@@ -35,6 +35,10 @@
                             @endif
                         </div>
                         <div class="flex shrink-0 flex-wrap gap-2">
+                            <a href="{{ route('product-detail', $review->product->slug) }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 rounded-lg border border-primary-200 px-3 py-2 text-sm font-semibold text-primary-700 transition hover:bg-primary-50" aria-label="Lihat halaman produk {{ $review->product->name }} di storefront">
+                                <i data-lucide="external-link" class="h-4 w-4"></i>
+                                Lihat Produk
+                            </a>
                             <form action="{{ route('reviews.update', $review) }}" method="POST">
                                 @csrf @method('PATCH')
                                 <input type="hidden" name="is_approved" value="{{ $review->is_approved ? 0 : 1 }}">

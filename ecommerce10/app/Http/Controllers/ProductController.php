@@ -117,7 +117,7 @@ class ProductController extends Controller
             'variants.*.height_cm' => ['nullable', 'numeric', 'min:0'],
             'variants.*.is_active' => ['nullable', 'boolean'],
             'category_id' => ['required', 'uuid', 'exists:product_categories,id'],
-        ]);
+        ], $this->validationMessages());
 
         $uploadedImages = $request->file('images', []);
         unset($validated['variant_images']);
@@ -141,7 +141,9 @@ class ProductController extends Controller
             $validated['stock'] = 0;
             $validated['is_active'] = (bool) ($validated['is_active'] ?? true);
             $validated['is_featured'] = (bool) ($validated['is_featured'] ?? false);
-            $product = Product::query()->create($validated);
+            $productData = $validated;
+            unset($productData['images'], $productData['primary_image'], $productData['options_json'], $productData['variants']);
+            $product = Product::query()->create($productData);
 
             $variant = $product->defaultVariant()->firstOrFail();
             $variant->update($variantAttributes);
@@ -245,7 +247,7 @@ class ProductController extends Controller
             'variants.*.height_cm' => ['nullable', 'numeric', 'min:0'],
             'variants.*.is_active' => ['nullable', 'boolean'],
             'category_id' => ['required', 'uuid', 'exists:product_categories,id'],
-        ]);
+        ], $this->validationMessages());
 
         $uploadedImages = $request->file('images', []);
         $additionalVariantsJson = $validated['additional_variants_json'] ?? null;
@@ -764,6 +766,45 @@ class ProductController extends Controller
         ]);
 
         return true;
+    }
+
+    /** Pesan validasi form produk agar tidak bergantung pada file translasi Laravel. */
+    private function validationMessages(): array
+    {
+        return [
+            'name.required' => 'Nama produk wajib diisi.',
+            'name.max' => 'Nama produk maksimal 255 karakter.',
+            'slug.required' => 'Slug produk wajib diisi.',
+            'slug.unique' => 'Slug produk sudah digunakan. Gunakan slug lain.',
+            'sku.unique' => 'SKU produk sudah digunakan.',
+            'barcode.unique' => 'Barcode produk sudah digunakan.',
+            'description.required' => 'Deskripsi produk wajib diisi.',
+            'category_id.required' => 'Kategori produk wajib dipilih.',
+            'category_id.exists' => 'Kategori yang dipilih tidak ditemukan.',
+            'image.required_without' => 'Upload minimal satu gambar produk.',
+            'images.array' => 'Data gambar produk tidak valid.',
+            'images.max' => 'Maksimal 10 gambar produk dapat diunggah.',
+            'images.*.image' => 'Setiap file gambar produk harus berupa gambar yang valid.',
+            'images.*.mimes' => 'Format gambar produk harus JPG, PNG, atau WebP.',
+            'images.*.max' => 'Ukuran setiap gambar produk maksimal 5 MB.',
+            'variant_images.array' => 'Data gambar varian tidak valid.',
+            'variant_images.*.max' => 'Maksimal 5 gambar dapat diunggah untuk setiap varian.',
+            'variant_images.*.*.image' => 'Setiap file gambar varian harus berupa gambar yang valid.',
+            'variant_images.*.*.mimes' => 'Format gambar varian harus JPG, PNG, atau WebP.',
+            'variant_images.*.*.max' => 'Ukuran setiap gambar varian maksimal 5 MB.',
+            'price.required' => 'Harga produk wajib diisi.',
+            'price.integer' => 'Harga produk harus berupa angka bulat.',
+            'price.min' => 'Harga produk tidak boleh kurang dari 0.',
+            'stock.required' => 'Stok produk wajib diisi.',
+            'stock.integer' => 'Stok produk harus berupa angka bulat.',
+            'stock.min' => 'Stok produk tidak boleh kurang dari 0.',
+            'weight_gram.required' => 'Berat produk wajib diisi.',
+            'weight_gram.integer' => 'Berat produk harus berupa angka bulat.',
+            'weight_gram.min' => 'Berat produk minimal 1 gram.',
+            'compare_at_price.gte' => 'Harga normal harus lebih besar atau sama dengan harga jual.',
+            'options_json.string' => 'Konfigurasi varian produk tidak valid.',
+            'options_json.max' => 'Konfigurasi varian terlalu besar.',
+        ];
     }
 
     private function ensureLegacyImageIsInGallery(Product $product): void

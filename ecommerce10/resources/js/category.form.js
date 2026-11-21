@@ -26,6 +26,23 @@ function initializeCategoryForm() {
     const submitButton = form.querySelector("#category-form-submit");
     const storeUrl = form.action;
 
+    Pristine.addMessages("id", {
+        required: "Bagian ini wajib diisi.",
+        email: "Masukkan alamat email yang valid.",
+        number: "Masukkan angka yang valid.",
+        integer: "Masukkan bilangan bulat.",
+        url: "Masukkan URL yang valid.",
+        tel: "Masukkan nomor telepon yang valid.",
+        maxlength: "Panjang teks maksimal ${1} karakter.",
+        minlength: "Panjang teks minimal ${1} karakter.",
+        min: "Nilai minimal adalah ${1}.",
+        max: "Nilai maksimal adalah ${1}.",
+        pattern: "Format yang dimasukkan belum sesuai.",
+        equals: "Nilai kedua kolom harus sama.",
+        default: "Masukkan nilai yang valid.",
+    });
+    Pristine.setLocale("id");
+
     const pristine = new Pristine(form, {
         classTo: "form-field",
         errorClass: "has-error",

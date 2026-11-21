@@ -15,6 +15,22 @@ function initializeProductForm() {
     const productImages = form.querySelector("#product-images");
     const imageError = form.querySelector("[data-file-upload-error]");
 
+    Pristine.addMessages("id", {
+        required: "Bagian ini wajib diisi.",
+        email: "Masukkan alamat email yang valid.",
+        number: "Masukkan angka yang valid.",
+        integer: "Masukkan bilangan bulat.",
+        url: "Masukkan URL yang valid.",
+        maxlength: "Panjang teks maksimal ${1} karakter.",
+        minlength: "Panjang teks minimal ${1} karakter.",
+        min: "Nilai minimal adalah ${1}.",
+        max: "Nilai maksimal adalah ${1}.",
+        pattern: "Format yang dimasukkan belum sesuai.",
+        equals: "Nilai kedua kolom harus sama.",
+        default: "Masukkan nilai yang valid.",
+    });
+    Pristine.setLocale("id");
+
     const pristine = new Pristine(form, {
         classTo: "form-field",
         errorClass: "has-error",
@@ -69,7 +85,7 @@ function initializeProductForm() {
         // New products can use the gallery upload; the legacy hidden image field is
         // populated only when an existing/legacy image is already available.
         if (!input_image?.value && !(productImages?.files?.length > 0)) {
-            showImageError("Please upload at least one product image.");
+            showImageError("Upload minimal satu gambar produk.");
             isValid = false;
         }
 
