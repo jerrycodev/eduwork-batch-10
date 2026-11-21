@@ -8,6 +8,7 @@ use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\BiteshipReconciliationController;
 use App\Http\Controllers\BiteshipWebhookController;
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\ConfirmEmailChangeController;
 use App\Http\Controllers\CustomerActivityLogController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmailDeliveryLogController;
@@ -37,6 +38,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/shop', [HomeController::class, 'shop'])->name('shop');
 Route::get('/product/{product:slug}', [HomeController::class, 'productDetail'])->name('product-detail');
+Route::get('/email-change/{user}/{hash}', ConfirmEmailChangeController::class)->middleware(['signed', 'throttle:6,1'])->name('profile.email-change.confirm');
 Route::post('/product/{product}/reviews', [ProductReviewController::class, 'store'])->middleware(['auth:customer', 'customer'])->name('product-reviews.store');
 Route::get('/cart', [CartController::class, 'index'])->name('cart');
 Route::post('/cart/{product}', [CartController::class, 'store'])->middleware(LogCustomerActivity::class)->name('cart.store');
@@ -66,6 +68,7 @@ Route::prefix('/dashboard')->middleware(['auth:admin', 'admin', LogAdminActivity
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('admin.notifications.read-all');
     Route::get('/activity-logs', [AdminActivityLogController::class, 'index'])->name('activity-logs.index');
     Route::get('/customer-activity-logs', [CustomerActivityLogController::class, 'index'])->name('customer-activity-logs.index');
+    Route::patch('/users/{adminUser}/toggle-status', [AdminUserController::class, 'toggleStatus'])->name('admin-users.toggle-status');
     Route::resource('users', AdminUserController::class)->parameters(['users' => 'adminUser'])->names('admin-users')->middleware(HandlePrecognitiveRequests::class);
     Route::get('/email-delivery-logs', [EmailDeliveryLogController::class, 'index'])->name('email-delivery-logs.index');
     Route::get('/payment-reconciliation', [PaymentReconciliationController::class, 'index'])->name('payment-reconciliation.index');
@@ -79,6 +82,10 @@ Route::prefix('/dashboard')->middleware(['auth:admin', 'admin', LogAdminActivity
     Route::post('/inventory/{product}/movements', [InventoryController::class, 'store'])->name('inventory.movements.store');
     Route::get('/orders', [OrderController::class, 'adminIndex'])->name('orders.index');
     Route::get('/orders/{order}', [OrderController::class, 'adminShow'])->name('orders.show');
+    Route::get('/orders/{order}/shipping-label', [OrderController::class, 'shippingLabel'])->name('orders.shipping-label');
+    Route::post('/orders/{order}/replacement-shipment-rates', [OrderController::class, 'replacementShipmentRates'])->name('orders.replacement-shipment-rates');
+    Route::post('/orders/{order}/retry-shipment', [OrderController::class, 'retryBiteshipShipment'])->name('orders.retry-shipment');
+    Route::post('/orders/{order}/request-cancellation', [OrderController::class, 'requestAdminCancellation'])->name('orders.request-cancellation');
     Route::patch('/orders/{order}/status', [OrderController::class, 'updateStatus'])->name('orders.status.update');
 
     Route::patch('/order-returns/{returnRequest}', [OrderReturnRequestController::class, 'update'])->name('order-returns.update');
@@ -107,6 +114,7 @@ Route::middleware(['auth:customer', 'customer', LogCustomerActivity::class])->gr
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
+    Route::delete('/notifications', [NotificationController::class, 'destroyAll'])->name('notifications.destroy-all');
     Route::post('/orders/returns/{returnRequest}/revisions/{revision}', [OrderReturnRequestController::class, 'submitRevision'])->name('orders.returns.revisions.submit');
     Route::get('/orders/returns/{returnRequest}/revisions/{revision}/evidence/{index}', [OrderReturnRequestController::class, 'revisionEvidence'])->whereNumber('index')->name('orders.returns.revisions.evidence');
     Route::post('/orders/returns/{returnRequest}/shipment', [OrderReturnRequestController::class, 'submitReturnShipment'])->name('orders.returns.shipment');
@@ -127,6 +135,7 @@ Route::middleware(['auth:customer', 'customer', LogCustomerActivity::class])->gr
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->middleware(HandlePrecognitiveRequests::class)->name('profile.update');
+    Route::post('/profile/email-change/resend', [ProfileController::class, 'resendEmailChangeConfirmation'])->middleware('throttle:3,10')->name('profile.email-change.resend');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // Order routes (create and read only)
