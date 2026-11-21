@@ -1,5 +1,5 @@
 <x-storefront-layout>
-    <div class="container" x-data="checkoutFlow({ subtotal: {{ $totalPrice }}, ratesUrl: @js(route('checkout.shipping-rates')) })" @address-selected.window="resetShipping()">
+    <div class="container" x-data="checkoutFlow({ subtotal: {{ $totalPrice }}, ratesUrl: @js(route('checkout.shipping-rates', absolute: false)) })" @address-selected.window="resetShipping()">
     <x-ui.page-header eyebrow="Belanja Anda" title="Keranjang Belanja" description="Periksa kembali produk sebelum melanjutkan pesanan.">
         <x-slot:actions>
             <span class="inline-flex min-h-10 items-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 text-sm font-medium text-gray-700"><i data-lucide="shopping-bag" class="h-4 w-4 text-primary-600"></i>{{ $totalQuantity }} Barang</span>

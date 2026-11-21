@@ -17,6 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Menggunakan skema dan host asli dari reverse proxy saat aplikasi berjalan di balik HTTPS proxy.
+        $middleware->trustProxies(at: '*');
+
         $middleware->appendToGroup('web', UseCustomerGuard::class);
 
         $middleware->redirectGuestsTo(fn (Request $request) => $request->is('dashboard') || $request->is('dashboard/*') || $request->is('admin/*') ? route('admin.login') : route('login'));

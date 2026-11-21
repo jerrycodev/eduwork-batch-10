@@ -1,4 +1,4 @@
-<div class="grid gap-5 sm:grid-cols-2" x-data="addressRegionForm({ provinces: @js(route('wilayah.provinces')), regencies: @js(route('wilayah.regencies')), districts: @js(route('wilayah.districts')), villages: @js(route('wilayah.villages')) }, [@js(old('province_code', $address->province_code)), @js(old('regency_code', $address->regency_code)), @js(old('district_code', $address->district_code)), @js(old('village_code', $address->village_code))])">
+<div class="grid gap-5 sm:grid-cols-2" x-data="addressRegionForm({ provinces: @js(route('wilayah.provinces', absolute: false)), regencies: @js(route('wilayah.regencies', absolute: false)), districts: @js(route('wilayah.districts', absolute: false)), villages: @js(route('wilayah.villages', absolute: false)) }, [@js(old('province_code', $address->province_code)), @js(old('regency_code', $address->regency_code)), @js(old('district_code', $address->district_code)), @js(old('village_code', $address->village_code))])">
 
     <div>
         <label for="label" class="mb-1.5 block text-sm font-medium text-gray-700">Label alamat</label>

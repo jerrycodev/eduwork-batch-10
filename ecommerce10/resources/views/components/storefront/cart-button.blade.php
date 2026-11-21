@@ -10,8 +10,9 @@
             d="M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z" />
     </svg>
     <span class="sr-only">Keranjang Belanja</span>
-    <span
-        class="absolute -right-1 -top-1 inline-flex items-center justify-center rounded-full bg-primary-600 w-4 h-4 text-xs font-bold leading-none text-white">
-        {{ $itemCount }}
-    </span>
+    @if(($itemCount ?? 0) > 0)
+        <span class="absolute -right-1 -top-1 inline-flex items-center justify-center rounded-full bg-primary-600 w-4 h-4 text-xs font-bold leading-none text-white">
+            {{ $itemCount }}
+        </span>
+    @endif
 </a>
