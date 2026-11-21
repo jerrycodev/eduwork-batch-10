@@ -60,6 +60,9 @@ class OrderTransactionalMail extends Mailable implements ShouldQueue
 
     public function content(): Content
     {
+        // Pastikan daftar item tersedia saat email dirender oleh queue worker.
+        $this->order->loadMissing('orderItems');
+
         return new Content(
             view: 'emails.orders.transactional',
             with: [

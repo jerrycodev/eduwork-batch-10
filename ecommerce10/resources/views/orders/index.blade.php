@@ -32,7 +32,7 @@
                     Saya</span>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[720px] divide-y divide-gray-200 text-left text-sm">
+                <table class="w-full min-w-[900px] divide-y divide-gray-200 text-left text-sm">
                     <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                         <tr>
                             <th scope="col" class="px-5 py-3.5 font-semibold">No. Pesanan</th>
@@ -41,6 +41,7 @@
                             <th scope="col" class="px-5 py-3.5 font-semibold">Total</th>
                             <th scope="col" class="px-5 py-3.5 font-semibold">Status Pesanan</th>
                             <th scope="col" class="px-5 py-3.5 font-semibold">Pembayaran</th>
+                            <th scope="col" class="px-5 py-3.5 font-semibold">Pengiriman</th>
                             <th scope="col" class="px-5 py-3.5 text-right font-semibold">Detail</th>
                         </tr>
                     </thead>
@@ -97,6 +98,22 @@
                                         class="{{ $paymentStatusClass }} inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset">
                                         {{ ucfirst($paymentStatus) }}
                                     </span>
+                                </td>
+                                <td class="px-5 py-4">
+                                    @if (strtolower((string) $order->biteship_status) === 'cancelled')
+                                        <span class="inline-flex items-center rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 ring-1 ring-inset ring-red-600/20">Dibatalkan</span>
+                                        <p class="mt-1 text-[11px] text-gray-500">Pengiriman tidak aktif</p>
+                                        @if ($order->tracking_number || $order->biteship_waybill_id)
+                                            <p class="mt-1 font-mono text-[11px] text-gray-500">Resi sebelumnya: {{ $order->tracking_number ?: $order->biteship_waybill_id }}</p>
+                                        @endif
+                                    @elseif (filled($order->biteship_status) || filled($order->tracking_number) || filled($order->biteship_waybill_id))
+                                        <span class="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-600/20">{{ filled($order->biteship_status) ? str($order->biteship_status)->replace('_', ' ')->title() : 'Resi tersedia' }}</span>
+                                        @if ($order->tracking_number || $order->biteship_waybill_id)
+                                            <p class="mt-1 font-mono text-[11px] text-gray-500">{{ $order->tracking_number ?: $order->biteship_waybill_id }}</p>
+                                        @endif
+                                    @else
+                                        <span class="text-xs text-gray-400">Belum tersedia</span>
+                                    @endif
                                 </td>
                                 <td class="px-5 py-4 text-right"><a href="{{ route('orders.customer.show', $order) }}"
                                         class="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-primary-600 transition hover:bg-primary-50 hover:text-primary-700">Lihat

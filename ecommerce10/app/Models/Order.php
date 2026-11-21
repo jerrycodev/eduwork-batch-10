@@ -71,6 +71,16 @@ class Order extends Model
         return $this->hasOne(OrderReturnRequest::class);
     }
 
+    public function shipments(): HasMany
+    {
+        return $this->hasMany(OrderShipment::class)->orderByDesc('attempt');
+    }
+
+    public function latestShipment(): HasOne
+    {
+        return $this->hasOne(OrderShipment::class)->latestOfMany('attempt');
+    }
+
     public function biteshipReconciliationChecks(): HasMany
     {
         return $this->hasMany(BiteshipReconciliationCheck::class)->latest('checked_at');

@@ -49,13 +49,54 @@
                             </h1>
                             <p style="margin:0 0 22px;color:#4b5563;font-size:15px;line-height:1.7">{{ $content[1] }}
                             </p>
+                            <div style="margin-bottom:24px">
+                                <h2 style="margin:0 0 12px;color:#111827;font-size:16px">Daftar Produk</h2>
+                                @forelse ($order->orderItems as $item)
+                                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0"
+                                        style="border-bottom:1px solid #e5e7eb;padding:12px 0">
+                                        <tr>
+                                            <td valign="top" style="padding:4px 8px 4px 0">
+                                                <p style="margin:0;color:#111827;font-size:14px;font-weight:bold;line-height:1.5">
+                                                    {{ $item->product_name }}</p>
+                                                @if ($item->product_variant_name && $item->product_variant_name !== 'Default')
+                                                    <p style="margin:4px 0 0;color:#6b7280;font-size:12px">
+                                                        Varian: {{ $item->product_variant_name }}</p>
+                                                @endif
+                                                @if ($item->product_sku)
+                                                    <p style="margin:4px 0 0;color:#9ca3af;font-size:11px">
+                                                        SKU: {{ $item->product_sku }}</p>
+                                                @endif
+                                                <p style="margin:5px 0 0;color:#6b7280;font-size:12px">
+                                                    {{ number_format($item->quantity, 0, ',', '.') }} × Rp
+                                                    {{ number_format($item->price, 0, ',', '.') }}</p>
+                                            </td>
+                                            <td valign="top" align="right"
+                                                style="padding:4px 0;color:#111827;font-size:13px;font-weight:bold;white-space:nowrap">
+                                                Rp {{ number_format($item->total, 0, ',', '.') }}
+                                            </td>
+                                        </tr>
+                                    </table>
+                                @empty
+                                    <p style="margin:0;color:#6b7280;font-size:13px">Rincian produk tidak tersedia.</p>
+                                @endforelse
+                            </div>
                             <div style="padding:18px;border:1px solid #e5e7eb;border-radius:12px;margin-bottom:24px">
                                 <p style="margin:0 0 8px;color:#6b7280;font-size:12px">NOMOR PESANAN</p>
                                 <p style="margin:0 0 14px;font-size:17px;font-weight:bold;color:#111827">
                                     {{ $order->order_number }}</p>
                                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                                     <tr>
-                                        <td style="padding:5px 0;color:#6b7280;font-size:13px">Total</td>
+                                        <td style="padding:5px 0;color:#6b7280;font-size:13px">Subtotal produk</td>
+                                        <td align="right" style="padding:5px 0;font-size:13px">Rp
+                                            {{ number_format($order->subtotal ?? $order->orderItems->sum('total'), 0, ',', '.') }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:5px 0;color:#6b7280;font-size:13px">Ongkos kirim</td>
+                                        <td align="right" style="padding:5px 0;font-size:13px">Rp
+                                            {{ number_format($order->shipping_cost ?? 0, 0, ',', '.') }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:5px 0;color:#6b7280;font-size:13px;font-weight:bold">Total pembayaran</td>
                                         <td align="right" style="padding:5px 0;font-size:14px;font-weight:bold">Rp
                                             {{ number_format($order->total, 0, ',', '.') }}</td>
                                     </tr>

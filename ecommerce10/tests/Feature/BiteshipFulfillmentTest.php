@@ -98,6 +98,35 @@ test('creating a paid processing order books one Biteship shipment with a stable
         && $request['items'][0]['weight'] === 750);
 });
 
+test('cancelled shipment can be replaced while preserving both shipment attempts', function () {
+    config([
+        'biteship.api_key' => 'biteship_test.fake-key',
+        'biteship.base_url' => 'https://api.biteship.com',
+        'biteship.warehouse' => [
+            'name' => 'RevStore Warehouse', 'phone' => '081111111111', 'email' => null,
+            'address' => 'Gudang RevStore, Jakarta', 'postal_code' => '12950', 'note' => null,
+        ],
+    ]);
+    Http::fake(['api.biteship.com/v1/orders' => Http::sequence()
+        ->push(['success' => true, 'id' => 'shipment-old', 'waybill_id' => 'AWB-OLD', 'tracking_id' => 'tracking-old', 'status' => 'confirmed'], 200)
+        ->push(['success' => true, 'id' => 'shipment-new', 'waybill_id' => 'AWB-NEW', 'tracking_id' => 'tracking-new', 'status' => 'confirmed'], 200)]);
+
+    $order = makeBiteshipReadyOrder(User::factory()->create());
+    $service = app(BiteshipShippingService::class);
+    $first = $service->createShipment($order);
+    $first->shipments()->update(['status' => 'cancelled']);
+    $first->forceFill(['biteship_status' => 'cancelled'])->save();
+    $second = $service->createShipment($first->fresh());
+
+    expect($second->biteship_order_id)->toBe('shipment-new')
+        ->and($second->tracking_number)->toBe('AWB-NEW')
+        ->and($second->shipments()->count())->toBe(2)
+        ->and($second->shipments()->reorder()->orderBy('attempt')->pluck('reference_id')->all())
+        ->toBe([$order->order_number, $order->order_number.'-S2']);
+
+    Http::assertSentCount(2);
+});
+
 test('Biteship webhook rejects requests without the configured secret header', function () {
     config(['biteship.webhook.signature_key' => 'X-Biteship-Signature', 'biteship.webhook.signature_secret' => 'test-secret']);
 
@@ -239,6 +268,101 @@ test('signed Biteship webhook with unknown order is recorded as rejected', funct
         ->and($log->signature_valid)->toBeTrue()
         ->and($log->http_status)->toBe(404)
         ->and($log->message)->toContain('No RevStore order matches');
+});
+
+test('admin order detail shows cancelled shipment warning and hides the print label action', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $order = makeBiteshipReadyOrder(User::factory()->create());
+    $order->forceFill([
+        'biteship_order_id' => 'biteship-order-cancelled',
+        'biteship_tracking_id' => 'tracking-cancelled',
+        'biteship_waybill_id' => 'WYB-1795238448569',
+        'biteship_status' => 'cancelled',
+        'tracking_number' => 'WYB-1795238448569',
+        'biteship_last_synced_at' => now(),
+    ])->save();
+
+    $this->actingAs($admin, 'admin')
+        ->get(route('orders.show', $order))
+        ->assertOk()
+        ->assertSee('Shipment Biteship dibatalkan')
+        ->assertSee('Pengiriman dibatalkan')
+        ->assertSee('Resi sebelumnya:')
+        ->assertSee('WYB-1795238448569')
+        ->assertDontSee('Shipment Biteship berhasil dibuat')
+        ->assertDontSee('Print Resi');
+});
+
+test('admin can recalculate courier rates and create a replacement shipment using the selected service', function () {
+    config([
+        'biteship.api_key' => 'biteship_test.fake-key',
+        'biteship.base_url' => 'https://api.biteship.com',
+        'biteship.couriers' => 'jne,sicepat',
+        'biteship.warehouse' => [
+            'name' => 'RevStore Warehouse', 'phone' => '081111111111', 'email' => null,
+            'address' => 'Gudang RevStore, Jakarta', 'postal_code' => '12950', 'note' => null,
+        ],
+    ]);
+    Http::fake([
+        'api.biteship.com/v1/rates/couriers' => Http::response(['success' => true, 'pricing' => [[
+            'courier_code' => 'sicepat', 'courier_name' => 'SiCepat', 'courier_service_code' => 'reg',
+            'courier_service_name' => 'REG', 'price' => 18000, 'duration' => '1-2 days',
+        ]]], 200),
+        'api.biteship.com/v1/orders' => Http::response([
+            'success' => true, 'id' => 'replacement-shipment-001', 'waybill_id' => 'SICEPAT-NEW',
+            'tracking_id' => 'replacement-tracking-001', 'status' => 'confirmed', 'price' => 18000,
+        ], 200),
+    ]);
+
+    $admin = User::factory()->create(['role' => 'admin']);
+    $order = makeBiteshipReadyOrder(User::factory()->create());
+    $order->forceFill([
+        'biteship_order_id' => 'cancelled-shipment-001',
+        'biteship_status' => 'cancelled',
+        'biteship_waybill_id' => 'OLD-AWB',
+        'tracking_number' => 'OLD-AWB',
+    ])->save();
+    $order->shipments()->create([
+        'attempt' => 1, 'reference_id' => $order->order_number,
+        'biteship_order_id' => 'cancelled-shipment-001', 'waybill_id' => 'OLD-AWB', 'status' => 'cancelled',
+    ]);
+
+    $this->actingAs($admin, 'admin')
+        ->post(route('orders.replacement-shipment-rates', $order))
+        ->assertRedirect()
+        ->assertSessionHas('replacement_shipment_rates');
+
+    $this->post(route('orders.retry-shipment', $order), [
+        'courier_code' => 'sicepat', 'service_code' => 'reg',
+    ])->assertRedirect()->assertSessionHas('success');
+
+    expect($order->fresh()->biteship_order_id)->toBe('replacement-shipment-001')
+        ->and($order->fresh()->shipping_courier_code)->toBe('sicepat')
+        ->and($order->fresh()->shipping_cost)->toBe(18000)
+        ->and($order->fresh()->tracking_number)->toBe('SICEPAT-NEW')
+        ->and($order->shipments()->count())->toBe(2);
+});
+
+test('admin can initiate paid order cancellation through the refund workflow', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $customer = User::factory()->create();
+    $order = makeBiteshipReadyOrder($customer);
+    $order->forceFill([
+        'biteship_order_id' => 'shipment-cancelled',
+        'biteship_status' => 'cancelled',
+    ])->save();
+
+    $this->actingAs($admin, 'admin')
+        ->post(route('orders.request-cancellation', $order), [
+            'reason' => 'other',
+            'description' => 'Kurir membatalkan pengiriman.',
+        ])
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    expect($order->fresh()->status)->toBe('processing')
+        ->and($order->fresh()->payment_status)->toBe('paid')
+        ->and($order->cancellationRequest()->firstOrFail()->status)->toBe('requested');
 });
 
 test('admin order detail renders tracking history fetched from the Biteship tracking page API', function () {

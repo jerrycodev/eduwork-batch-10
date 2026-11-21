@@ -538,19 +538,110 @@ class OrderController extends Controller
         return redirect()->route('orders.show', $order)->with('success', $order->biteship_order_id ? 'Status pesanan tersimpan dan pengiriman Biteship telah terhubung.' : 'Status pesanan berhasil diperbarui.');
     }
 
-    /** Retry shipment creation after a previous Biteship API failure. */
-    public function retryBiteshipShipment(Order $order): RedirectResponse
+    /** Load current courier rates before an admin chooses a replacement shipment service. */
+    public function replacementShipmentRates(Order $order, BiteshipShippingService $biteship): RedirectResponse
     {
         abort_unless($order->payment_status === 'paid' && $order->status === 'processing', 422, 'Pesanan harus lunas dan berstatus Processing.');
+        abort_unless(strtolower((string) $order->biteship_status) === 'cancelled', 422, 'Shipment terakhir belum dibatalkan.');
+
         try {
-            $order = app(BiteshipShippingService::class)->createShipment($order);
+            $rates = $biteship->getRatesForOrder($order);
+            return back()->with('replacement_shipment_rates', $rates);
+        } catch (\Throwable $exception) {
+            report($exception);
+            return back()->with('error', 'Tarif pengiriman pengganti belum dapat dihitung: '.$exception->getMessage());
+        }
+    }
+
+    /** Retry shipment creation after the admin has selected a freshly calculated courier service. */
+    public function retryBiteshipShipment(Request $request, Order $order, BiteshipShippingService $biteship): RedirectResponse
+    {
+        abort_unless($order->payment_status === 'paid' && $order->status === 'processing', 422, 'Pesanan harus lunas dan berstatus Processing.');
+        abort_unless(strtolower((string) $order->biteship_status) === 'cancelled', 422, 'Shipment terakhir belum dibatalkan.');
+        $validated = $request->validate([
+            'courier_code' => ['required', 'string', 'max:40'],
+            'service_code' => ['required', 'string', 'max:80'],
+        ]);
+
+        try {
+            $rates = $biteship->getRatesForOrder($order);
+            $selectedRate = collect($rates)->first(fn (array $rate): bool => $rate['courier_code'] === $validated['courier_code'] && $rate['service_code'] === $validated['service_code']);
+            if (! $selectedRate) {
+                return back()->with('error', 'Tarif yang dipilih sudah tidak tersedia. Silakan hitung ulang tarif pengiriman.');
+            }
+            $order->forceFill([
+                'shipping_courier' => $selectedRate['courier_name'],
+                'shipping_courier_code' => $selectedRate['courier_code'],
+                'shipping_service' => $selectedRate['service_name'],
+                'shipping_service_code' => $selectedRate['service_code'],
+                'shipping_cost' => $selectedRate['price'],
+                'shipping_etd' => $selectedRate['duration'],
+            ])->save();
+            $order = $biteship->createShipment($order->fresh());
         } catch (\Throwable $exception) {
             report($exception);
 
             return back()->with('error', 'Pengiriman Biteship belum berhasil dibuat: '.$exception->getMessage());
         }
 
-        return back()->with('success', 'Pengiriman Biteship berhasil dibuat. ID: '.$order->biteship_order_id);
+        return back()->with('success', 'Pengiriman pengganti berhasil dibuat. ID: '.$order->biteship_order_id);
+    }
+
+    /** Start the normal cancellation and refund workflow from the admin order screen. */
+    public function requestAdminCancellation(Request $request, Order $order): RedirectResponse
+    {
+        $validated = $request->validate([
+            'reason' => ['required', 'in:changed_mind,wrong_order,wrong_address,duplicate,other'],
+            'description' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        if (! in_array($order->status, ['pending', 'processing'], true)) {
+            return back()->with('error', 'Pesanan yang sudah dikirim atau selesai tidak dapat dibatalkan melalui alur ini.');
+        }
+
+        if ($order->cancellationRequest()->exists() || $order->returnRequest()->exists()) {
+            return back()->with('error', 'Pesanan sudah memiliki pengajuan pembatalan atau pengembalian.');
+        }
+
+        if ($order->payment_status === 'paid') {
+            $order->cancellationRequest()->create([
+                'user_id' => $order->user_id,
+                'reason' => $validated['reason'],
+                'description' => $validated['description'] ?? 'Pengajuan dimulai oleh admin karena pengiriman Biteship dibatalkan.',
+                'status' => 'requested',
+            ]);
+
+            return back()->with('success', 'Pengajuan pembatalan dibuat. Lanjutkan persetujuan dan refund melalui bagian Pengajuan Pembatalan.');
+        }
+
+        if (in_array($order->payment_status, ['refunded'], true)) {
+            return back()->with('error', 'Status pembayaran tidak memungkinkan pembatalan ini.');
+        }
+
+        DB::transaction(function () use ($order, $validated): void {
+            $locked = Order::query()->lockForUpdate()->findOrFail($order->id);
+            $locked->update([
+                'status' => 'cancelled',
+                'cancellation_reason' => $validated['reason'].(filled($validated['description'] ?? null) ? ': '.$validated['description'] : ''),
+                'auto_complete_at' => null,
+            ]);
+            if (! $locked->stock_restored_at) {
+                foreach ($locked->orderItems()->get() as $item) {
+                    app(InventoryService::class)->change(
+                        productId: (string) $item->product_id,
+                        variantId: $item->product_variant_id ? (string) $item->product_variant_id : null,
+                        delta: (int) $item->quantity,
+                        type: 'in',
+                        referenceType: Order::class,
+                        referenceId: (string) $locked->id,
+                        notes: 'Stock restored for cancelled order '.$locked->order_number,
+                    );
+                }
+                $locked->update(['stock_restored_at' => now()]);
+            }
+        });
+
+        return back()->with('success', 'Pesanan dibatalkan dan stok telah dikembalikan.');
     }
 
     /** Confirm receipt and complete an order by its owner. */
@@ -581,10 +672,22 @@ class OrderController extends Controller
         return back()->with('success', 'Terima kasih! Pesanan berhasil dikonfirmasi selesai.');
     }
 
+    /** Render a printable shipping label for an order with a confirmed Biteship shipment. */
+    public function shippingLabel(Order $order): View
+    {
+        abort_unless(filled($order->biteship_order_id), 404, 'Label pengiriman belum tersedia.');
+        abort_if($order->status === 'cancelled' || strtolower((string) $order->biteship_status) === 'cancelled', 404);
+
+        $order->load('orderItems');
+        $warehouse = config('biteship.warehouse', []);
+
+        return view('admin.orders.shipping-label', compact('order', 'warehouse'));
+    }
+
     /** Display an order in the admin dashboard. */
     public function adminShow(Order $order, BiteshipShippingService $biteship): View
     {
-        $order->load('user', 'orderItems.product', 'returnRequest', 'cancellationRequest');
+        $order->load('user', 'orderItems.product', 'returnRequest', 'cancellationRequest', 'shipments');
         $trackingData = null;
         $trackingError = null;
 

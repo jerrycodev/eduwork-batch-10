@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Order;
+use App\Models\OrderShipment;
 use App\Models\UserAddress;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -138,12 +139,23 @@ class BiteshipShippingService
         );
     }
 
+    /** Calculate replacement courier rates from the immutable items and destination stored on an order. */
+    public function getRatesForOrder(Order $order): array
+    {
+        $order->loadMissing(['orderItems.product', 'orderItems.variant']);
+        $address = new UserAddress;
+        $address->postal_code = (string) $order->zip;
+
+        return $this->getRates($order->orderItems, $address);
+    }
+
     /** Create one Biteship shipment for an already-paid order, using the order number as an idempotent reference. */
     public function createShipment(Order $order): Order
     {
         return DB::transaction(function () use ($order): Order {
             $locked = Order::query()->with(['orderItems.product', 'orderItems.variant'])->lockForUpdate()->findOrFail($order->id);
-            if ($locked->biteship_order_id) {
+            $latestShipment = $locked->shipments()->latest('attempt')->first();
+            if ($latestShipment && strtolower((string) $latestShipment->status) !== 'cancelled') {
                 return $locked;
             }
             if ($locked->status !== 'processing' || $locked->payment_status !== 'paid') {
@@ -175,8 +187,11 @@ class BiteshipShippingService
                 throw new RuntimeException('Detail produk pesanan tidak tersedia untuk pengiriman.');
             }
 
+            $attempt = ((int) $locked->shipments()->max('attempt')) + 1;
+            $referenceId = $attempt === 1 ? $locked->order_number : $locked->order_number.'-S'.$attempt;
+
             $payload = [
-                'reference_id' => $locked->order_number,
+                'reference_id' => $referenceId,
                 'origin_contact_name' => (string) $warehouse['name'],
                 'origin_contact_phone' => (string) $warehouse['phone'],
                 'origin_contact_email' => $warehouse['email'] ?: null,
@@ -199,7 +214,7 @@ class BiteshipShippingService
 
             // If a previous request timed out after Biteship accepted it, its unique reference_id
             // prevents a second shipment. Biteship returns the existing IDs in this error response.
-            if ($response->failed() && data_get($data, 'details.reference_id') === $locked->order_number && filled(data_get($data, 'details.order_id'))) {
+            if ($response->failed() && data_get($data, 'details.reference_id') === $referenceId && filled(data_get($data, 'details.order_id'))) {
                 $data = [
                     'id' => data_get($data, 'details.order_id'),
                     'waybill_id' => data_get($data, 'details.waybill_id'),
@@ -225,11 +240,24 @@ class BiteshipShippingService
             }
             $waybill = data_get($data, 'courier_waybill_id') ?: data_get($data, 'waybill_id');
             $trackingId = data_get($data, 'courier_tracking_id') ?: data_get($data, 'tracking_id');
+            $shipment = OrderShipment::query()->create([
+                'order_id' => $locked->id,
+                'attempt' => $attempt,
+                'reference_id' => $referenceId,
+                'biteship_order_id' => $externalId,
+                'biteship_tracking_id' => $trackingId,
+                'waybill_id' => $waybill,
+                'status' => data_get($data, 'status', 'confirmed'),
+                'price' => is_numeric(data_get($data, 'price')) ? (int) data_get($data, 'price') : null,
+                'created_at_biteship' => now(),
+                'last_synced_at' => now(),
+            ]);
+
             $locked->forceFill([
                 'biteship_order_id' => $externalId,
                 'biteship_tracking_id' => $trackingId,
                 'biteship_waybill_id' => $waybill,
-                'tracking_number' => $waybill ?: $locked->tracking_number,
+                'tracking_number' => $waybill ?: null,
                 'biteship_status' => data_get($data, 'status', 'confirmed'),
                 'biteship_price' => is_numeric(data_get($data, 'price')) ? (int) data_get($data, 'price') : null,
                 'biteship_order_created_at' => now(),
@@ -287,6 +315,12 @@ class BiteshipShippingService
                 (string) (data_get($data, 'error') ?: data_get($data, 'message') ?: 'Biteship menolak pembatalan shipment.'),
             );
         }
+
+        $locked->shipments()->where('biteship_order_id', $locked->biteship_order_id)->update([
+            'status' => 'cancelled',
+            'last_synced_at' => now(),
+            'cancellation_reason' => Str::limit($reason, 500, ''),
+        ]);
 
         $locked->forceFill([
             'biteship_status' => 'cancelled',

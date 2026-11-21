@@ -175,6 +175,82 @@ test('customer can read only their own orders', function () {
         ->assertSee($order->order_number);
 });
 
+test('customer order detail links a purchased variant to its storefront product', function () {
+    $customer = User::factory()->create(['role' => 'customer']);
+    $product = makeOrderTestProduct();
+    $order = Order::query()->create([
+        'user_id' => $customer->id,
+        'cart_id' => null,
+        'user_name' => $customer->name,
+        'user_email' => $customer->email,
+        'total' => 125000,
+        'status' => 'processing',
+        'payment_status' => 'paid',
+    ]);
+
+    $order->orderItems()->create([
+        'product_id' => $product->id,
+        'product_name' => $product->name,
+        'product_sku' => 'ORDER-VARIANT-SKU',
+        'product_variant_name' => 'Hitam / 42',
+        'quantity' => 1,
+        'price' => 125000,
+        'total' => 125000,
+    ]);
+
+    $this->actingAs($customer, 'customer')
+        ->get(route('orders.customer.show', $order))
+        ->assertOk()
+        ->assertSee(route('product-detail', $product->slug), false)
+        ->assertSee('Hitam / 42');
+});
+
+test('customer order list clearly shows a cancelled Biteship shipment separately from order and payment status', function () {
+    $customer = User::factory()->create(['role' => 'customer']);
+    Order::query()->create([
+        'user_id' => $customer->id,
+        'cart_id' => null,
+        'user_name' => $customer->name,
+        'user_email' => $customer->email,
+        'total' => 468000,
+        'status' => 'processing',
+        'payment_status' => 'paid',
+        'biteship_status' => 'cancelled',
+        'biteship_waybill_id' => 'WYB-1795238448569',
+    ]);
+
+    $this->actingAs($customer, 'customer')
+        ->get(route('orders.customer.index'))
+        ->assertOk()
+        ->assertSee('Status Pesanan')
+        ->assertSee('Pembayaran')
+        ->assertSee('Pengiriman')
+        ->assertSee('Processing')
+        ->assertSee('Paid')
+        ->assertSee('Dibatalkan')
+        ->assertSee('WYB-1795238448569');
+});
+
+test('customer order actions tab renders cancellation options for pending orders', function () {
+    $customer = User::factory()->create(['role' => 'customer']);
+    $order = Order::query()->create([
+        'user_id' => $customer->id,
+        'cart_id' => null,
+        'user_name' => $customer->name,
+        'user_email' => $customer->email,
+        'total' => 125000,
+        'status' => 'pending',
+        'payment_status' => 'pending',
+    ]);
+
+    $this->actingAs($customer, 'customer')
+        ->get(route('orders.customer.show', $order))
+        ->assertOk()
+        ->assertSee('order-tab-actions', false)
+        ->assertSee('role="tabpanel" aria-labelledby="order-tab-actions"', false)
+        ->assertSee('Batalkan Pesanan');
+});
+
 test('guest cannot access order pages or create orders', function () {
     $this->get(route('orders.customer.index'))->assertRedirect(route('login'));
     $this->post(route('checkout.store'))->assertRedirect(route('login'));
@@ -197,7 +273,7 @@ test('admin can view the separate simple orders table', function () {
         ->assertOk()
         ->assertSee('Order ID')
         ->assertSee($customer->name)
-        ->assertSee('Rp 125.000')
+        ->assertSeeInOrder(['Rp', '125.000'])
         ->assertSee(route('orders.show', $order));
 });
 
@@ -310,14 +386,26 @@ test('order-created email contains an order link and a PDF invoice attachment', 
         'cart_id' => null,
         'user_name' => $customer->name,
         'user_email' => $customer->email,
-        'total' => 125000,
+        'total' => 134000,
         'subtotal' => 125000,
-        'shipping_cost' => 0,
+        'shipping_cost' => 9000,
         'status' => 'pending',
         'payment_status' => 'pending',
     ]);
 
+    $product = makeOrderTestProduct();
+    $order->orderItems()->create([
+        'product_id' => $product->id,
+        'product_name' => $product->name,
+        'product_sku' => 'MAIL-PRODUCT-001',
+        'product_variant_name' => 'Hitam / 42',
+        'quantity' => 2,
+        'price' => 50000,
+        'total' => 100000,
+    ]);
+
     $mail = new OrderTransactionalMail($order, 'order_created');
+    $renderedEmail = $mail->render();
 
     $attachment = $mail->attachments()[0];
     $pdfBytes = $attachment->attachWith(
@@ -329,8 +417,15 @@ test('order-created email contains an order link and a PDF invoice attachment', 
         ->and($attachment->as)->toBe('invoice-'.$order->order_number.'.pdf')
         ->and($attachment->mime)->toBe('application/pdf')
         ->and($pdfBytes)->toStartWith('%PDF')
-        ->and($mail->render())->toContain('Lanjutkan Pembayaran')
-        ->and($mail->render())->toContain($order->order_number);
+        ->and($renderedEmail)->toContain('Lanjutkan Pembayaran')
+        ->and($renderedEmail)->toContain($order->order_number)
+        ->and($renderedEmail)->toContain($product->name)
+        ->and($renderedEmail)->toContain('Hitam / 42')
+        ->and($renderedEmail)->toContain('MAIL-PRODUCT-001')
+        ->and($renderedEmail)->toContain('100.000')
+        ->and($renderedEmail)->toContain('Ongkos kirim')
+        ->and($renderedEmail)->toContain('9.000')
+        ->and($mail->render())->toContain('134.000');
 });
 
 test('checkout reuses cached Biteship rates for identical payloads and separates changed cart quantities', function () {

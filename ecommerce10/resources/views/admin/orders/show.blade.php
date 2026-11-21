@@ -102,13 +102,20 @@
                                 <h3 class="font-semibold text-gray-900">Progress Tracking</h3>
                                 <p class="mt-1 text-xs text-gray-500">ID: <span class="font-mono">{{ $order->biteship_tracking_id }}</span></p>
                                 @if ($order->biteship_status)
-                                    <p class="mt-1 text-xs font-semibold text-teal-700">Status Biteship: {{ str($order->biteship_status)->replace('_', ' ')->title() }}</p>
+                                    <p class="mt-1 text-xs font-semibold {{ strtolower((string) $order->biteship_status) === 'cancelled' ? 'text-red-700' : 'text-teal-700' }}">Status Biteship: {{ str($order->biteship_status)->replace('_', ' ')->title() }}</p>
                                 @endif
                             </div>
                             @if ($order->biteship_last_synced_at)
                                 <span class="text-xs text-gray-500">Sinkronisasi: {{ $order->biteship_last_synced_at->format('d M Y, H:i') }}</span>
                             @endif
                         </div>
+
+                        @if (strtolower((string) $order->biteship_status) === 'cancelled')
+                            <div class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                                <p class="font-semibold">Pengiriman dibatalkan</p>
+                                <p class="mt-1">Shipment ini sudah dibatalkan di Biteship dan tidak lagi dalam proses pengiriman. Riwayat di bawah ini hanya merupakan catatan aktivitas sebelum pembatalan.</p>
+                            </div>
+                        @endif
 
                         @if ($trackingError)
                             <div class="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
@@ -123,7 +130,7 @@
                                         $eventDate = data_get($event, 'updated_at') ?? data_get($event, 'created_at') ?? data_get($event, 'datetime') ?? data_get($event, 'date');
                                     @endphp
                                     <li class="relative flex gap-4 pl-0">
-                                        <span class="relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-500 text-white ring-4 ring-white">
+                                        <span class="relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full {{ strtolower((string) $order->biteship_status) === 'cancelled' ? 'bg-red-500' : 'bg-teal-500' }} text-white ring-4 ring-white">
                                             <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M3 5.5A1.5 1.5 0 0 1 4.5 4h8A1.5 1.5 0 0 1 14 5.5V7h1.2a1.5 1.5 0 0 1 1.2.6l1.3 1.7c.2.3.3.6.3.9v2.3a1.5 1.5 0 0 1-1.5 1.5h-.6a2.4 2.4 0 0 1-4.6 0H8.7a2.4 2.4 0 0 1-4.6 0h-.6A1.5 1.5 0 0 1 2 12.5v-1A1.5 1.5 0 0 1 3.5 10H4V5.5Zm11 3v2h2.5v-.2L15.3 8.5H14ZM6.4 14.5a.9.9 0 1 0 0-1.8.9.9 0 0 0 0 1.8Zm7 0a.9.9 0 1 0 0-1.8.9.9 0 0 0 0 1.8Z"/></svg>
                                         </span>
                                         <div class="min-w-0 flex-1 pb-1">
@@ -151,6 +158,29 @@
                     <section class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
                         <h3 class="font-semibold text-gray-900">Progress Tracking</h3>
                         <p class="mt-2 text-sm text-gray-500">Tracking ID belum tersedia. Riwayat pengiriman akan muncul setelah Biteship menerbitkan tracking ID.</p>
+                    </section>
+                @endif
+                @if ($order->shipments->count() > 1)
+                    <section class="mt-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                        <h3 class="font-semibold text-gray-900">Riwayat Pengiriman</h3>
+                        <ol class="mt-3 space-y-3">
+                            @foreach ($order->shipments as $shipment)
+                                <li class="rounded-lg border border-gray-100 p-3">
+                                    <div class="flex flex-wrap items-center justify-between gap-2">
+                                        <span class="text-sm font-semibold text-gray-900">Percobaan ke-{{ $shipment->attempt }}</span>
+                                        <span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ strtolower((string) $shipment->status) === 'cancelled' ? 'bg-red-50 text-red-700' : 'bg-teal-50 text-teal-700' }}">{{ str($shipment->status ?: 'unknown')->replace('_', ' ')->title() }}</span>
+                                    </div>
+                                    <p class="mt-1 break-all font-mono text-xs text-gray-600">{{ $shipment->biteship_order_id }}</p>
+                                    @if ($shipment->waybill_id)
+                                        <p class="mt-1 text-xs text-gray-500">AWB: {{ $shipment->waybill_id }}</p>
+                                    @endif
+                                    @if ($shipment->cancellation_reason)
+                                        <p class="mt-1 text-xs text-gray-500">Alasan: {{ $shipment->cancellation_reason }}</p>
+                                    @endif
+                                    <p class="mt-1 text-xs text-gray-400">{{ $shipment->created_at_biteship?->format('d M Y, H:i') ?: $shipment->created_at->format('d M Y, H:i') }}</p>
+                                </li>
+                            @endforeach
+                        </ol>
                     </section>
                 @endif
             </div>
@@ -226,24 +256,93 @@
                 @elseif ($order->status === 'pending')
                     <form action="{{ route('orders.status.update', $order) }}" method="POST" class="mt-4 space-y-3">
                         @csrf @method('PATCH')
-                        <div><label for="order-status" class="mb-1.5 block text-sm font-medium text-gray-700">Status
-                                berikutnya</label>
-                            <select id="order-status" name="status" required
-                                class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm">
-                                <option value="processing">Processing — buat pengiriman Biteship</option>
-                                @if ($order->payment_status !== 'paid')
+                        <div>
+                            <span class="mb-1.5 block text-sm font-medium text-gray-700">Status berikutnya</span>
+                            @if ($order->payment_status === 'paid')
+                                <input type="hidden" name="status" value="processing">
+                                <div class="rounded-lg border border-gray-300 bg-gray-50 px-3 py-2.5 text-sm text-gray-800">
+                                    Processing — buat pengiriman Biteship
+                                </div>
+                            @else
+                                <label for="order-status" class="sr-only">Status berikutnya</label>
+                                <select id="order-status" name="status" required
+                                    class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm">
                                     <option value="cancelled">Cancelled</option>
-                                @endif
-                            </select>
+                                </select>
+                            @endif
                         </div>
                         <p class="text-xs text-gray-500">Setelah disimpan, RevStore akan membuat shipment di Biteship
                             menggunakan kurir dan layanan yang dipilih pelanggan.</p>
-                        <button type="submit"
-                            class="bg-primary-600 hover:bg-primary-700 inline-flex justify-center rounded-lg px-5 py-2.5 text-sm font-semibold text-white">Simpan
-                            status & buat pengiriman</button>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button type="submit"
+                                class="bg-primary-600 hover:bg-primary-700 inline-flex justify-center rounded-lg px-5 py-2.5 text-sm font-semibold text-white">Simpan
+                                status & buat pengiriman</button>
+                            <button type="button" disabled title="Tersedia setelah pengiriman berhasil dibuat"
+                                class="inline-flex cursor-not-allowed items-center justify-center rounded-lg border border-gray-300 bg-gray-100 px-5 py-2.5 text-sm font-semibold text-gray-400">
+                                Print Resi
+                            </button>
+                        </div>
                     </form>
                 @elseif ($order->status === 'processing')
                     @if ($order->biteship_order_id)
+                        @if (strtolower((string) $order->biteship_status) === 'cancelled')
+                            <div class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+                                <p class="font-semibold">Shipment Biteship dibatalkan</p>
+                                <p class="mt-1">Pengiriman tidak lagi aktif. Status pesanan dan pembayaran tidak berubah otomatis akibat pembatalan shipment ini.</p>
+                                <p class="mt-2">ID Biteship: <span class="break-all font-mono">{{ $order->biteship_order_id }}</span></p>
+                                @if ($order->biteship_waybill_id)
+                                    <p class="mt-1">Resi sebelumnya: <strong class="font-mono">{{ $order->biteship_waybill_id }}</strong></p>
+                                @endif
+                                @if ($order->biteship_last_synced_at)
+                                    <p class="mt-1 text-xs">Sinkronisasi terakhir: {{ $order->biteship_last_synced_at->format('d M Y, H:i') }}</p>
+                                @endif
+                                <p class="mt-3 text-xs">Jika customer masih ingin menerima barang, admin dapat membuat shipment pengganti. Jika pesanan tidak dapat dipenuhi, gunakan alur pengajuan pembatalan dan refund.</p>
+                                <form action="{{ route('orders.replacement-shipment-rates', $order) }}" method="POST" class="mt-4">
+                                    @csrf
+                                    <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-700">
+                                        <i data-lucide="calculator" class="h-4 w-4"></i> Hitung Tarif Pengiriman Baru
+                                    </button>
+                                </form>
+                                @if (session()->has('replacement_shipment_rates'))
+                                    @php($replacementRates = session('replacement_shipment_rates'))
+                                    @if (count($replacementRates))
+                                        <form action="{{ route('orders.retry-shipment', $order) }}" method="POST" class="mt-3 rounded-lg border border-teal-200 bg-white p-3" onsubmit="return confirm('Buat shipment baru menggunakan kurir dan layanan yang dipilih?')">
+                                            @csrf
+                                            <label for="replacement-shipping-service" class="mb-1 block text-xs font-semibold">Pilih kurir dan layanan</label>
+                                            <select id="replacement-shipping-service" name="service_selection" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" onchange="const selected = JSON.parse(this.value); this.form.courier_code.value = selected.courier_code; this.form.service_code.value = selected.service_code;">
+                                                @foreach ($replacementRates as $rate)
+                                                    <option value="{{ json_encode(['courier_code' => $rate['courier_code'], 'service_code' => $rate['service_code']]) }}">{{ $rate['courier_name'] }} · {{ $rate['service_name'] }} · Rp {{ number_format($rate['price'], 0, ',', '.') }}{{ $rate['duration'] ? ' · '.$rate['duration'] : '' }}</option>
+                                                @endforeach
+                                            </select>
+                                            <input type="hidden" name="courier_code" value="{{ $replacementRates[0]['courier_code'] }}">
+                                            <input type="hidden" name="service_code" value="{{ $replacementRates[0]['service_code'] }}">
+                                            <button type="submit" class="mt-3 inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white">Buat Pengiriman Baru</button>
+                                        </form>
+                                    @else
+                                        <p class="mt-2 text-xs text-amber-700">Tidak ada layanan kurir yang tersedia untuk alamat ini.</p>
+                                    @endif
+                                @endif
+                                @if (in_array($order->status, ['pending', 'processing'], true) && ! $order->cancellationRequest && ! $order->returnRequest)
+                                    <form action="{{ route('orders.request-cancellation', $order) }}" method="POST" class="mt-4 border-t border-red-200 pt-4" onsubmit="return confirm('Mulai proses pembatalan pesanan? Jika sudah dibayar, pengajuan harus dilanjutkan melalui proses refund.')">
+                                        @csrf
+                                        <label for="shipment-cancellation-reason" class="mb-1 block text-xs font-semibold">Atau batalkan pesanan</label>
+                                        <select id="shipment-cancellation-reason" name="reason" required class="w-full max-w-sm rounded-lg border border-red-200 bg-white px-3 py-2 text-sm">
+                                            <option value="other">Pengiriman tidak dapat dilanjutkan</option>
+                                            <option value="wrong_address">Alamat perlu diperbaiki</option>
+                                            <option value="changed_mind">Customer tidak ingin melanjutkan</option>
+                                            <option value="other">Alasan lainnya</option>
+                                        </select>
+                                        <textarea name="description" rows="2" maxlength="2000" placeholder="Catatan pembatalan (opsional)" class="mt-2 w-full rounded-lg border border-red-200 px-3 py-2 text-sm"></textarea>
+                                        <button type="submit" class="mt-2 inline-flex items-center gap-2 rounded-lg border border-red-300 bg-white px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-100">Batalkan Pesanan</button>
+                                        @if ($order->payment_status === 'paid')
+                                            <p class="mt-2 text-xs text-red-700">Karena pembayaran sudah lunas, tindakan ini membuat pengajuan pembatalan. Refund tetap harus diproses dan dikonfirmasi melalui alur Midtrans.</p>
+                                        @else
+                                            <p class="mt-2 text-xs text-red-700">Pesanan belum dibayar. Pesanan akan dibatalkan dan stok dikembalikan.</p>
+                                        @endif
+                                    </form>
+                                @endif
+                            </div>
+                        @else
                         <div
                             class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
                             <p class="font-semibold">Shipment Biteship berhasil dibuat</p>
@@ -259,7 +358,13 @@
                                 <p class="mt-1 text-xs">Sinkronisasi terakhir:
                                     {{ $order->biteship_last_synced_at->format('d M Y, H:i') }}</p>
                             @endif
+                            <a href="{{ route('orders.shipping-label', $order) }}" target="_blank" rel="noopener noreferrer"
+                                class="mt-3 inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-700">
+                                <i data-lucide="printer" class="h-4 w-4"></i>
+                                Print Resi
+                            </a>
                         </div>
+                        @endif
                     @else
                         <div class="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
                             <p class="font-semibold">Pengiriman Biteship belum dibuat</p>
@@ -280,11 +385,13 @@
                             </div>
                         </div>
                     @endif
-                    <p class="mt-3 text-xs text-gray-500">Status Shipped dan Delivered akan diperbarui otomatis dari
-                        webhook Biteship.</p>
+                    @if (strtolower((string) $order->biteship_status) !== 'cancelled')
+                        <p class="mt-3 text-xs text-gray-500">Status Shipped dan Delivered akan diperbarui otomatis dari
+                            webhook Biteship.</p>
+                    @endif
                 @endif
                 @if ($order->tracking_number)
-                    <p class="mt-3 text-sm text-gray-700">Nomor resi: <strong>{{ $order->tracking_number }}</strong>
+                    <p class="mt-3 text-sm text-gray-700">{{ strtolower((string) $order->biteship_status) === 'cancelled' ? 'Nomor resi sebelumnya' : 'Nomor resi' }}: <strong>{{ $order->tracking_number }}</strong>
                     </p>
                 @endif
                 @if ($order->delivered_at && $order->status === 'delivered')

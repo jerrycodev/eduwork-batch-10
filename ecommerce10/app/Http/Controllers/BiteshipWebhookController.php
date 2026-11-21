@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Events\OrderStatusUpdated;
 use App\Models\BiteshipWebhookLog;
 use App\Models\Order;
+use App\Models\OrderShipment;
 use App\Services\OrderEmailService;
 use App\Services\OrderNotificationService;
 use Illuminate\Http\JsonResponse;
@@ -89,8 +90,18 @@ class BiteshipWebhookController extends Controller
         }
 
         try {
+            $shipmentQuery = OrderShipment::query();
+            if ($externalId !== '') {
+                $shipmentQuery->where('biteship_order_id', $externalId);
+            } elseif ($referenceId !== '') {
+                $shipmentQuery->where('reference_id', $referenceId);
+            }
+            $shipment = $shipmentQuery->first();
+
             $query = Order::query();
-            if ($referenceId !== '' && $externalId !== '') {
+            if ($shipment) {
+                $query->whereKey($shipment->order_id);
+            } elseif ($referenceId !== '' && $externalId !== '') {
                 $query->where(function ($builder) use ($referenceId, $externalId): void {
                     $builder->where('order_number', $referenceId)->orWhere('biteship_order_id', $externalId);
                 });
@@ -122,14 +133,32 @@ class BiteshipWebhookController extends Controller
             $before = $order->status;
             $beforeTrackingNumber = $order->tracking_number;
 
-            $order = DB::transaction(function () use ($order, $payload, $externalId): Order {
+            $order = DB::transaction(function () use ($order, $payload, $externalId, $shipment): Order {
                 $locked = Order::query()->lockForUpdate()->findOrFail($order->id);
+                $lockedShipment = $shipment ? OrderShipment::query()->lockForUpdate()->find($shipment->id) : null;
                 $status = (string) (data_get($payload, 'status') ?: data_get($payload, 'courier_status') ?: data_get($payload, 'data.status') ?: '');
                 $waybill = data_get($payload, 'courier_waybill_id') ?: data_get($payload, 'waybill_id') ?: data_get($payload, 'data.courier_waybill_id') ?: data_get($payload, 'data.waybill_id');
                 $trackingId = data_get($payload, 'courier_tracking_id') ?: data_get($payload, 'tracking_id') ?: data_get($payload, 'data.courier_tracking_id') ?: data_get($payload, 'data.tracking_id');
                 $price = data_get($payload, 'price') ?? data_get($payload, 'data.price');
                 $updates = ['biteship_last_synced_at' => now()];
-                if ($externalId !== '' && ! $locked->biteship_order_id) {
+                $isActiveShipment = ! $lockedShipment || $locked->biteship_order_id === $lockedShipment->biteship_order_id;
+                if ($lockedShipment) {
+                    $shipmentUpdates = ['last_synced_at' => now()];
+                    if ($status !== '') {
+                        $shipmentUpdates['status'] = $status;
+                    }
+                    if ($waybill = (data_get($payload, 'courier_waybill_id') ?: data_get($payload, 'waybill_id') ?: data_get($payload, 'data.courier_waybill_id') ?: data_get($payload, 'data.waybill_id'))) {
+                        $shipmentUpdates['waybill_id'] = (string) $waybill;
+                    }
+                    if ($trackingId = (data_get($payload, 'courier_tracking_id') ?: data_get($payload, 'tracking_id') ?: data_get($payload, 'data.courier_tracking_id') ?: data_get($payload, 'data.tracking_id'))) {
+                        $shipmentUpdates['biteship_tracking_id'] = (string) $trackingId;
+                    }
+                    if (is_numeric($price = data_get($payload, 'price') ?? data_get($payload, 'data.price'))) {
+                        $shipmentUpdates['price'] = (int) $price;
+                    }
+                    $lockedShipment?->update($shipmentUpdates);
+                }
+                if ($externalId !== '' && ! $locked->biteship_order_id && $isActiveShipment) {
                     $updates['biteship_order_id'] = $externalId;
                 }
                 if ($status !== '') {
@@ -143,7 +172,7 @@ class BiteshipWebhookController extends Controller
                         'cancelled', 'courier_not_found', 'rejected',
                         'return_in_transit', 'returned', 'disposed',
                     ], true);
-                    if ($specialStatus || (! $currentIsTerminal && $incomingRank >= $currentRank) || $status === 'delivered') {
+                    if ($isActiveShipment && ($specialStatus || (! $currentIsTerminal && $incomingRank >= $currentRank) || $status === 'delivered')) {
                         $updates['biteship_status'] = $status;
                     } else {
                         $status = (string) $locked->biteship_status;
@@ -153,25 +182,25 @@ class BiteshipWebhookController extends Controller
                         unset($updates['biteship_status']);
                     }
                 }
-                if ($waybill) {
+                if ($isActiveShipment && $waybill) {
                     $updates['biteship_waybill_id'] = (string) $waybill;
                     $updates['tracking_number'] = (string) $waybill;
                 }
-                if ($trackingId) {
+                if ($isActiveShipment && $trackingId) {
                     $updates['biteship_tracking_id'] = (string) $trackingId;
                 }
-                if (is_numeric($price)) {
+                if ($isActiveShipment && is_numeric($price)) {
                     $updates['biteship_price'] = (int) $price;
                 }
 
                 // Preserve every Biteship status verbatim. Only normal fulfillment
                 // milestones advance the RevStore order lifecycle; exceptions and
                 // return-to-sender states remain shipment-level states.
-                $nextStatus = match ($status) {
+                $nextStatus = $isActiveShipment ? match ($status) {
                     'picked', 'in_transit', 'dropping_off' => 'shipped',
                     'delivered' => 'delivered',
                     default => null,
-                };
+                } : null;
                 if ($nextStatus === 'shipped' && in_array($locked->status, ['processing', 'shipped'], true)) {
                     $updates['status'] = 'shipped';
                     $updates['shipped_at'] = $locked->shipped_at ?? now();
