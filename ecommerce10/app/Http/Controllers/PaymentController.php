@@ -29,10 +29,12 @@ class PaymentController extends Controller
     public function success(Request $request)
     {
         $order = $this->resolveReturnOrder($request);
+        $order = $this->refreshReturnPaymentStatus($request, $order, 300);
 
         return view('payments.success', [
             'order' => $order,
             'verified' => $order?->payment_status === 'paid',
+            'polling' => $this->shouldPollReturnStatus($request, $order, 300),
         ]);
     }
 
@@ -42,12 +44,14 @@ class PaymentController extends Controller
     public function failed(Request $request)
     {
         $order = $this->resolveReturnOrder($request);
+        $order = $this->refreshReturnPaymentStatus($request, $order, 60);
         $isPaid = $order?->payment_status === 'paid';
 
         return view('payments.failed', [
             'order' => $order,
             'isPaid' => $isPaid,
             'isPending' => $order && in_array($order->payment_status, ['pending', 'challenge'], true),
+            'polling' => $this->shouldPollReturnStatus($request, $order, 60),
         ]);
     }
 
@@ -62,6 +66,77 @@ class PaymentController extends Controller
         return Order::query()
             ->where('payment_order_id', $paymentOrderId)
             ->first();
+    }
+
+    /**
+     * Memperbarui status dari API Midtrans selama jendela verifikasi halaman return.
+     */
+    private function refreshReturnPaymentStatus(Request $request, ?Order $order, int $windowSeconds): ?Order
+    {
+        if (! $order?->payment_order_id || $order->payment_status === 'paid') {
+            return $order;
+        }
+
+        $sessionKey = 'midtrans.return.'.$windowSeconds.'.'.hash('sha256', $order->payment_order_id);
+        $startedAt = $request->session()->get($sessionKey);
+
+        if (! $startedAt) {
+            $startedAt = now()->timestamp;
+            $request->session()->put($sessionKey, $startedAt);
+        }
+
+        if (now()->timestamp - (int) $startedAt >= $windowSeconds) {
+            return $order;
+        }
+
+        try {
+            $remote = $this->payments->fetchStatus($order);
+            $remoteOrderId = (string) data_get($remote, 'order_id', '');
+            $remoteStatusCode = (string) data_get($remote, 'status_code', '');
+            $remoteAmount = (string) data_get($remote, 'gross_amount', '');
+            $serverKey = (string) config('midtrans.server_key');
+
+            if (
+                $remoteOrderId !== $order->payment_order_id ||
+                $remoteStatusCode === '' ||
+                $remoteAmount === '' ||
+                $serverKey === ''
+            ) {
+                throw new \RuntimeException('Respons verifikasi Midtrans tidak lengkap atau tidak cocok dengan pesanan.');
+            }
+
+            $payload = (array) $remote;
+            $payload['signature_key'] = hash(
+                'sha512',
+                $remoteOrderId.$remoteStatusCode.$remoteAmount.$serverKey,
+            );
+
+            // Reuse the signed webhook processing path so amount checks, status transitions,
+            // audit logs, notifications, and late-payment protections stay consistent.
+            $this->callback(Request::create('/midtrans/callback', 'POST', $payload));
+        } catch (Throwable $exception) {
+            report($exception);
+            logger()->warning('Midtrans return-page verification failed.', [
+                'order_id' => $order->payment_order_id,
+                'exception' => $exception->getMessage(),
+            ]);
+        }
+
+        return $order->fresh();
+    }
+
+    private function shouldPollReturnStatus(Request $request, ?Order $order, int $windowSeconds): bool
+    {
+        if (! $order?->payment_order_id || $order->payment_status === 'paid') {
+            return false;
+        }
+
+        $startedAt = (int) $request->session()->get(
+            'midtrans.return.'.$windowSeconds.'.'.hash('sha256', $order->payment_order_id),
+            now()->timestamp,
+        );
+
+        return now()->timestamp - $startedAt < $windowSeconds;
     }
 
     /**

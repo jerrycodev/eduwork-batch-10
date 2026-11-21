@@ -8,8 +8,137 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\User;
 use App\Notifications\OrderAlert;
+use App\Services\MidtransPaymentService;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+
+test('payment success return checks Midtrans status and polls for up to five minutes while unverified', function () {
+    $user = User::factory()->create();
+    $order = Order::query()->create([
+        'user_id' => $user->id,
+        'user_name' => $user->name,
+        'user_email' => $user->email,
+        'total' => 105000,
+        'status' => 'pending',
+        'payment_status' => 'pending',
+        'payment_order_id' => 'PAY-RETURN-SUCCESS-'.uniqid(),
+    ]);
+    config(['midtrans.server_key' => 'test-server-key']);
+
+    $payments = Mockery::mock(MidtransPaymentService::class);
+    $payments->shouldReceive('fetchStatus')->once()->with(Mockery::on(fn (Order $candidate): bool => $candidate->is($order)))
+        ->andReturn((object) [
+            'order_id' => $order->payment_order_id,
+            'status_code' => '201',
+            'gross_amount' => '105000.00',
+            'transaction_status' => 'pending',
+            'fraud_status' => 'accept',
+        ]);
+    $this->app->instance(MidtransPaymentService::class, $payments);
+
+    $this->get(route('payment.success', ['order_id' => $order->payment_order_id]))
+        ->assertOk()
+        ->assertViewHas('polling', true)
+        ->assertSee('Pembayaran sedang diverifikasi');
+
+    expect($order->fresh()->payment_status)->toBe('pending');
+});
+
+test('payment success return promotes a verified Midtrans settlement to paid and stops polling', function () {
+    Mail::fake();
+    $user = User::factory()->create();
+    User::factory()->create(['role' => 'admin']);
+    $order = Order::query()->create([
+        'user_id' => $user->id,
+        'user_name' => $user->name,
+        'user_email' => $user->email,
+        'total' => 105000,
+        'status' => 'pending',
+        'payment_status' => 'pending',
+        'payment_order_id' => 'PAY-RETURN-PAID-'.uniqid(),
+    ]);
+    config(['midtrans.server_key' => 'test-server-key', 'midtrans.merchant_id' => null]);
+
+    $payments = Mockery::mock(MidtransPaymentService::class);
+    $payments->shouldReceive('fetchStatus')->once()->andReturn((object) [
+        'order_id' => $order->payment_order_id,
+        'status_code' => '200',
+        'gross_amount' => '105000.00',
+        'transaction_status' => 'settlement',
+        'fraud_status' => 'accept',
+        'transaction_id' => 'return-page-settlement',
+        'payment_type' => 'qris',
+    ]);
+    $this->app->instance(MidtransPaymentService::class, $payments);
+
+    $this->get(route('payment.success', ['order_id' => $order->payment_order_id]))
+        ->assertOk()
+        ->assertViewHas('verified', true)
+        ->assertViewHas('polling', false)
+        ->assertSee('Pembayaran berhasil!');
+
+    expect($order->fresh()->payment_status)->toBe('paid')
+        ->and($order->fresh()->transaction_id)->toBe('return-page-settlement');
+});
+
+test('payment failed return checks Midtrans status and polls for up to one minute while unverified', function () {
+    $user = User::factory()->create();
+    $order = Order::query()->create([
+        'user_id' => $user->id,
+        'user_name' => $user->name,
+        'user_email' => $user->email,
+        'total' => 105000,
+        'status' => 'pending',
+        'payment_status' => 'pending',
+        'payment_order_id' => 'PAY-RETURN-FAILED-'.uniqid(),
+    ]);
+    config(['midtrans.server_key' => 'test-server-key']);
+
+    $payments = Mockery::mock(MidtransPaymentService::class);
+    $payments->shouldReceive('fetchStatus')->once()->with(Mockery::on(fn (Order $candidate): bool => $candidate->is($order)))
+        ->andReturn((object) [
+            'order_id' => $order->payment_order_id,
+            'status_code' => '201',
+            'gross_amount' => '105000.00',
+            'transaction_status' => 'pending',
+            'fraud_status' => 'accept',
+        ]);
+    $this->app->instance(MidtransPaymentService::class, $payments);
+
+    $this->get(route('payment.failed', ['order_id' => $order->payment_order_id]))
+        ->assertOk()
+        ->assertViewHas('polling', true)
+        ->assertViewHas('isPending', true);
+});
+
+test('payment success return stops polling after five minutes', function () {
+    $user = User::factory()->create();
+    $order = Order::query()->create([
+        'user_id' => $user->id,
+        'user_name' => $user->name,
+        'user_email' => $user->email,
+        'total' => 105000,
+        'status' => 'pending',
+        'payment_status' => 'pending',
+        'payment_order_id' => 'PAY-RETURN-EXPIRED-'.uniqid(),
+    ]);
+    config(['midtrans.server_key' => 'test-server-key']);
+
+    $payments = Mockery::mock(MidtransPaymentService::class);
+    $payments->shouldReceive('fetchStatus')->once()->andReturn((object) [
+        'order_id' => $order->payment_order_id,
+        'status_code' => '201',
+        'gross_amount' => '105000.00',
+        'transaction_status' => 'pending',
+        'fraud_status' => 'accept',
+    ]);
+    $this->app->instance(MidtransPaymentService::class, $payments);
+
+    $url = route('payment.success', ['order_id' => $order->payment_order_id]);
+    $this->get($url)->assertViewHas('polling', true);
+    $this->travel(301)->seconds();
+    $this->get($url)->assertViewHas('polling', false);
+});
 
 test('verified customer opening the legacy checkout URL is redirected to the cart', function () {
     $customer = User::factory()->create();

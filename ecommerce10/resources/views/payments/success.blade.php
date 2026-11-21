@@ -27,4 +27,9 @@
             </div>
         </section>
     </div>
+    @if ($polling)
+        <script>
+            window.setTimeout(() => window.location.reload(), 10000);
+        </script>
+    @endif
 </x-storefront-layout>
